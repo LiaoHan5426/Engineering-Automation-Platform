@@ -6,9 +6,9 @@ Status: implemented
 
 ## Problem
 
-动态 Client 插件的浏览器半侧由 [client 打包预设](../../../../packages/client/tsdown.client.ts) 打成 lazy-CJS factory，经 [Client 模块系统](../../../../packages/client/modules/README.zh.md) 的 `/plugins` 路由加载。这条路由过去只提供 `client.js` 和包内分片，所以插件代码引用的图片只能以 base64 data URL 打进 bundle，样式里用到的图片则要靠包级构建插件替换成内联样式。
+动态 Client 插件的浏览器半侧由 [client 打包预设](../../../../packages/client/pack.client.ts) 打成 lazy-CJS factory，经 [Client 模块系统](../../../../packages/client/modules/README.zh.md) 的 `/plugins` 路由加载。这条路由过去只提供 `client.js` 和包内分片，所以插件代码引用的图片只能以 base64 data URL 打进 bundle，样式里用到的图片则要靠包级构建插件替换成内联样式。
 
-不管图片显不显示，这些字节都随 JavaScript 一起下载和解析，base64 还会让体积大三分之一：引导插图使 ui-settings-account 的 `client.js` 达到约 3.4 MB。ui-chat 还为一张遮罩图维护了自己的 [tsdown 插件](../../../../packages/client/ui-chat/tsdown.config.ts)。
+不管图片显不显示，这些字节都随 JavaScript 一起下载和解析，base64 还会让体积大三分之一：引导插图使 ui-settings-account 的 `client.js` 达到约 3.4 MB。ui-chat 还为一张遮罩图维护了自己的 [tsdown 插件](../../../../packages/client/ui-chat/vite.config.ts)。
 
 ## Decision
 

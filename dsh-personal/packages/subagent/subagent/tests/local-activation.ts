@@ -1,26 +1,26 @@
 /** Local backend fixtures over the production activation lifecycle. */
-import { mountWorkingDirectoryFixture } from './working-directory-fixture.ts'
-import { randomUUID } from 'node:crypto'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import type { Context } from '@deepseek-ai/cordis'
-import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
-import { type ContinuableCreateSpec, type SubagentStartRequest } from '@deepseek-ai/dsh-subagent'
-import { onTestFinished } from 'vitest'
+import { mountWorkingDirectoryFixture } from "./working-directory-fixture.ts";
+import { randomUUID } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { Context } from "@deepseek-ai/cordis";
+import * as JsonlSessionPersistence from "@deepseek-ai/dsh-session-persistence-jsonl";
+import { type ContinuableCreateSpec, type SubagentStartRequest } from "@deepseek-ai/dsh-subagent";
+import { onTestFinished } from "vite-plus/test";
 
 /**
  * Mount isolated persistence and remove it after the context reaches quiescence.
  * @param ctx - test runtime that owns the local child sessions.
  */
 export async function mountLocalActivations(ctx: Context): Promise<void> {
-  await mountWorkingDirectoryFixture(ctx)
-  const root = await mkdtemp(join(tmpdir(), 'dsh-local-activation-'))
+  await mountWorkingDirectoryFixture(ctx);
+  const root = await mkdtemp(join(tmpdir(), "dsh-local-activation-"));
   onTestFinished(async () => {
-    await ctx.fiber.dispose()
-    await rm(root, { recursive: true, force: true })
-  })
-  await ctx.plugin(JsonlSessionPersistence, { root })
+    await ctx.fiber.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+  await ctx.plugin(JsonlSessionPersistence, { root });
 }
 
 /**
@@ -33,11 +33,17 @@ export async function mountLocalActivations(ctx: Context): Promise<void> {
 export async function startTestActivation(
   ctx: Context,
   provider: string,
-  request: Omit<SubagentStartRequest, 'signal'> & { signal?: AbortSignal },
+  request: Omit<SubagentStartRequest, "signal"> & { signal?: AbortSignal },
 ) {
-  const { signal = new AbortController().signal, label = provider, ...task } = request
-  const activation = await ctx.get('subagents')!.startActivation({ provider, label, ...task, signal, delivery: 'caller' })
-  return { ...activation, id: activation.childId, localAgent: ctx.get('agents')!.get(activation.childId)! }
+  const { signal = new AbortController().signal, label = provider, ...task } = request;
+  const activation = await ctx
+    .get("subagents")!
+    .startActivation({ provider, label, ...task, signal, delivery: "caller" });
+  return {
+    ...activation,
+    id: activation.childId,
+    localAgent: ctx.get("agents")!.get(activation.childId)!,
+  };
 }
 
 /**
@@ -46,16 +52,24 @@ export async function startTestActivation(
  * @param prepared - detached local creation inputs.
  * @returns The published local activation and assertion aliases.
  */
-export function startPreparedActivation(request: SubagentStartRequest, prepared: ContinuableCreateSpec = {}) {
-  const ctx = request.parent.ctx
-  const provider = `prepared-${randomUUID()}`
-  const unregister = ctx.get('subagents')!.registerProvider({
+export function startPreparedActivation(
+  request: SubagentStartRequest,
+  prepared: ContinuableCreateSpec = {},
+) {
+  const ctx = request.parent.ctx;
+  const provider = `prepared-${randomUUID()}`;
+  const unregister = ctx.get("subagents")!.registerProvider({
     name: provider,
     capabilities: {
-      agentOptions: true, agentPreset: prepared.seed === undefined, outputSchema: true, depthLimit: true,
+      agentOptions: true,
+      agentPreset: prepared.seed === undefined,
+      outputSchema: true,
+      depthLimit: true,
     },
     inheritsParentContext: prepared.seed !== undefined,
     prepareContinuable: () => Promise.resolve(prepared),
-  })
-  return startTestActivation(ctx, provider, request).finally(() => { unregister() })
+  });
+  return startTestActivation(ctx, provider, request).finally(() => {
+    unregister();
+  });
 }

@@ -381,9 +381,9 @@ The parent renders twice for data it could have had on the first pass, the heade
 
 ## Build and style follow their owners
 
-Every build adjustment for a client package goes through the tsdown plugin for that package, and a package does not grow its own build branch. Styling goes through CSS Modules, and only images, GIFs, and SVG are inlined — inlined into CSS rather than into JSX. Large text never appears inline in TSX, and a `style` object holds only runtime-computed values, because static values and style variants belong to CSS Module class names.
+Every build adjustment for a client package goes through the Vite+ Pack plugin for that package, and a package does not grow its own build branch. Styling goes through CSS Modules, and only images, GIFs, and SVG are inlined — inlined into CSS rather than into JSX. Large text never appears inline in TSX, and a `style` object holds only runtime-computed values, because static values and style variants belong to CSS Module class names.
 
-- Judged by: a new build branch inside a package instead of the tsdown plugin; a literal color, a component library, or Tailwind in feature styling; base64 data or large text in TSX; and a `style` object carrying static values or a variant switch.
+- Judged by: a new build branch inside a package instead of the Vite+ Pack plugin; a literal color, a component library, or Tailwind in feature styling; base64 data or large text in TSX; and a `style` object carrying static values or a variant switch.
 - Not covered: a runtime-computed value such as a measured gutter or a progress percentage may enter `style`, and a component-local custom property may carry a layout value. [Component rules](../web-styling.md#component-rules) own the tokens, CSS Module, and class-name rules.
 - Exception: a new build branch or a new inline form is explained in review before it lands, and the owning package's rules decide whether it stays.
 - Fix: move the variant into a CSS Module class switched by `className`, keep base64 in CSS produced by the build chain, and delete the large text constant from the TSX module.

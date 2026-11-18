@@ -7,7 +7,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import { build as bundle } from 'tsdown'
+import { build as bundle } from 'vite-plus/pack'
 import { spawn } from 'node:child_process'
 import { pnpmInvocation, verifyStagedDependencies } from './executable-packaging.ts'
 import { existsSync, statSync } from 'node:fs'

@@ -10,20 +10,20 @@
  * and verifies the namespace shape is preserved.
  */
 
-import { describe, expect, it } from 'vitest'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
-import * as mcpClient from '@deepseek-ai/dsh-mcp-client'
+import { describe, expect, it } from "vite-plus/test";
+import Loader from "@deepseek-ai/cordis-plugin-loader";
+import * as mcpClient from "@deepseek-ai/dsh-mcp-client";
 
-describe('dsh-mcp-client real-load-path guard', () => {
-  it('has no default export and keeps name/inject/Config through unwrapExports', () => {
-    expect('default' in mcpClient).toBe(false)
+describe("dsh-mcp-client real-load-path guard", () => {
+  it("has no default export and keeps name/inject/Config through unwrapExports", () => {
+    expect("default" in mcpClient).toBe(false);
 
-    const loader = Object.create(Loader.prototype) as Loader
-    const unwrapped = loader.unwrapExports(mcpClient) as Record<string, unknown>
-    expect(unwrapped).toBe(mcpClient)
-    expect(unwrapped.name).toBe('mcp-client')
-    expect(unwrapped.inject).toEqual(['tools'])
-    expect(typeof unwrapped.apply).toBe('function')
-    expect(unwrapped.Config).toBeDefined()
-  })
-})
+    const loader = Object.create(Loader.prototype) as Loader;
+    const unwrapped = loader.unwrapExports(mcpClient) as Record<string, unknown>;
+    expect(unwrapped).toBe(mcpClient);
+    expect(unwrapped.name).toBe("mcp-client");
+    expect(unwrapped.inject).toEqual(["tools"]);
+    expect(typeof unwrapped.apply).toBe("function");
+    expect(unwrapped.Config).toBeDefined();
+  });
+});

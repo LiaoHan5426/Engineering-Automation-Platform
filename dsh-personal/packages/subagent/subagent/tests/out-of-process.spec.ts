@@ -4,167 +4,204 @@
  * under their never-reject and idempotence contracts.
  */
 
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it, vi } from "vite-plus/test";
+import type { SessionId } from "@deepseek-ai/dsh-session";
 import {
   assertPositiveFinite,
   assertUsableCwd,
   NO_START_CAPABILITIES,
   settleRunResult,
   subprocessRunHandle,
-} from '../src/index.ts'
-import { brandString } from '@deepseek-ai/dsh-brand'
+} from "../src/index.ts";
+import { brandString } from "@deepseek-ai/dsh-brand";
 
-describe('NO_START_CAPABILITIES', () => {
-  it('advertises nothing and is frozen (shared by every out-of-process backend)', () => {
+describe("NO_START_CAPABILITIES", () => {
+  it("advertises nothing and is frozen (shared by every out-of-process backend)", () => {
     expect(NO_START_CAPABILITIES).toEqual({
       agentOptions: false,
       agentPreset: false,
       outputSchema: false,
       depthLimit: false,
-    })
-    expect(Object.isFrozen(NO_START_CAPABILITIES)).toBe(true)
-  })
-})
+    });
+    expect(Object.isFrozen(NO_START_CAPABILITIES)).toBe(true);
+  });
+});
 
-describe('assertPositiveFinite', () => {
-  it('accepts positive finite bounds and rejects zero, negatives, and NaN', () => {
-    expect(() => { assertPositiveFinite('p', 'graceMs', 1) }).not.toThrow()
-    expect(() => { assertPositiveFinite('p', 'graceMs', 0) }).toThrow('p: graceMs must be a positive finite number')
-    expect(() => { assertPositiveFinite('p', 'graceMs', -5) }).toThrow('positive finite')
-    expect(() => { assertPositiveFinite('p', 'graceMs', Number.NaN) }).toThrow('positive finite')
-    expect(() => { assertPositiveFinite('p', 'graceMs', Number.POSITIVE_INFINITY) }).toThrow('positive finite')
-  })
-})
+describe("assertPositiveFinite", () => {
+  it("accepts positive finite bounds and rejects zero, negatives, and NaN", () => {
+    expect(() => {
+      assertPositiveFinite("p", "graceMs", 1);
+    }).not.toThrow();
+    expect(() => {
+      assertPositiveFinite("p", "graceMs", 0);
+    }).toThrow("p: graceMs must be a positive finite number");
+    expect(() => {
+      assertPositiveFinite("p", "graceMs", -5);
+    }).toThrow("positive finite");
+    expect(() => {
+      assertPositiveFinite("p", "graceMs", Number.NaN);
+    }).toThrow("positive finite");
+    expect(() => {
+      assertPositiveFinite("p", "graceMs", Number.POSITIVE_INFINITY);
+    }).toThrow("positive finite");
+  });
+});
 
-describe('child cwd resolution', () => {
-  it('accepts an absolute enterable directory and rejects relative or missing paths', () => {
-    expect(assertUsableCwd('p', 'config cwd', tmpdir())).toBe(tmpdir())
-    expect(() => assertUsableCwd('p', 'config cwd', 'relative/path')).toThrow(expect.objectContaining({ name: 'SubagentError', code: 'INVALID_CWD', message: expect.stringContaining('must be an absolute path') as string }))
-    expect(() => assertUsableCwd('p', 'config cwd', join(tmpdir(), 'dsh-no-such-dir-xyz'))).toThrow(expect.objectContaining({ name: 'SubagentError', code: 'INVALID_CWD', message: expect.stringContaining('not an accessible directory') as string }))
-  })
+describe("child cwd resolution", () => {
+  it("accepts an absolute enterable directory and rejects relative or missing paths", () => {
+    expect(assertUsableCwd("p", "config cwd", tmpdir())).toBe(tmpdir());
+    expect(() => assertUsableCwd("p", "config cwd", "relative/path")).toThrow(
+      expect.objectContaining({
+        name: "SubagentError",
+        code: "INVALID_CWD",
+        message: expect.stringContaining("must be an absolute path") as string,
+      }),
+    );
+    expect(() => assertUsableCwd("p", "config cwd", join(tmpdir(), "dsh-no-such-dir-xyz"))).toThrow(
+      expect.objectContaining({
+        name: "SubagentError",
+        code: "INVALID_CWD",
+        message: expect.stringContaining("not an accessible directory") as string,
+      }),
+    );
+  });
 
-  it('rejects an existing path that is a file, not a directory', () => {
-    const tmp = mkdtempSync(join(tmpdir(), 'oop-file-'))
-    const file = join(tmp, 'plain.txt')
+  it("rejects an existing path that is a file, not a directory", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "oop-file-"));
+    const file = join(tmp, "plain.txt");
     try {
-      writeFileSync(file, 'not a dir\n')
-      expect(() => assertUsableCwd('p', 'config cwd', file)).toThrow(expect.objectContaining({ name: 'SubagentError', code: 'INVALID_CWD', message: expect.stringContaining('not an accessible directory') as string }))
+      writeFileSync(file, "not a dir\n");
+      expect(() => assertUsableCwd("p", "config cwd", file)).toThrow(
+        expect.objectContaining({
+          name: "SubagentError",
+          code: "INVALID_CWD",
+          message: expect.stringContaining("not an accessible directory") as string,
+        }),
+      );
     } finally {
-      rmSync(tmp, { recursive: true, force: true })
+      rmSync(tmp, { recursive: true, force: true });
     }
-  })
+  });
 
   // Windows ACLs do not expose the POSIX directory search-bit state this fixture creates.
-  it.skipIf(process.platform === 'win32')('rejects a directory without search permission', () => {
+  it.skipIf(process.platform === "win32")("rejects a directory without search permission", () => {
     // statSync().isDirectory() is true for a mode-600 directory, but a
     // subprocess cwd needs SEARCH permission — spawn would fail EACCES.
-    const tmp = mkdtempSync(join(tmpdir(), 'oop-noexec-'))
-    chmodSync(tmp, 0o600)
+    const tmp = mkdtempSync(join(tmpdir(), "oop-noexec-"));
+    chmodSync(tmp, 0o600);
     try {
-      expect(() => assertUsableCwd('p', 'config cwd', tmp)).toThrow(expect.objectContaining({ name: 'SubagentError', code: 'INVALID_CWD', message: expect.stringContaining('not an accessible directory') as string }))
+      expect(() => assertUsableCwd("p", "config cwd", tmp)).toThrow(
+        expect.objectContaining({
+          name: "SubagentError",
+          code: "INVALID_CWD",
+          message: expect.stringContaining("not an accessible directory") as string,
+        }),
+      );
     } finally {
-      chmodSync(tmp, 0o700)
-      rmSync(tmp, { recursive: true, force: true })
+      chmodSync(tmp, 0o700);
+      rmSync(tmp, { recursive: true, force: true });
     }
-  })
+  });
+});
 
-
-
-})
-
-describe('settleRunResult', () => {
+describe("settleRunResult", () => {
   const wiring = () => {
-    const controller = new AbortController()
-    const onAbort = vi.fn()
-    controller.signal.addEventListener('abort', onAbort)
-    return { controller, onAbort }
-  }
+    const controller = new AbortController();
+    const onAbort = vi.fn();
+    controller.signal.addEventListener("abort", onAbort);
+    return { controller, onAbort };
+  };
 
-  it('passes a successful attempt through and removes the abort listener', async () => {
-    const { controller, onAbort } = wiring()
+  it("passes a successful attempt through and removes the abort listener", async () => {
+    const { controller, onAbort } = wiring();
     const result = await settleRunResult({
-      attempt: async () => ({ output: [{ type: 'text', text: 'done' }], stopReason: 'completed' }),
+      attempt: async () => ({ output: [{ type: "text", text: "done" }], stopReason: "completed" }),
       collectOutput: () => [],
       cancelled: () => false,
       signal: controller.signal,
       onAbort,
-    })
-    expect(result.stopReason).toBe('completed')
-    controller.abort()
+    });
+    expect(result.stopReason).toBe("completed");
+    controller.abort();
     // The listener was removed at settlement, so the abort never reaches it.
-    expect(onAbort).not.toHaveBeenCalled()
-  })
+    expect(onAbort).not.toHaveBeenCalled();
+  });
 
-  it('reads an in-flight rejection as aborted when cancellation already settled', async () => {
-    const { controller, onAbort } = wiring()
+  it("reads an in-flight rejection as aborted when cancellation already settled", async () => {
+    const { controller, onAbort } = wiring();
     const result = await settleRunResult({
-      attempt: async () => { throw new Error('pipe torn mid-cancel') },
-      collectOutput: () => [{ type: 'text', text: 'partial' }],
+      attempt: async () => {
+        throw new Error("pipe torn mid-cancel");
+      },
+      collectOutput: () => [{ type: "text", text: "partial" }],
       cancelled: () => true,
       signal: controller.signal,
       onAbort,
-    })
-    expect(result).toEqual({ output: [{ type: 'text', text: 'partial' }], stopReason: 'aborted' })
-  })
+    });
+    expect(result).toEqual({ output: [{ type: "text", text: "partial" }], stopReason: "aborted" });
+  });
 
-  it('flattens a failure through a contained onError sink', async () => {
-    const { controller, onAbort } = wiring()
-    const seen: string[] = []
+  it("flattens a failure through a contained onError sink", async () => {
+    const { controller, onAbort } = wiring();
+    const seen: string[] = [];
     const result = await settleRunResult({
-      attempt: async () => { throw new Error('transport died') },
+      attempt: async () => {
+        throw new Error("transport died");
+      },
       collectOutput: () => [],
       cancelled: () => false,
       onError: (error, stopReason) => {
-        seen.push(`${stopReason}:${error.message}`)
-        throw new Error('sink failure must be contained')
+        seen.push(`${stopReason}:${error.message}`);
+        throw new Error("sink failure must be contained");
       },
       signal: controller.signal,
       onAbort,
-    })
-    expect(result.stopReason).toBe('error')
-    expect(seen).toEqual(['error:transport died'])
-  })
+    });
+    expect(result.stopReason).toBe("error");
+    expect(seen).toEqual(["error:transport died"]);
+  });
 
-  it('flattens a failure without a sink', async () => {
-    const { controller, onAbort } = wiring()
+  it("flattens a failure without a sink", async () => {
+    const { controller, onAbort } = wiring();
     const result = await settleRunResult({
-      attempt: async () => { throw new Error('no sink configured') },
+      attempt: async () => {
+        throw new Error("no sink configured");
+      },
       collectOutput: () => [],
       cancelled: () => false,
       signal: controller.signal,
       onAbort,
-    })
-    expect(result.stopReason).toBe('error')
-  })
-})
+    });
+    expect(result.stopReason).toBe("error");
+  });
+});
 
-describe('subprocessRunHandle', () => {
-  it('publishes an idempotent dispose that cancels locally and awaits teardown', async () => {
-    const controller = new AbortController()
-    const onAbort = vi.fn()
-    controller.signal.addEventListener('abort', onAbort)
-    const requestCancel = vi.fn()
-    const teardown = vi.fn(() => Promise.resolve())
+describe("subprocessRunHandle", () => {
+  it("publishes an idempotent dispose that cancels locally and awaits teardown", async () => {
+    const controller = new AbortController();
+    const onAbort = vi.fn();
+    controller.signal.addEventListener("abort", onAbort);
+    const requestCancel = vi.fn();
+    const teardown = vi.fn(() => Promise.resolve());
     const run = subprocessRunHandle({
-      id: brandString<SessionId>('run-1'),
-      result: Promise.resolve({ output: [], stopReason: 'completed' }),
+      id: brandString<SessionId>("run-1"),
+      result: Promise.resolve({ output: [], stopReason: "completed" }),
       signal: controller.signal,
       onAbort,
       requestCancel,
       teardown,
-    })
-    expect(String(run.id)).toBe('run-1')
-    const disposal = run.dispose()
-    expect(run.dispose()).toBe(disposal)
-    await disposal
-    expect(requestCancel).toHaveBeenCalledTimes(1)
-    expect(teardown).toHaveBeenCalledTimes(1)
-    controller.abort()
+    });
+    expect(String(run.id)).toBe("run-1");
+    const disposal = run.dispose();
+    expect(run.dispose()).toBe(disposal);
+    await disposal;
+    expect(requestCancel).toHaveBeenCalledTimes(1);
+    expect(teardown).toHaveBeenCalledTimes(1);
+    controller.abort();
     // dispose removed the abort listener before cancelling.
-    expect(onAbort).not.toHaveBeenCalled()
-  })
-})
+    expect(onAbort).not.toHaveBeenCalled();
+  });
+});

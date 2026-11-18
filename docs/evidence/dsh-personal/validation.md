@@ -69,3 +69,25 @@ The [Forge review](forge-review.json) preserves exact failures and skips; [sourc
 Maintenance documentation: bilingual records generated and Chinese testing link corrected. vp run test:docs passed all 21 checks in 44.66 seconds. vp run doc-sync completed 41/43 in 394.02 seconds; its pairing failure was subsequently fixed and passed in test:docs. The remaining documentation-site failure is EPERM while creating a symlink in scripts/project-doc-site.spec.ts:160 on Windows. No assertion or test budget source was weakened. Earlier build and browser results above remain the evidence for unchanged production code; this round does not claim a new full-suite pass.
 
 Final static rerun: vp run lint checked 7,301 files with 90 rules and found one redundant type assertion in the ChangesTab test helper. Removed that assertion and its obsolete comment; no production code or behavioral assertion changed. Focused lint passed with zero warnings/errors (5.8 seconds); the existing ChangesTab suite passed 149/149 (39.65 seconds). vp run build:check passed both Host and Vue Client aggregates in 128.35 seconds after the edit. The full lint run remains recorded as one failure followed by a focused fix verification, not a second full green run. The negative stale-tab test emitted a Vue render warning; no diagnostic was suppressed.
+
+## Vite+ Pack migration — 2026-11-17
+
+Module bundling now uses package-owned Vite+ pack configurations. Root selection keeps absolute package working directories, replaces explicit entry/format arrays, appends only plugins, and removes empty-string disabled faces before Pack can auto-discover src/index.ts and overwrite Host outputs. JavaScript decorators are lowered as well as TypeScript decorators. Inspector publication has bounded Windows rename retries; NodeNext consumers use Windows junctions. Preview scripts use vp pack.
+
+| Executed command or coverage | Result |
+| --- | --- |
+| `pnpm run build:artifacts` | 8 passed, 0 failed/skipped in 65.98s after disabled-face selection was fixed. |
+| `pnpm run build:check` | Host and Client passed in 25.72s after those artifacts. A final aggregate run passed both gates in 28.08s after extracting the identical selector and adding its tests. |
+| Plain Node import of packages/core/session/lib/index.js | Session imported, exit 0 after both Host and Client passes. Earlier green builds had retained decorators and failed this probe; their runtime outcome is superseded. |
+| Chrome Vue Host and DevTools frontend browser cases | 2 files, 2 tests passed in 22.91s, using DSH_PLAYWRIGHT_EXECUTABLE_PATH=C:/Program Files/Google/Chrome/Application/chrome.exe with the normal vitest.web.config.ts. Covers Vue factory/HMR/disposal and authenticated prebuilt DevTools delivery. |
+| `pnpm exec tsx scripts/verify-node-next-types.ts` | 391 workspace declaration APIs compile under NodeNext. |
+| Pack configuration / purity / externals | Earlier 79 passed; final selector suite 7 passed, including two real Pack cases preserving Host bytes while producing Client output. Counts overlap and are not added. |
+| Decorator Pack, plugin and worker regressions | 30 passed, including actual js/mjs/ts Pack outputs executed under plain Node and decorator method/initializer semantics. |
+| Build orchestration / consumers | 179 passed, 5 skipped; separate RRULE/Client Host related run: 184 passed. |
+| Dependencies / static import review | 101 packages passed dependency policy; 7,722 files scanned; 335 multi-level relative-import candidates had no normalized cross-package escape. Computed paths are not covered by that static conclusion. |
+| Inspector source/publication regressions | 43 passed; publication ran twice successfully: 768 files, 22,750,474 bytes. Actual lock contention was not reproduced. |
+| Focused lint / whitespace | Config/publish, runtime, selector and NodeNext checks passed with zero diagnostics; git diff --check passed. |
+
+Full doc-sync ran 40/43: old config links and stale workflow guest output were then fixed and their checks passed; the Windows documentation-site symlink case remains failed. Pairing, upgrade-guide and markdown-link checks passed after repairs. The earlier full GUI run retained unrelated Windows symlink, timeout and CSS-source assertion failures; no full GUI or full doc-sync green result is claimed. Official Chromium download timed out and was stopped; the two browser cases used installed Chrome without weakening assertions. This validation round did not change EAP backend integration or establish user acceptance; no commit or push was created during that round.
+
+On 2026-11-18, the user requested workspace cleanup verification followed by commit and push. Removed 45 untracked migration logs and the temporary Node import probe (2,660,785 bytes); retained production source, regression tests and formal evidence. Existing passing build, NodeNext and browser evidence above remains applicable because this cleanup did not change implementation. Retained Windows doc-sync and GUI failures remain separate from technical completion. Git commit and remote equality are verified during publication.

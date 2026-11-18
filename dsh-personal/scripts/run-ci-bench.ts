@@ -1,7 +1,7 @@
 /** Build benchmark artifacts with TypeScript diagnostics owned by required full builds. */
 
-import { resolve } from 'node:path'
-import { buildLibraryArtifacts, runPnpmCommand } from './compile-referenced-projects.ts'
+import { resolve } from "node:path";
+import { buildLibraryArtifacts, runPnpmCommand } from "./compile-referenced-projects.ts";
 
 /**
  * Build native support, libraries, benchmark workers, and Web assets that benchmark files consume.
@@ -9,10 +9,10 @@ import { buildLibraryArtifacts, runPnpmCommand } from './compile-referenced-proj
  * @throws If any build fails.
  */
 export function buildCiBenchArtifacts(root: string): void {
-  runPnpmCommand(root, ['run', 'build:native-system'])
-  buildLibraryArtifacts(root, false, 'benchmark-emit')
-  runPnpmCommand(root, ['exec', 'tsdown', '--config-loader', 'native', '--config', 'benchmarks/tsdown.config.ts'])
-  runPnpmCommand(root, ['run', 'build:web'])
+  runPnpmCommand(root, ["run", "build:native-system"]);
+  buildLibraryArtifacts(root, false, "benchmark-emit");
+  runPnpmCommand(resolve(root, "benchmarks"), ["exec", "vp", "pack"]);
+  runPnpmCommand(root, ["run", "build:web"]);
 }
 
 /**
@@ -21,8 +21,8 @@ export function buildCiBenchArtifacts(root: string): void {
  * @throws If any build or the benchmark suite fails.
  */
 export function runCiBench(root: string): void {
-  buildCiBenchArtifacts(root)
-  runPnpmCommand(root, ['run', 'test:bench:built'])
+  buildCiBenchArtifacts(root);
+  runPnpmCommand(root, ["run", "test:bench:built"]);
 }
 
-if (import.meta.main) runCiBench(resolve(import.meta.dirname, '..'))
+if (import.meta.main) runCiBench(resolve(import.meta.dirname, ".."));

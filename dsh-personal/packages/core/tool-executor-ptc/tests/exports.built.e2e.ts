@@ -1,13 +1,13 @@
 /** Published program-tool and plugin entries share configuration and error identities. */
-import { execFile } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { promisify } from 'node:util'
-import { expect, it } from 'vitest'
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { expect, it } from "vite-plus/test";
 
-const packageRoot = fileURLToPath(new URL('..', import.meta.url))
-const factoryBundle = fileURLToPath(new URL('../lib/run-code.js', import.meta.url))
-const execFileAsync = promisify(execFile)
+const packageRoot = fileURLToPath(new URL("..", import.meta.url));
+const factoryBundle = fileURLToPath(new URL("../lib/run-code.js", import.meta.url));
+const execFileAsync = promisify(execFile);
 const probe = String.raw`
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
@@ -56,9 +56,16 @@ try {
   await ctx.fiber.dispose()
 }
 console.log('shared program entries verified')
-`
+`;
 
-it.skipIf(!existsSync(factoryBundle))('loads private program tools through published exports with shared errors', { retry: 0 }, async ({ signal }) => {
-  const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '-e', probe], { cwd: packageRoot, signal })
-  expect(stdout.trim()).toBe('shared program entries verified')
-})
+it.skipIf(!existsSync(factoryBundle))(
+  "loads private program tools through published exports with shared errors",
+  { retry: 0 },
+  async ({ signal }) => {
+    const { stdout } = await execFileAsync(process.execPath, ["--input-type=module", "-e", probe], {
+      cwd: packageRoot,
+      signal,
+    });
+    expect(stdout.trim()).toBe("shared program entries verified");
+  },
+);

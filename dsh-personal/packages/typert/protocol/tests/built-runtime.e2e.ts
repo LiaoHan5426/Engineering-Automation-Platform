@@ -1,16 +1,16 @@
-import { execFileSync } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
-import { expect, it } from 'vitest'
+import { execFileSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { expect, it } from "vite-plus/test";
 
-it.each(['../lib/index.js', '../lib/types/remote-info.js'])(
-  'keeps the published protocol entry %s free of Zod runtime imports',
+it.each(["../lib/index.js", "../lib/types/remote-info.js"])(
+  "keeps the published protocol entry %s free of Zod runtime imports",
   async (entry) => {
-    const source = await readFile(new URL(entry, import.meta.url), 'utf8')
-    expect(source).not.toMatch(/\b(?:from|import|require)\s*(?:\(\s*)?['"]zod(?:\/[^'"]*)?['"]/)
+    const source = await readFile(new URL(entry, import.meta.url), "utf8");
+    expect(source).not.toMatch(/\b(?:from|import|require)\s*(?:\(\s*)?['"]zod(?:\/[^'"]*)?['"]/);
   },
-)
+);
 
-it('recognizes source and built Cordis Contexts in an active built RemoteAccess plugin', () => {
+it("recognizes source and built Cordis Contexts in an active built RemoteAccess plugin", () => {
   const script = `
     import { Context as SourceContext } from '@deepseek-ai/cordis/src/index.ts'
     import { Context as BuiltContext } from '@deepseek-ai/cordis'
@@ -46,16 +46,38 @@ it('recognizes source and built Cordis Contexts in an active built RemoteAccess 
       }
     }
     console.log(JSON.stringify(observations))
-  `
-  const output = execFileSync(process.execPath, ['--import', 'tsx/esm', '--input-type=module', '-e', script], {
-    cwd: new URL('../../../api/remote-access/', import.meta.url),
-    encoding: 'utf8',
-    timeout: 15_000,
-  })
+  `;
+  const output = execFileSync(
+    process.execPath,
+    ["--import", "tsx/esm", "--input-type=module", "-e", script],
+    {
+      cwd: new URL("../../../api/remote-access/", import.meta.url),
+      encoding: "utf8",
+      timeout: 15_000,
+    },
+  );
   expect(JSON.parse(output)).toEqual([
-    { copy: 'source', sameConstructor: false, recognized: true, active: true, accessor: true,
-      outside: null, allowsOutside: true, preservedGuest: true, allowsGuest: false },
-    { copy: 'built', sameConstructor: true, recognized: true, active: true, accessor: true,
-      outside: null, allowsOutside: true, preservedGuest: true, allowsGuest: false },
-  ])
-})
+    {
+      copy: "source",
+      sameConstructor: false,
+      recognized: true,
+      active: true,
+      accessor: true,
+      outside: null,
+      allowsOutside: true,
+      preservedGuest: true,
+      allowsGuest: false,
+    },
+    {
+      copy: "built",
+      sameConstructor: true,
+      recognized: true,
+      active: true,
+      accessor: true,
+      outside: null,
+      allowsOutside: true,
+      preservedGuest: true,
+      allowsGuest: false,
+    },
+  ]);
+});

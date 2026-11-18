@@ -3,29 +3,37 @@
  * Source-only Typert generation precedes compilation; contract steps omit runtime bundles.
  */
 
-import { spawn, spawnSync } from 'node:child_process'
-import { relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { parseArgs } from 'node:util'
-import ts from 'typescript'
-import { pnpmCommand } from './release/process.ts'
+import { spawn, spawnSync } from "node:child_process";
+import { relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
+import ts from "typescript";
+import { pnpmCommand } from "./release/process.ts";
 
-type CompilationMode = 'checked' | 'benchmark-emit'
+type CompilationMode = "checked" | "benchmark-emit";
 
 /** Identifier of one package-library build step. */
-export type LibraryStepId = 'host-src' | 'host-bundle' | 'host-typert' | 'desktop-bundle' | 'client-src' | 'client-bundle'
+export type LibraryStepId =
+  | "host-src"
+  | "host-bundle"
+  | "host-typert"
+  | "desktop-bundle"
+  | "client-src"
+  | "client-bundle";
 
 /** One package-library build step as a shell-free child-process invocation. */
 export interface LibraryStep {
-  readonly id: LibraryStepId
+  readonly id: LibraryStepId;
   /** Name used in progress and failure reports. */
-  readonly label: string
+  readonly label: string;
   /** Short command shown in failure reports; reference lists are summarized. */
-  readonly displayCommand: string
-  readonly command: string
-  readonly args: readonly string[]
+  readonly displayCommand: string;
+  readonly command: string;
+  readonly args: readonly string[];
+  /** Environment values owned by this build step. */
+  readonly env?: NodeJS.ProcessEnv;
   /** Steps that must succeed first; together they repeat the serial library order. */
-  readonly needs: readonly LibraryStepId[]
+  readonly needs: readonly LibraryStepId[];
 }
 
 /**
@@ -35,11 +43,13 @@ export interface LibraryStep {
  * @throws If the command cannot start or exits unsuccessfully.
  */
 export function runPnpmCommand(root: string, args: readonly string[]): void {
-  const [command, ...prefix] = pnpmCommand()
-  const result = spawnSync(command, [...prefix, ...args], { cwd: root, stdio: 'inherit' })
-  if (result.error !== undefined) throw result.error
+  const [command, ...prefix] = pnpmCommand();
+  const result = spawnSync(command, [...prefix, ...args], { cwd: root, stdio: "inherit" });
+  if (result.error !== undefined) throw result.error;
   if (result.status !== 0) {
-    throw new Error(`compile-referenced-projects: pnpm ${args.join(' ')} exited with ${String(result.status ?? result.signal)}`)
+    throw new Error(
+      `compile-referenced-projects: pnpm ${args.join(" ")} exited with ${String(result.status ?? result.signal)}`,
+    );
   }
 }
 
@@ -53,37 +63,48 @@ export function runPnpmCommand(root: string, args: readonly string[]): void {
  */
 export function referencedProjectsCompilerArgs(
   root: string,
-  face: 'host' | 'client',
-  mode: CompilationMode = 'checked',
+  face: "host" | "client",
+  mode: CompilationMode = "checked",
 ): string[] {
-  const configPath = resolve(root, `tsconfig.${face}.json`)
-  const config = ts.getParsedCommandLineOfConfigFile(configPath, {}, {
-    ...ts.sys,
-    onUnRecoverableConfigFileDiagnostic(diagnostic) {
-      throw new Error(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
+  const configPath = resolve(root, `tsconfig.${face}.json`);
+  const config = ts.getParsedCommandLineOfConfigFile(
+    configPath,
+    {},
+    {
+      ...ts.sys,
+      onUnRecoverableConfigFileDiagnostic(diagnostic) {
+        throw new Error(ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
+      },
     },
-  })
-  if (config === undefined) throw new Error(`compile-referenced-projects: cannot read ${configPath}`)
-  const references = config.projectReferences
+  );
+  if (config === undefined)
+    throw new Error(`compile-referenced-projects: cannot read ${configPath}`);
+  const references = config.projectReferences;
   if (references === undefined || references.length === 0) {
-    throw new Error(`compile-referenced-projects: ${configPath} requires non-empty project references`)
+    throw new Error(
+      `compile-referenced-projects: ${configPath} requires non-empty project references`,
+    );
   }
   if (config.errors.length > 0) {
-    throw new Error(config.errors
-      .map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
-      .join('\n'))
+    throw new Error(
+      config.errors
+        .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))
+        .join("\n"),
+    );
   }
   if (config.options.noEmit !== true) {
-    throw new Error(`compile-referenced-projects: ${configPath} requires noEmit: true to exclude its aggregate program`)
+    throw new Error(
+      `compile-referenced-projects: ${configPath} requires noEmit: true to exclude its aggregate program`,
+    );
   }
   return [
     ...hostHeapArgs(face),
     faceCompilerPath(face),
-    '-b',
-    ...mode === 'benchmark-emit' ? ['--noCheck'] : [],
+    "-b",
+    ...(mode === "benchmark-emit" ? ["--noCheck"] : []),
     // Relative arguments keep the complete workspace graph below Windows' command-line limit.
-    ...references.map(reference => relative(root, reference.path)),
-  ]
+    ...references.map((reference) => relative(root, reference.path)),
+  ];
 }
 
 /**
@@ -93,8 +114,8 @@ export function referencedProjectsCompilerArgs(
  * @param face - Compiler face whose aggregate program is checked.
  * @returns Arguments for `process.execPath`, run from the repository root.
  */
-export function aggregateCheckArgs(face: 'host' | 'client'): string[] {
-  return ['--max-old-space-size=8192', faceCompilerPath(face), '-p', `tsconfig.${face}.json`]
+export function aggregateCheckArgs(face: "host" | "client"): string[] {
+  return ["--max-old-space-size=8192", faceCompilerPath(face), "-p", `tsconfig.${face}.json`];
 }
 
 /**
@@ -104,17 +125,19 @@ export function aggregateCheckArgs(face: 'host' | 'client'): string[] {
  * @param face - Compiler face whose aggregate program is checked.
  * @returns Arguments for `process.execPath`, run from the repository root.
  */
-export function aggregateBuildArgs(face: 'host' | 'client'): string[] {
-  return ['--max-old-space-size=8192', faceCompilerPath(face), '-b', `tsconfig.${face}.json`]
+export function aggregateBuildArgs(face: "host" | "client"): string[] {
+  return ["--max-old-space-size=8192", faceCompilerPath(face), "-b", `tsconfig.${face}.json`];
 }
 
 /** Resolve the compiler executable for one independent program; only Client admits SFCs. */
-export function faceCompilerPath(face: 'host' | 'client'): string {
-  return fileURLToPath(import.meta.resolve(face === 'client' ? 'vue-tsc/bin/vue-tsc.js' : 'typescript/bin/tsc'))
+export function faceCompilerPath(face: "host" | "client"): string {
+  return fileURLToPath(
+    import.meta.resolve(face === "client" ? "vue-tsc/bin/vue-tsc.js" : "typescript/bin/tsc"),
+  );
 }
 
-function hostHeapArgs(face: 'host' | 'client'): string[] {
-  return face === 'host' ? ['--max-old-space-size=8192'] : []
+function hostHeapArgs(face: "host" | "client"): string[] {
+  return face === "host" ? ["--max-old-space-size=8192"] : [];
 }
 
 /**
@@ -126,26 +149,26 @@ function hostHeapArgs(face: 'host' | 'client'): string[] {
  */
 export function compileReferencedProjects(
   root: string,
-  face: 'host' | 'client',
-  mode: CompilationMode = 'checked',
+  face: "host" | "client",
+  mode: CompilationMode = "checked",
 ): void {
-  runStep(root, compilerStep(root, face, mode, []))
+  runStep(root, compilerStep(root, face, mode, []));
 }
 
 function compilerStep(
   root: string,
-  face: 'host' | 'client',
+  face: "host" | "client",
   mode: CompilationMode,
   needs: readonly LibraryStepId[],
 ): LibraryStep {
   return {
-    id: face === 'host' ? 'host-src' : 'client-src',
+    id: face === "host" ? "host-src" : "client-src",
     label: `${face} compiler`,
-    displayCommand: `${face === 'client' ? 'vue-tsc' : 'tsc'} -b${mode === 'benchmark-emit' ? ' --noCheck' : ''} <tsconfig.${face}.json references>`,
+    displayCommand: `${face === "client" ? "vue-tsc" : "tsc"} -b${mode === "benchmark-emit" ? " --noCheck" : ""} <tsconfig.${face}.json references>`,
     command: process.execPath,
     args: referencedProjectsCompilerArgs(root, face, mode),
     needs,
-  }
+  };
 }
 
 // Typert reads workspace packages only from source (generate-typert.ts
@@ -154,18 +177,39 @@ function compilerStep(
 // critical path before package compilation.
 function typertStep(): LibraryStep {
   return {
-    id: 'host-typert',
-    label: 'Host Typert',
-    displayCommand: 'tsx scripts/generate-typert.ts',
+    id: "host-typert",
+    label: "Host Typert",
+    displayCommand: "tsx scripts/generate-typert.ts",
     command: process.execPath,
-    args: ['--import', import.meta.resolve('tsx/esm'), fileURLToPath(new URL('generate-typert.ts', import.meta.url))],
+    args: [
+      "--import",
+      import.meta.resolve("tsx/esm"),
+      fileURLToPath(new URL("generate-typert.ts", import.meta.url)),
+    ],
     needs: [],
-  }
+  };
 }
 
-function pnpmStep(id: LibraryStepId, label: string, args: readonly string[], needs: readonly LibraryStepId[]): LibraryStep {
-  const [command, ...prefix] = pnpmCommand()
-  return { id, label, displayCommand: `pnpm ${args.join(' ')}`, command, args: [...prefix, ...args], needs }
+function pnpmStep(
+  id: LibraryStepId,
+  label: string,
+  args: readonly string[],
+  needs: readonly LibraryStepId[],
+): LibraryStep {
+  const [command, ...prefix] = pnpmCommand();
+  const env =
+    id === "host-bundle" || id === "client-bundle"
+      ? { DSH_BUILD_FACE: id === "host-bundle" ? "host" : "client" }
+      : undefined;
+  return {
+    id,
+    label,
+    displayCommand: `pnpm ${args.join(" ")}`,
+    command,
+    args: [...prefix, ...args],
+    needs,
+    ...(env === undefined ? {} : { env }),
+  };
 }
 
 /**
@@ -179,19 +223,28 @@ function pnpmStep(id: LibraryStepId, label: string, args: readonly string[], nee
  * @returns Steps with explicit compiler and bundle dependencies.
  * @throws If an aggregate configuration is invalid.
  */
-export function libraryBuildSteps(root: string, faces: 'host' | 'all', mode: CompilationMode = 'checked'): LibraryStep[] {
+export function libraryBuildSteps(
+  root: string,
+  faces: "host" | "all",
+  mode: CompilationMode = "checked",
+): LibraryStep[] {
   const host: LibraryStep[] = [
     typertStep(),
-    compilerStep(root, 'host', mode, ['host-typert']),
-    pnpmStep('host-bundle', 'Host bundle', ['exec', 'tsdown', '--config-loader', 'native', '--env.DSH_BUILD_FACE', 'host'], ['host-src']),
-  ]
-  if (faces === 'host') return host
+    compilerStep(root, "host", mode, ["host-typert"]),
+    pnpmStep("host-bundle", "Host bundle", ["exec", "vp", "pack"], ["host-src"]),
+  ];
+  if (faces === "host") return host;
   return [
     ...host,
-    pnpmStep('desktop-bundle', 'Desktop bundle', ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'bundle'], ['host-bundle']),
-    compilerStep(root, 'client', mode, ['desktop-bundle']),
-    pnpmStep('client-bundle', 'Client bundle', ['exec', 'tsdown', '--config-loader', 'native', '--env.DSH_BUILD_FACE', 'client'], ['client-src']),
-  ]
+    pnpmStep(
+      "desktop-bundle",
+      "Desktop bundle",
+      ["--filter", "@deepseek-ai/dsh-desktop", "run", "bundle"],
+      ["host-bundle"],
+    ),
+    compilerStep(root, "client", mode, ["desktop-bundle"]),
+    pnpmStep("client-bundle", "Client bundle", ["exec", "vp", "pack"], ["client-src"]),
+  ];
 }
 
 /**
@@ -203,31 +256,39 @@ export function libraryBuildSteps(root: string, faces: 'host' | 'all', mode: Com
  * @returns The steps in report order.
  * @throws If an aggregate configuration is invalid.
  */
-export function contractSteps(root: string, faces: 'host' | 'all'): LibraryStep[] {
-  const host = [typertStep(), compilerStep(root, 'host', 'checked', ['host-typert'])]
-  if (faces === 'host') return host
-  return [...host, compilerStep(root, 'client', 'checked', ['host-src'])]
+export function contractSteps(root: string, faces: "host" | "all"): LibraryStep[] {
+  const host = [typertStep(), compilerStep(root, "host", "checked", ["host-typert"])];
+  if (faces === "host") return host;
+  return [...host, compilerStep(root, "client", "checked", ["host-src"])];
 }
 
 function runStep(root: string, step: LibraryStep): void {
-  const result = spawnSync(step.command, step.args, { cwd: root, stdio: 'inherit' })
-  if (result.error !== undefined) throw result.error
-  if (result.status !== 0) throw stepFailure(step, result.status ?? result.signal)
+  const result = spawnSync(step.command, step.args, {
+    cwd: root,
+    stdio: "inherit",
+    env: { ...process.env, ...step.env },
+  });
+  if (result.error !== undefined) throw result.error;
+  if (result.status !== 0) throw stepFailure(step, result.status ?? result.signal);
 }
 
 function runStepAsync(root: string, step: LibraryStep): Promise<void> {
   return new Promise((settle, fail) => {
-    const child = spawn(step.command, step.args, { cwd: root, stdio: 'inherit' })
-    child.once('error', fail)
-    child.once('close', (code, signal) => {
-      if (code === 0) settle()
-      else fail(stepFailure(step, code ?? signal))
-    })
-  })
+    const child = spawn(step.command, step.args, {
+      cwd: root,
+      stdio: "inherit",
+      env: { ...process.env, ...step.env },
+    });
+    child.once("error", fail);
+    child.once("close", (code, signal) => {
+      if (code === 0) settle();
+      else fail(stepFailure(step, code ?? signal));
+    });
+  });
 }
 
 function stepFailure(step: LibraryStep, exit: number | NodeJS.Signals | null): Error {
-  return new Error(`compile-referenced-projects: ${step.label} exited with ${String(exit)}`)
+  return new Error(`compile-referenced-projects: ${step.label} exited with ${String(exit)}`);
 }
 
 /**
@@ -237,8 +298,12 @@ function stepFailure(step: LibraryStep, exit: number | NodeJS.Signals | null): E
  * @param mode - Check package types by default; benchmark emission defers diagnostics to required full builds.
  * @throws If any compiler or bundler fails.
  */
-export function buildLibraryArtifacts(root: string, hostOnly: boolean, mode: CompilationMode = 'checked'): void {
-  for (const step of libraryBuildSteps(root, hostOnly ? 'host' : 'all', mode)) runStep(root, step)
+export function buildLibraryArtifacts(
+  root: string,
+  hostOnly: boolean,
+  mode: CompilationMode = "checked",
+): void {
+  for (const step of libraryBuildSteps(root, hostOnly ? "host" : "all", mode)) runStep(root, step);
 }
 
 /**
@@ -248,27 +313,35 @@ export function buildLibraryArtifacts(root: string, hostOnly: boolean, mode: Com
  * @throws the first failed step's error; dependent compilation does not start after generation fails.
  */
 export async function buildHostContracts(root: string): Promise<void> {
-  for (const step of contractSteps(root, 'host')) await runStepAsync(root, step)
+  for (const step of contractSteps(root, "host")) await runStepAsync(root, step);
 }
 
 if (import.meta.main) {
-  const usage = 'compile-referenced-projects: expected exactly one mode: host, client, host-contracts, or host-libraries'
-  const { positionals } = parseArgs({ allowPositionals: true })
-  const [mode] = positionals
-  if (positionals.length !== 1) throw new Error(usage)
-  const root = resolve(import.meta.dirname, '..')
+  const usage =
+    "compile-referenced-projects: expected exactly one mode: host, client, host-contracts, host-libraries, or client-libraries";
+  const { positionals } = parseArgs({ allowPositionals: true });
+  const [mode] = positionals;
+  if (positionals.length !== 1) throw new Error(usage);
+  const root = resolve(import.meta.dirname, "..");
   switch (mode) {
-    case 'host':
-    case 'client':
-      compileReferencedProjects(root, mode)
-      break
-    case 'host-contracts':
-      await buildHostContracts(root)
-      break
-    case 'host-libraries':
-      buildLibraryArtifacts(root, true)
-      break
+    case "host":
+    case "client":
+      compileReferencedProjects(root, mode);
+      break;
+    case "host-contracts":
+      await buildHostContracts(root);
+      break;
+    case "client-libraries":
+      runStep(root, compilerStep(root, "client", "checked", []));
+      runStep(
+        root,
+        pnpmStep("client-bundle", "Client bundle", ["exec", "vp", "pack"], ["client-src"]),
+      );
+      break;
+    case "host-libraries":
+      buildLibraryArtifacts(root, true);
+      break;
     default:
-      throw new Error(usage)
+      throw new Error(usage);
   }
 }

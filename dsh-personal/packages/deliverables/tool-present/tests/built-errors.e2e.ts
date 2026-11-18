@@ -1,13 +1,13 @@
 /** Built tool and runtime bundles must preserve their shared structured error classes. */
-import { execFile } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { promisify } from 'node:util'
-import { expect, it } from 'vitest'
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { expect, it } from "vite-plus/test";
 
-const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url))
-const bundle = fileURLToPath(new URL('../lib/index.js', import.meta.url))
-const execFileAsync = promisify(execFile)
+const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
+const bundle = fileURLToPath(new URL("../lib/index.js", import.meta.url));
+const execFileAsync = promisify(execFile);
 const probe = String.raw`
 import assert from 'node:assert/strict'
 import { Context } from './vendor/cordis/lib/index.js'
@@ -51,12 +51,19 @@ try {
   try { await ctx.fiber.dispose() }
   finally { await rm(root, { recursive: true, force: true }) }
 }
-`
+`;
 
-it.skipIf(!existsSync(bundle))('preserves present error codes through built ToolRuntime results', { retry: 0 }, async ({ signal }) => {
-  const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '-e', probe], { cwd: repoRoot, signal })
-  expect(stdout.trim().split('\n')).toEqual([
-    'built ToolRuntime result preserved FS_NOT_FOUND',
-    'built ToolRuntime result preserved INVALID_ARGS',
-  ])
-})
+it.skipIf(!existsSync(bundle))(
+  "preserves present error codes through built ToolRuntime results",
+  { retry: 0 },
+  async ({ signal }) => {
+    const { stdout } = await execFileAsync(process.execPath, ["--input-type=module", "-e", probe], {
+      cwd: repoRoot,
+      signal,
+    });
+    expect(stdout.trim().split("\n")).toEqual([
+      "built ToolRuntime result preserved FS_NOT_FOUND",
+      "built ToolRuntime result preserved INVALID_ARGS",
+    ]);
+  },
+);

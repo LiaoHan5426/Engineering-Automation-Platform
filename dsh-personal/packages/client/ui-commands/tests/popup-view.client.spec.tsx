@@ -1,4 +1,4 @@
-import { h, nextTick } from 'vue'
+import { h, nextTick } from "vue";
 // @vitest-environment jsdom
 /**
  * PopupSelectView interaction spec: the search input takes
@@ -11,621 +11,627 @@ import { h, nextTick } from 'vue'
  * retry button, the highlighted row scrolls into view, and the card height
  * clamps to the space above the composer.
  */
-import * as uiPrimitives from '@deepseek-ai/dsh-client-ui-primitives'
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
-import { render, cleanup, act } from '@deepseek-ai/dsh-client-test-runtime/src/vue-test.ts'
-import { fireEvent, screen } from '@testing-library/dom'
-import type { SelectOption } from '../src/client/contract.ts'
-import type { PopupSpec, TokenSegment } from '../src/client/popup.ts'
-import { PopupSelectController } from '../src/client/popup.ts'
-import { PopupSelectView } from '../src/client/PopupSelectView.tsx'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import { zh } from '../src/client/locales.ts'
+import * as uiPrimitives from "@deepseek-ai/dsh-client-ui-primitives";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
+import { render, cleanup, act } from "@deepseek-ai/dsh-client-test-runtime/src/vue-test.ts";
+import { fireEvent, screen } from "@testing-library/dom";
+import type { SelectOption } from "../src/client/contract.ts";
+import type { PopupSpec, TokenSegment } from "../src/client/popup.ts";
+import { PopupSelectController } from "../src/client/popup.ts";
+import { PopupSelectView } from "../src/client/PopupSelectView.tsx";
+import { makeTranslate } from "@deepseek-ai/dsh-client-test-runtime";
+import { zh as commonZh } from "@deepseek-ai/dsh-client-locale/src/locales/zh.ts";
+import { zh } from "../src/client/locales.ts";
 // The framework-injected t seat, stubbed over the zh dictionaries (the default locale).
-const t: InstanceType<typeof PopupSelectView>['$props']['t'] = makeTranslate(zh, commonZh)
+const t: InstanceType<typeof PopupSelectView>["$props"]["t"] = makeTranslate(zh, commonZh);
 // jsdom has no scrollIntoView; the view calls it on the highlighted row.
-const scrollIntoView = vi.fn()
+const scrollIntoView = vi.fn();
 beforeEach(() => {
-  Element.prototype.scrollIntoView = scrollIntoView
-  scrollIntoView.mockClear()
-})
+  Element.prototype.scrollIntoView = scrollIntoView;
+  scrollIntoView.mockClear();
+});
 afterEach(() => {
-  cleanup()
-  vi.restoreAllMocks()
-})
+  cleanup();
+  vi.restoreAllMocks();
+});
 const OPTIONS: SelectOption[] = [
-  { id: 'dark', label: 'Dark' },
-  { id: 'light', label: 'Light', active: true },
-  { id: 'sepia', label: 'Sepia', detail: 'warm' },
-]
+  { id: "dark", label: "Dark" },
+  { id: "light", label: "Light", active: true },
+  { id: "sepia", label: "Sepia", detail: "warm" },
+];
 const GATED: SelectOption = {
-  id: 'full',
-  label: 'Full access',
+  id: "full",
+  label: "Full access",
   confirmation: {
-    title: 'Enable Full access?',
-    description: 'Sensitive operations.',
-    acknowledgeLabel: 'I understand the risks',
-    cancelLabel: 'Cancel',
-    confirmLabel: 'Enable Full access',
+    title: "Enable Full access?",
+    description: "Sensitive operations.",
+    acknowledgeLabel: "I understand the risks",
+    cancelLabel: "Cancel",
+    confirmLabel: "Enable Full access",
   },
-}
-const SEGMENT: TokenSegment = { via: 'enter', token: '/theme' }
+};
+const SEGMENT: TokenSegment = { via: "enter", token: "/theme" };
 function spec(overrides: Partial<PopupSpec<string>> = {}): PopupSpec<string> {
   return {
     options: () => Promise.resolve(OPTIONS),
     onSelect: () => undefined,
     ...overrides,
-  }
+  };
 }
 async function mountOpen(overrides: Partial<PopupSpec<string>> = {}, consumeResult = true) {
-  const consume = vi.fn((_segment: TokenSegment) => consumeResult)
-  const focusComposer = vi.fn()
-  const popup = new PopupSelectController<string>({ consume, focusComposer })
-  const view = render(h(PopupSelectView, { popup: popup, t: t }))
+  const consume = vi.fn((_segment: TokenSegment) => consumeResult);
+  const focusComposer = vi.fn();
+  const popup = new PopupSelectController<string>({ consume, focusComposer });
+  const view = render(h(PopupSelectView, { popup: popup, t: t }));
   await act(async () => {
-    popup.open('theme', spec(overrides), 'ctx-A', SEGMENT)
-    await Promise.resolve()
-  })
+    popup.open("theme", spec(overrides), "ctx-A", SEGMENT);
+    await Promise.resolve();
+  });
   return {
     popup,
     view,
     consume,
     focusComposer,
-    search: screen.getByRole('textbox', { name: '筛选选项' }),
-  }
+    search: screen.getByRole("textbox", { name: "筛选选项" }),
+  };
 }
 function rowLabels(): string[] {
-  return screen.getAllByRole('option').map(o => o.querySelector('span')!.textContent)
+  return screen.getAllByRole("option").map((o) => o.querySelector("span")!.textContent);
 }
-describe('PopupSelectView', () => {
-  it('keeps grouped highlight, scroll and selection indices after filtering and restoring the last group', async () => {
-    const options: SelectOption[] = ['DeepSeek', 'Origin', 'Amber', 'Cedar', 'Quartz'].flatMap(
-      name =>
-        [1, 2].map(n => ({
+describe("PopupSelectView", () => {
+  it("keeps grouped highlight, scroll and selection indices after filtering and restoring the last group", async () => {
+    const options: SelectOption[] = ["DeepSeek", "Origin", "Amber", "Cedar", "Quartz"].flatMap(
+      (name) =>
+        [1, 2].map((n) => ({
           id: `${name}-${n}`,
           label: `${name} Model ${n}`,
           group: { name, label: name },
         })),
-    )
-    const onSelect = vi.fn()
+    );
+    const onSelect = vi.fn();
     const { popup, search } = await mountOpen({
       options: () => Promise.resolve(options),
       onSelect,
-    })
-    const first = screen.getByRole('option', { name: 'DeepSeek Model 1' })
-    const last = screen.getByRole('option', { name: 'Quartz Model 1' })
-    await act(() => fireEvent.input(search, { target: { value: 'Quartz Model 1' } }))
-    expect(screen.getByRole('option', { selected: true })).toBe(last)
-    expect(scrollIntoView.mock.instances.at(-1)).toBe(last)
-    await act(() => fireEvent.input(search, { target: { value: '' } }))
-    expect(popup.state.getSnapshot().active).toBe(0)
-    expect(screen.getAllByRole('option')).toHaveLength(10)
-    const restored = screen.getByRole('option', { name: 'DeepSeek Model 1' })
-    expect(screen.getByRole('option', { selected: true })).toBe(restored)
-    expect(scrollIntoView.mock.instances.at(-1)).toBe(restored)
-    expect(screen.getByRole('option', { name: 'Quartz Model 1' })).toBe(last)
-    expect(restored).not.toBe(first)
-    await act(() => { popup.state.set({ ...popup.state.getSnapshot() }) })
-    expect(screen.getByRole('option', { selected: true })).toBe(restored)
-    expect(document.activeElement).toBe(search)
-    await act(() => fireEvent.click(last))
-    expect(onSelect).toHaveBeenCalledWith(options[8], 'ctx-A')
-  })
-  it('renders provider groups and selects the same fuzzy-ranked row the user sees', async () => {
-    const alpha = { name: 'alpha', label: 'Alpha provider' }
-    const beta = { name: 'beta', label: 'Beta provider' }
+    });
+    const first = screen.getByRole("option", { name: "DeepSeek Model 1" });
+    const last = screen.getByRole("option", { name: "Quartz Model 1" });
+    await act(() => fireEvent.input(search, { target: { value: "Quartz Model 1" } }));
+    expect(screen.getByRole("option", { selected: true })).toBe(last);
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(last);
+    await act(() => fireEvent.input(search, { target: { value: "" } }));
+    expect(popup.state.getSnapshot().active).toBe(0);
+    expect(screen.getAllByRole("option")).toHaveLength(10);
+    const restored = screen.getByRole("option", { name: "DeepSeek Model 1" });
+    expect(screen.getByRole("option", { selected: true })).toBe(restored);
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(restored);
+    expect(screen.getByRole("option", { name: "Quartz Model 1" })).toBe(last);
+    expect(restored).not.toBe(first);
+    await act(() => {
+      popup.state.set({ ...popup.state.getSnapshot() });
+    });
+    expect(screen.getByRole("option", { selected: true })).toBe(restored);
+    expect(document.activeElement).toBe(search);
+    await act(() => fireEvent.click(last));
+    expect(onSelect).toHaveBeenCalledWith(options[8], "ctx-A");
+  });
+  it("renders provider groups and selects the same fuzzy-ranked row the user sees", async () => {
+    const alpha = { name: "alpha", label: "Alpha provider" };
+    const beta = { name: "beta", label: "Beta provider" };
     const options: SelectOption[] = [
-      { id: 'a-deep', label: 'DeepSeek Flash', group: alpha },
-      { id: 'b-flash', label: 'Flash Beta', group: beta },
-      { id: 'a-prefix', label: 'Flash Lite', group: alpha, active: true },
-      { id: 'other', label: 'Unmatched', group: { name: 'other', label: 'Other provider' } },
-    ]
-    const onSelect = vi.fn()
-    const { search } = await mountOpen({ options: () => Promise.resolve(options), onSelect })
-    await nextTick()
+      { id: "a-deep", label: "DeepSeek Flash", group: alpha },
+      { id: "b-flash", label: "Flash Beta", group: beta },
+      { id: "a-prefix", label: "Flash Lite", group: alpha, active: true },
+      { id: "other", label: "Unmatched", group: { name: "other", label: "Other provider" } },
+    ];
+    const onSelect = vi.fn();
+    const { search } = await mountOpen({ options: () => Promise.resolve(options), onSelect });
+    await nextTick();
     expect(
       screen
-        .getAllByRole('group')
-        .map(group => group.querySelector('[data-menu-group-heading]')?.textContent),
-    ).toEqual(['Alpha provider', 'Beta provider', 'Other provider'])
-    await nextTick()
-    expect(rowLabels()).toEqual(['DeepSeek Flash', 'Flash Lite', 'Flash Beta', 'Unmatched'])
-    await act(() => fireEvent.input(search, { target: { value: 'flash' } }))
-    await nextTick()
-    expect(rowLabels()).toEqual(['Flash Lite', 'DeepSeek Flash', 'Flash Beta'])
-    await nextTick()
-    expect(screen.queryByRole('group', { name: 'Other provider' })).toBeNull()
-    await nextTick()
-    expect(document.activeElement).toBe(search)
-    await act(() => fireEvent.keyDown(search, { key: 'ArrowUp' }))
-    await nextTick()
-    expect(screen.getByRole('option', { name: 'Flash Beta' }).getAttribute('aria-selected')).toBe(
-      'true',
-    )
+        .getAllByRole("group")
+        .map((group) => group.querySelector("[data-menu-group-heading]")?.textContent),
+    ).toEqual(["Alpha provider", "Beta provider", "Other provider"]);
+    await nextTick();
+    expect(rowLabels()).toEqual(["DeepSeek Flash", "Flash Lite", "Flash Beta", "Unmatched"]);
+    await act(() => fireEvent.input(search, { target: { value: "flash" } }));
+    await nextTick();
+    expect(rowLabels()).toEqual(["Flash Lite", "DeepSeek Flash", "Flash Beta"]);
+    await nextTick();
+    expect(screen.queryByRole("group", { name: "Other provider" })).toBeNull();
+    await nextTick();
+    expect(document.activeElement).toBe(search);
+    await act(() => fireEvent.keyDown(search, { key: "ArrowUp" }));
+    await nextTick();
+    expect(screen.getByRole("option", { name: "Flash Beta" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'Enter' }))
-      await Promise.resolve()
-    })
-    await nextTick()
-    expect(onSelect).toHaveBeenCalledWith(options[1], 'ctx-A')
-  })
-  it('uses command-owned search copy and resets to generic copy for the next popup', async () => {
+      await act(() => fireEvent.keyDown(search, { key: "Enter" }));
+      await Promise.resolve();
+    });
+    await nextTick();
+    expect(onSelect).toHaveBeenCalledWith(options[1], "ctx-A");
+  });
+  it("uses command-owned search copy and resets to generic copy for the next popup", async () => {
     const labels = {
-      placeholder: '搜索模型…',
-      empty: '没有可用的模型。',
-      noResults: '没有匹配的模型。',
-    }
-    const searchLabels = vi.fn(() => labels)
-    const { popup, search } = await mountOpen({ searchLabels })
-    await nextTick()
-    expect(search.getAttribute('placeholder')).toBe(labels.placeholder)
-    await act(() => fireEvent.input(search, { target: { value: 'no-match' } }))
-    await nextTick()
-    expect(screen.getByText(labels.noResults)).toBeTruthy()
-    await nextTick()
-    expect(screen.queryByText(labels.empty)).toBeNull()
-    await nextTick()
-    expect(searchLabels).toHaveBeenCalledTimes(1)
+      placeholder: "搜索模型…",
+      empty: "没有可用的模型。",
+      noResults: "没有匹配的模型。",
+    };
+    const searchLabels = vi.fn(() => labels);
+    const { popup, search } = await mountOpen({ searchLabels });
+    await nextTick();
+    expect(search.getAttribute("placeholder")).toBe(labels.placeholder);
+    await act(() => fireEvent.input(search, { target: { value: "no-match" } }));
+    await nextTick();
+    expect(screen.getByText(labels.noResults)).toBeTruthy();
+    await nextTick();
+    expect(screen.queryByText(labels.empty)).toBeNull();
+    await nextTick();
+    expect(searchLabels).toHaveBeenCalledTimes(1);
     await act(async () => {
       popup.open(
-        'empty-models',
+        "empty-models",
         spec({ searchLabels, options: () => Promise.resolve([]) }),
-        'ctx-A',
+        "ctx-A",
         SEGMENT,
-      )
-      await Promise.resolve()
-    })
-    await nextTick()
-    expect(screen.getByText(labels.empty)).toBeTruthy()
-    await nextTick()
-    expect(screen.queryByText(labels.noResults)).toBeNull()
+      );
+      await Promise.resolve();
+    });
+    await nextTick();
+    expect(screen.getByText(labels.empty)).toBeTruthy();
+    await nextTick();
+    expect(screen.queryByText(labels.noResults)).toBeNull();
     await act(async () => {
-      popup.open('theme', spec(), 'ctx-A', SEGMENT)
-      await Promise.resolve()
-    })
-    await nextTick()
-    expect(search.getAttribute('placeholder')).toBe(zh['search.placeholder'])
-    await act(() => fireEvent.input(search, { target: { value: 'no-match' } }))
-    await nextTick()
-    expect(screen.getByText(zh['status.empty'])).toBeTruthy()
-    await nextTick()
-    expect(popup.state.getSnapshot().searchLabels).toBeNull()
-  })
-  it('renders null while closed, opens with focus in the search input', async () => {
+      popup.open("theme", spec(), "ctx-A", SEGMENT);
+      await Promise.resolve();
+    });
+    await nextTick();
+    expect(search.getAttribute("placeholder")).toBe(zh["search.placeholder"]);
+    await act(() => fireEvent.input(search, { target: { value: "no-match" } }));
+    await nextTick();
+    expect(screen.getByText(zh["status.empty"])).toBeTruthy();
+    await nextTick();
+    expect(popup.state.getSnapshot().searchLabels).toBeNull();
+  });
+  it("renders null while closed, opens with focus in the search input", async () => {
     const popup = new PopupSelectController<string>({
       consume: () => true,
       focusComposer: () => {},
-    })
-    const view = render(h(PopupSelectView, { popup: popup, t: t }))
-    await nextTick()
-    expect(view.container.childElementCount).toBe(0)
+    });
+    const view = render(h(PopupSelectView, { popup: popup, t: t }));
+    await nextTick();
+    expect(view.container.childElementCount).toBe(0);
     await act(async () => {
-      popup.open('theme', spec(), 'ctx-A', SEGMENT)
-      await Promise.resolve()
-    })
-    const search = screen.getByRole('textbox', { name: '筛选选项' })
-    await nextTick()
-    expect(document.activeElement).toBe(search)
-    await nextTick()
-    expect(rowLabels()).toEqual(['Dark', 'Light', 'Sepia'])
-  })
+      popup.open("theme", spec(), "ctx-A", SEGMENT);
+      await Promise.resolve();
+    });
+    const search = screen.getByRole("textbox", { name: "筛选选项" });
+    await nextTick();
+    expect(document.activeElement).toBe(search);
+    await nextTick();
+    expect(rowLabels()).toEqual(["Dark", "Light", "Sepia"]);
+  });
   it.each([
     {
-      name: 'iPhone',
+      name: "iPhone",
       userAgent:
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Version/18.6 Mobile/15E148 Safari/604.1',
-      platform: 'iPhone',
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Version/18.6 Mobile/15E148 Safari/604.1",
+      platform: "iPhone",
       maxTouchPoints: 5,
       automatic: false,
     },
     {
-      name: 'Android phone',
+      name: "Android phone",
       userAgent:
-        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/119.0.0.0 Mobile Safari/537.36',
-      platform: 'Linux armv8l',
+        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/119.0.0.0 Mobile Safari/537.36",
+      platform: "Linux armv8l",
       maxTouchPoints: 0,
       automatic: false,
     },
     {
-      name: 'Android tablet',
+      name: "Android tablet",
       userAgent:
-        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/119.0.0.0 Safari/537.36',
-      platform: 'Linux armv8l',
+        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/119.0.0.0 Safari/537.36",
+      platform: "Linux armv8l",
       maxTouchPoints: 5,
       automatic: false,
     },
     {
-      name: 'desktop-mode iPad',
+      name: "desktop-mode iPad",
       userAgent:
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.6 Safari/605.1.15',
-      platform: 'MacIntel',
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.6 Safari/605.1.15",
+      platform: "MacIntel",
       maxTouchPoints: 5,
       automatic: false,
     },
     {
-      name: 'Mac',
+      name: "Mac",
       userAgent:
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.6 Safari/605.1.15',
-      platform: 'MacIntel',
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.6 Safari/605.1.15",
+      platform: "MacIntel",
       maxTouchPoints: 0,
       automatic: true,
     },
     {
-      name: 'Windows touchscreen',
+      name: "Windows touchscreen",
       userAgent:
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119.0.0.0 Safari/537.36',
-      platform: 'Win32',
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119.0.0.0 Safari/537.36",
+      platform: "Win32",
       maxTouchPoints: 5,
       automatic: true,
     },
   ])(
-    'automatic search focus respects device classification: $name',
+    "automatic search focus respects device classification: $name",
     async ({ userAgent, platform, maxTouchPoints, automatic }) => {
       for (const [name, value] of Object.entries({ userAgent, platform, maxTouchPoints })) {
-        const descriptor = Object.getOwnPropertyDescriptor(navigator, name)
-        Object.defineProperty(navigator, name, { configurable: true, value })
+        const descriptor = Object.getOwnPropertyDescriptor(navigator, name);
+        Object.defineProperty(navigator, name, { configurable: true, value });
         onTestFinished(() => {
-          if (descriptor === undefined) Reflect.deleteProperty(navigator, name)
-          else Object.defineProperty(navigator, name, descriptor)
-        })
+          if (descriptor === undefined) Reflect.deleteProperty(navigator, name);
+          else Object.defineProperty(navigator, name, descriptor);
+        });
       }
-      vi.resetModules()
-      const detection = await import('@deepseek-ai/dsh-client-ui-primitives/src/focus.ts')
+      vi.resetModules();
+      const detection = await import("@deepseek-ai/dsh-client-ui-primitives/src/focus.ts");
       const device = vi
-        .spyOn(uiPrimitives, 'isMobileDevice')
-        .mockImplementation(detection.isMobileDevice)
+        .spyOn(uiPrimitives, "isMobileDevice")
+        .mockImplementation(detection.isMobileDevice);
       onTestFinished(() => {
-        device.mockRestore()
-      })
-      const { popup, search } = await mountOpen()
-      await nextTick()
-      expect(document.activeElement === search).toBe(automatic)
+        device.mockRestore();
+      });
+      const { popup, search } = await mountOpen();
+      await nextTick();
+      expect(document.activeElement === search).toBe(automatic);
       await act(() => {
-        search.focus()
-      })
-      await act(() => fireEvent.input(search, { target: { value: 'dark' } }))
-      await nextTick()
-      expect(document.activeElement).toBe(search)
-      await nextTick()
-      expect(rowLabels()).toEqual(['Dark'])
+        search.focus();
+      });
+      await act(() => fireEvent.input(search, { target: { value: "dark" } }));
+      await nextTick();
+      expect(document.activeElement).toBe(search);
+      await nextTick();
+      expect(rowLabels()).toEqual(["Dark"]);
       await act(() => {
-        popup.dismiss()
-      })
+        popup.dismiss();
+      });
       await act(async () => {
-        popup.open('theme', spec(), 'ctx-A', SEGMENT)
-        await Promise.resolve()
-      })
-      await nextTick()
-      expect(document.activeElement === screen.getByRole('textbox', { name: '筛选选项' })).toBe(
+        popup.open("theme", spec(), "ctx-A", SEGMENT);
+        await Promise.resolve();
+      });
+      await nextTick();
+      expect(document.activeElement === screen.getByRole("textbox", { name: "筛选选项" })).toBe(
         automatic,
-      )
+      );
     },
-  )
-  it('renders an optional option badge as a superscript marker', async () => {
+  );
+  it("renders an optional option badge as a superscript marker", async () => {
     await mountOpen({
-      options: () => Promise.resolve([{ id: 'auto', label: 'Auto review', badge: 'EXP' }]),
-    })
-    const row = screen.getByRole('option', { name: 'Auto review EXP' })
-    await nextTick()
-    expect(row.querySelector('sup')?.textContent).toBe('EXP')
-  })
-  it('typing filters rows locally and rebases the highlight', async () => {
-    const options = vi.fn(() => Promise.resolve(OPTIONS))
-    const { search } = await mountOpen({ options })
+      options: () => Promise.resolve([{ id: "auto", label: "Auto review", badge: "EXP" }]),
+    });
+    const row = screen.getByRole("option", { name: "Auto review EXP" });
+    await nextTick();
+    expect(row.querySelector("sup")?.textContent).toBe("EXP");
+  });
+  it("typing filters rows locally and rebases the highlight", async () => {
+    const options = vi.fn(() => Promise.resolve(OPTIONS));
+    const { search } = await mountOpen({ options });
     await act(async () => {
-      await act(() => fireEvent.input(search, { target: { value: 'li' } }))
-    })
-    await nextTick()
-    expect(rowLabels()).toEqual(['Light'])
-    await nextTick()
-    expect(screen.getByRole('option').getAttribute('aria-selected')).toBe('true')
-    await nextTick()
-    expect(options).toHaveBeenCalledTimes(1)
+      await act(() => fireEvent.input(search, { target: { value: "li" } }));
+    });
+    await nextTick();
+    expect(rowLabels()).toEqual(["Light"]);
+    await nextTick();
+    expect(screen.getByRole("option").getAttribute("aria-selected")).toBe("true");
+    await nextTick();
+    expect(options).toHaveBeenCalledTimes(1);
     await act(async () => {
-      await act(() => fireEvent.input(search, { target: { value: 'zzz' } }))
-    })
-    await nextTick()
-    expect(screen.queryByRole('option')).toBeNull()
-    await nextTick()
-    expect(screen.queryByText('无选项')).not.toBeNull()
-  })
-  it('ArrowUp/Down move the filtered highlight; ArrowLeft/Right are left to the native caret', async () => {
-    const { search } = await mountOpen()
-    await nextTick()
+      await act(() => fireEvent.input(search, { target: { value: "zzz" } }));
+    });
+    await nextTick();
+    expect(screen.queryByRole("option")).toBeNull();
+    await nextTick();
+    expect(screen.queryByText("无选项")).not.toBeNull();
+  });
+  it("ArrowUp/Down move the filtered highlight; ArrowLeft/Right are left to the native caret", async () => {
+    const { search } = await mountOpen();
+    await nextTick();
     // Open parks the highlight on the current-value row (Light, index 1).
-    expect(screen.getAllByRole('option')[1]!.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getAllByRole("option")[1]!.getAttribute("aria-selected")).toBe("true");
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'ArrowDown' }))
-    })
-    let options = screen.getAllByRole('option')
-    await nextTick()
-    expect(options[2]!.getAttribute('aria-selected')).toBe('true')
+      await act(() => fireEvent.keyDown(search, { key: "ArrowDown" }));
+    });
+    let options = screen.getAllByRole("option");
+    await nextTick();
+    expect(options[2]!.getAttribute("aria-selected")).toBe("true");
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'ArrowUp' }))
-    })
-    options = screen.getAllByRole('option')
-    await nextTick()
-    expect(options[1]!.getAttribute('aria-selected')).toBe('true')
-    await nextTick()
+      await act(() => fireEvent.keyDown(search, { key: "ArrowUp" }));
+    });
+    options = screen.getAllByRole("option");
+    await nextTick();
+    expect(options[1]!.getAttribute("aria-selected")).toBe("true");
+    await nextTick();
     // fireEvent returns false when preventDefault was called: arrow left/right must NOT be intercepted.
-    expect(await act(() => fireEvent.keyDown(search, { key: 'ArrowLeft' }))).toBe(true)
-    await nextTick()
-    expect(await act(() => fireEvent.keyDown(search, { key: 'ArrowRight' }))).toBe(true)
-  })
-  it('Tab accepts the highlighted row like Enter; Shift+Tab dismisses like Escape', async () => {
-    const onSelect = vi.fn()
-    const leaving = await mountOpen({ onSelect })
-    await nextTick()
+    expect(await act(() => fireEvent.keyDown(search, { key: "ArrowLeft" }))).toBe(true);
+    await nextTick();
+    expect(await act(() => fireEvent.keyDown(search, { key: "ArrowRight" }))).toBe(true);
+  });
+  it("Tab accepts the highlighted row like Enter; Shift+Tab dismisses like Escape", async () => {
+    const onSelect = vi.fn();
+    const leaving = await mountOpen({ onSelect });
+    await nextTick();
     // false = preventDefault ran: the shell holds focus, so Tab may not fall through.
     // Shift+Tab leaves without settling: no pick, focus back to the composer.
-    expect(await act(() => fireEvent.keyDown(leaving.search, { key: 'Tab', shiftKey: true }))).toBe(false)
-    await nextTick()
-    expect(onSelect).not.toHaveBeenCalled()
-    await nextTick()
-    expect(leaving.focusComposer).toHaveBeenCalledTimes(1)
-    await nextTick()
-    expect(leaving.view.container.childElementCount).toBe(0)
-    cleanup()
-    const settling = await mountOpen({ onSelect })
+    expect(await act(() => fireEvent.keyDown(leaving.search, { key: "Tab", shiftKey: true }))).toBe(
+      false,
+    );
+    await nextTick();
+    expect(onSelect).not.toHaveBeenCalled();
+    await nextTick();
+    expect(leaving.focusComposer).toHaveBeenCalledTimes(1);
+    await nextTick();
+    expect(leaving.view.container.childElementCount).toBe(0);
+    cleanup();
+    const settling = await mountOpen({ onSelect });
     // Tab settles the parked highlight — the current value — exactly like Enter.
     await act(async () => {
-      await act(() => fireEvent.keyDown(settling.search, { key: 'Tab' }))
-    })
-    await nextTick()
-    expect(onSelect).toHaveBeenCalledExactlyOnceWith(OPTIONS[1], 'ctx-A')
-    await nextTick()
-    expect(settling.consume).toHaveBeenCalledExactlyOnceWith(SEGMENT)
-    await nextTick()
-    expect(settling.focusComposer).toHaveBeenCalledTimes(1)
-    await nextTick()
-    expect(settling.view.container.childElementCount).toBe(0)
-  })
+      await act(() => fireEvent.keyDown(settling.search, { key: "Tab" }));
+    });
+    await nextTick();
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(OPTIONS[1], "ctx-A");
+    await nextTick();
+    expect(settling.consume).toHaveBeenCalledExactlyOnceWith(SEGMENT);
+    await nextTick();
+    expect(settling.focusComposer).toHaveBeenCalledTimes(1);
+    await nextTick();
+    expect(settling.view.container.childElementCount).toBe(0);
+  });
   it("Tab stays the browser's while the rows are still loading: no pick, no escape", async () => {
     const popup = new PopupSelectController<string>({
       consume: () => true,
       focusComposer: () => {},
-    })
-    render(h(PopupSelectView, { popup: popup, t: t }))
+    });
+    render(h(PopupSelectView, { popup: popup, t: t }));
     await act(async () => {
-      popup.open('theme', spec({ options: () => new Promise(() => {}) }), 'ctx-A', SEGMENT)
-    })
-    const search = screen.getByRole('textbox', { name: '筛选选项' })
-    await nextTick()
+      popup.open("theme", spec({ options: () => new Promise(() => {}) }), "ctx-A", SEGMENT);
+    });
+    const search = screen.getByRole("textbox", { name: "筛选选项" });
+    await nextTick();
     // Nothing is settleable yet, so the keystroke is not swallowed.
-    expect(await act(() => fireEvent.keyDown(search, { key: 'Tab' }))).toBe(true)
-    await nextTick()
-    expect(document.activeElement).toBe(search)
-    await nextTick()
-    expect(screen.getByText('正在加载选项…')).toBeTruthy()
-  })
+    expect(await act(() => fireEvent.keyDown(search, { key: "Tab" }))).toBe(true);
+    await nextTick();
+    expect(document.activeElement).toBe(search);
+    await nextTick();
+    expect(screen.getByText("正在加载选项…")).toBeTruthy();
+  });
   it("Tab stays the browser's on a failed load, so the retry stays reachable", async () => {
     const popup = new PopupSelectController<string>({
       consume: () => true,
       focusComposer: () => {},
-    })
-    render(h(PopupSelectView, { popup: popup, t: t }))
+    });
+    render(h(PopupSelectView, { popup: popup, t: t }));
     await act(async () => {
       popup.open(
-        'theme',
-        spec({ options: () => Promise.reject(new Error('directory down')) }),
-        'ctx-A',
+        "theme",
+        spec({ options: () => Promise.reject(new Error("directory down")) }),
+        "ctx-A",
         SEGMENT,
-      )
-      await Promise.resolve()
-    })
-    const search = screen.getByRole('textbox', { name: '筛选选项' })
-    await nextTick()
-    expect(await act(() => fireEvent.keyDown(search, { key: 'Tab' }))).toBe(true)
-    await nextTick()
-    expect(screen.getByRole('button', { name: '重试' })).toBeTruthy()
-  })
-  it('scrolls the highlighted row into view when the highlight moves', async () => {
-    const { search } = await mountOpen()
-    scrollIntoView.mockClear()
+      );
+      await Promise.resolve();
+    });
+    const search = screen.getByRole("textbox", { name: "筛选选项" });
+    await nextTick();
+    expect(await act(() => fireEvent.keyDown(search, { key: "Tab" }))).toBe(true);
+    await nextTick();
+    expect(screen.getByRole("button", { name: "重试" })).toBeTruthy();
+  });
+  it("scrolls the highlighted row into view when the highlight moves", async () => {
+    const { search } = await mountOpen();
+    scrollIntoView.mockClear();
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'ArrowDown' }))
-    })
-    const options = screen.getAllByRole('option')
-    await nextTick()
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
-    await nextTick()
-    expect(scrollIntoView.mock.instances.at(-1)).toBe(options[2])
-  })
-  it('caps the card height at the design maximum when the composer sits low enough', async () => {
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      await act(() => fireEvent.keyDown(search, { key: "ArrowDown" }));
+    });
+    const options = screen.getAllByRole("option");
+    await nextTick();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    await nextTick();
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(options[2]);
+  });
+  it("caps the card height at the design maximum when the composer sits low enough", async () => {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
       bottom: 800,
-    } as DOMRect)
-    await mountOpen()
-    await nextTick()
-    expect(screen.getByLabelText('/theme 选项').style.maxHeight).toBe('320px')
-  })
-  it('clamps the card height to the space above the composer minus the safe margin', async () => {
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+    } as DOMRect);
+    await mountOpen();
+    await nextTick();
+    expect(screen.getByLabelText("/theme 选项").style.maxHeight).toBe("320px");
+  });
+  it("clamps the card height to the space above the composer minus the safe margin", async () => {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
       bottom: 200,
-    } as DOMRect)
-    await mountOpen()
-    await nextTick()
-    expect(screen.getByLabelText('/theme 选项').style.maxHeight).toBe('188px')
-  })
-  it('Enter accepts the parked highlight — the current value on open — then consumes, closes, and refocuses', async () => {
+    } as DOMRect);
+    await mountOpen();
+    await nextTick();
+    expect(screen.getByLabelText("/theme 选项").style.maxHeight).toBe("188px");
+  });
+  it("Enter accepts the parked highlight — the current value on open — then consumes, closes, and refocuses", async () => {
     const seen: Array<{
-      option: SelectOption
-      context: string
-    }> = []
+      option: SelectOption;
+      context: string;
+    }> = [];
     const { view, search, consume, focusComposer } = await mountOpen({
       onSelect: (option, context) => {
-        seen.push({ option, context })
+        seen.push({ option, context });
       },
-    })
+    });
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'Enter' }))
-    })
-    await nextTick()
-    expect(seen).toEqual([{ option: OPTIONS[1], context: 'ctx-A' }])
-    await nextTick()
-    expect(consume).toHaveBeenCalledExactlyOnceWith(SEGMENT)
-    await nextTick()
-    expect(focusComposer).toHaveBeenCalledTimes(1)
-    await nextTick()
-    expect(view.container.childElementCount).toBe(0)
-  })
-  it('click selects a row; mouseenter moves the highlight', async () => {
-    const seen: SelectOption[] = []
+      await act(() => fireEvent.keyDown(search, { key: "Enter" }));
+    });
+    await nextTick();
+    expect(seen).toEqual([{ option: OPTIONS[1], context: "ctx-A" }]);
+    await nextTick();
+    expect(consume).toHaveBeenCalledExactlyOnceWith(SEGMENT);
+    await nextTick();
+    expect(focusComposer).toHaveBeenCalledTimes(1);
+    await nextTick();
+    expect(view.container.childElementCount).toBe(0);
+  });
+  it("click selects a row; mouseenter moves the highlight", async () => {
+    const seen: SelectOption[] = [];
     const { view } = await mountOpen({
       onSelect: (option) => {
-        seen.push(option)
+        seen.push(option);
       },
-    })
-    const options = screen.getAllByRole('option')
+    });
+    const options = screen.getAllByRole("option");
     await act(async () => {
-      await act(() => fireEvent.mouseEnter(options[2]!))
-    })
-    await nextTick()
-    expect(screen.getAllByRole('option')[2]!.getAttribute('aria-selected')).toBe('true')
+      await act(() => fireEvent.mouseEnter(options[2]!));
+    });
+    await nextTick();
+    expect(screen.getAllByRole("option")[2]!.getAttribute("aria-selected")).toBe("true");
     await act(async () => {
-      await act(() => fireEvent.click(options[2]!))
-    })
-    await nextTick()
-    expect(seen).toEqual([OPTIONS[2]])
-    await nextTick()
-    expect(view.container.childElementCount).toBe(0)
-  })
-  it('renders a gated option as an in-page modal and requires the checkbox before onSelect', async () => {
-    const onSelect = vi.fn()
+      await act(() => fireEvent.click(options[2]!));
+    });
+    await nextTick();
+    expect(seen).toEqual([OPTIONS[2]]);
+    await nextTick();
+    expect(view.container.childElementCount).toBe(0);
+  });
+  it("renders a gated option as an in-page modal and requires the checkbox before onSelect", async () => {
+    const onSelect = vi.fn();
     const { popup, consume } = await mountOpen({
       options: () => Promise.resolve([GATED]),
       onSelect,
-    })
+    });
     await act(async () => {
-      await act(() => fireEvent.click(screen.getByRole('option', { name: 'Full access' })))
-    })
-    await nextTick()
-    expect(screen.queryByLabelText('/theme 选项')).toBeNull()
-    await nextTick()
-    expect(screen.getByRole('dialog', { name: 'Enable Full access?' })).toBeTruthy()
-    const enable = screen.getByRole('button', { name: 'Enable Full access' }) as HTMLButtonElement
-    await nextTick()
-    expect(enable.disabled).toBe(true)
-    await nextTick()
-    expect(onSelect).not.toHaveBeenCalled()
-    await act(() => fireEvent.click(screen.getByRole('checkbox', { name: 'I understand the risks' })))
-    await nextTick()
-    expect(enable.disabled).toBe(false)
+      await act(() => fireEvent.click(screen.getByRole("option", { name: "Full access" })));
+    });
+    await nextTick();
+    expect(screen.queryByLabelText("/theme 选项")).toBeNull();
+    await nextTick();
+    expect(screen.getByRole("dialog", { name: "Enable Full access?" })).toBeTruthy();
+    const enable = screen.getByRole("button", { name: "Enable Full access" }) as HTMLButtonElement;
+    await nextTick();
+    expect(enable.disabled).toBe(true);
+    await nextTick();
+    expect(onSelect).not.toHaveBeenCalled();
+    await act(() =>
+      fireEvent.click(screen.getByRole("checkbox", { name: "I understand the risks" })),
+    );
+    await nextTick();
+    expect(enable.disabled).toBe(false);
     await act(async () => {
-      await act(() => fireEvent.click(enable))
-    })
-    await nextTick()
-    expect(onSelect).toHaveBeenCalledExactlyOnceWith(GATED, 'ctx-A')
-    await nextTick()
-    expect(consume).toHaveBeenCalledExactlyOnceWith(SEGMENT)
-    await nextTick()
-    expect(popup.state.getSnapshot().open).toBe(false)
-  })
-  it('canceling a gated option returns to the picker with acknowledgement reset', async () => {
-    await mountOpen({ options: () => Promise.resolve([GATED]) })
+      await act(() => fireEvent.click(enable));
+    });
+    await nextTick();
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(GATED, "ctx-A");
+    await nextTick();
+    expect(consume).toHaveBeenCalledExactlyOnceWith(SEGMENT);
+    await nextTick();
+    expect(popup.state.getSnapshot().open).toBe(false);
+  });
+  it("canceling a gated option returns to the picker with acknowledgement reset", async () => {
+    await mountOpen({ options: () => Promise.resolve([GATED]) });
     await act(async () => {
-      await act(() => fireEvent.click(screen.getByRole('option', { name: 'Full access' })))
-    })
-    await act(() => fireEvent.click(screen.getByRole('checkbox')))
-    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Cancel' })))
-    await nextTick()
-    expect(screen.getByLabelText('/theme 选项')).toBeTruthy()
+      await act(() => fireEvent.click(screen.getByRole("option", { name: "Full access" })));
+    });
+    await act(() => fireEvent.click(screen.getByRole("checkbox")));
+    await act(() => fireEvent.click(screen.getByRole("button", { name: "Cancel" })));
+    await nextTick();
+    expect(screen.getByLabelText("/theme 选项")).toBeTruthy();
     await act(async () => {
-      await act(() => fireEvent.click(screen.getByRole('option', { name: 'Full access' })))
-    })
-    await nextTick()
-    expect(screen.getByRole<HTMLInputElement>('checkbox').checked).toBe(false)
-  })
-  it('submitting shows pending, locks the search input, and further Enter/click no-op', async () => {
-    let release!: () => void
+      await act(() => fireEvent.click(screen.getByRole("option", { name: "Full access" })));
+    });
+    await nextTick();
+    expect(screen.getByRole<HTMLInputElement>("checkbox").checked).toBe(false);
+  });
+  it("submitting shows pending, locks the search input, and further Enter/click no-op", async () => {
+    let release!: () => void;
     const onSelect = vi.fn(
       () =>
         new Promise<void>((resolve) => {
-          release = resolve
+          release = resolve;
         }),
-    )
-    const { search, consume } = await mountOpen({ onSelect })
+    );
+    const { search, consume } = await mountOpen({ onSelect });
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'Enter' }))
-    })
-    await nextTick()
-    expect(screen.queryByText('正在应用…')).not.toBeNull()
-    await nextTick()
-    expect((search as HTMLInputElement).readOnly).toBe(true)
+      await act(() => fireEvent.keyDown(search, { key: "Enter" }));
+    });
+    await nextTick();
+    expect(screen.queryByText("正在应用…")).not.toBeNull();
+    await nextTick();
+    expect((search as HTMLInputElement).readOnly).toBe(true);
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'Enter' }))
-      await act(() => fireEvent.click(screen.getAllByRole('option')[1]!))
-    })
-    await nextTick()
-    expect(onSelect).toHaveBeenCalledTimes(1)
+      await act(() => fireEvent.keyDown(search, { key: "Enter" }));
+      await act(() => fireEvent.click(screen.getAllByRole("option")[1]!));
+    });
+    await nextTick();
+    expect(onSelect).toHaveBeenCalledTimes(1);
     await act(async () => {
-      release()
-      await Promise.resolve()
-    })
-    await nextTick()
-    expect(consume).toHaveBeenCalledTimes(1)
-  })
-  it('a failed options load shows the error with a retry button that reloads', async () => {
-    let attempts = 0
+      release();
+      await Promise.resolve();
+    });
+    await nextTick();
+    expect(consume).toHaveBeenCalledTimes(1);
+  });
+  it("a failed options load shows the error with a retry button that reloads", async () => {
+    let attempts = 0;
     await mountOpen({
       options: () => {
-        attempts += 1
+        attempts += 1;
         return attempts === 1
-          ? Promise.reject(new Error('directory down'))
-          : Promise.resolve(OPTIONS)
+          ? Promise.reject(new Error("directory down"))
+          : Promise.resolve(OPTIONS);
       },
-    })
-    await nextTick()
-    expect(screen.getByRole('alert').textContent).toContain('directory down')
+    });
+    await nextTick();
+    expect(screen.getByRole("alert").textContent).toContain("directory down");
     await act(async () => {
-      await act(() => fireEvent.click(screen.getByRole('button', { name: '重试' })))
-      await Promise.resolve()
-    })
-    await nextTick()
-    expect(attempts).toBe(2)
-    await nextTick()
-    expect(rowLabels()).toEqual(['Dark', 'Light', 'Sepia'])
-  })
-  it('an onSelect failure keeps the shell open with the error strip and no retry button (re-select is the retry)', async () => {
+      await act(() => fireEvent.click(screen.getByRole("button", { name: "重试" })));
+      await Promise.resolve();
+    });
+    await nextTick();
+    expect(attempts).toBe(2);
+    await nextTick();
+    expect(rowLabels()).toEqual(["Dark", "Light", "Sepia"]);
+  });
+  it("an onSelect failure keeps the shell open with the error strip and no retry button (re-select is the retry)", async () => {
     const { search, consume } = await mountOpen({
-      onSelect: () => Promise.reject(new Error('host rejected')),
-    })
+      onSelect: () => Promise.reject(new Error("host rejected")),
+    });
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'Enter' }))
-    })
-    await nextTick()
-    expect(screen.getByRole('alert').textContent).toContain('host rejected')
-    await nextTick()
-    expect(screen.queryByRole('button', { name: '重试' })).toBeNull()
-    await nextTick()
-    expect(consume).not.toHaveBeenCalled()
-    await nextTick()
-    expect(screen.getAllByRole('option').length).toBe(3)
-  })
-  it('Escape dismisses and restores composer focus', async () => {
-    const { view, search, focusComposer } = await mountOpen()
+      await act(() => fireEvent.keyDown(search, { key: "Enter" }));
+    });
+    await nextTick();
+    expect(screen.getByRole("alert").textContent).toContain("host rejected");
+    await nextTick();
+    expect(screen.queryByRole("button", { name: "重试" })).toBeNull();
+    await nextTick();
+    expect(consume).not.toHaveBeenCalled();
+    await nextTick();
+    expect(screen.getAllByRole("option").length).toBe(3);
+  });
+  it("Escape dismisses and restores composer focus", async () => {
+    const { view, search, focusComposer } = await mountOpen();
     await act(async () => {
-      await act(() => fireEvent.keyDown(search, { key: 'Escape' }))
-    })
-    await nextTick()
-    expect(view.container.childElementCount).toBe(0)
-    await nextTick()
-    expect(focusComposer).toHaveBeenCalledTimes(1)
-  })
-  it('an outside pointerdown dismisses without focusComposer; an inside one does not dismiss', async () => {
-    const { view, focusComposer } = await mountOpen()
+      await act(() => fireEvent.keyDown(search, { key: "Escape" }));
+    });
+    await nextTick();
+    expect(view.container.childElementCount).toBe(0);
+    await nextTick();
+    expect(focusComposer).toHaveBeenCalledTimes(1);
+  });
+  it("an outside pointerdown dismisses without focusComposer; an inside one does not dismiss", async () => {
+    const { view, focusComposer } = await mountOpen();
     await act(async () => {
-      await act(() => fireEvent.pointerDown(screen.getAllByRole('option')[0]!))
-    })
-    await nextTick()
-    expect(view.container.childElementCount).not.toBe(0)
+      await act(() => fireEvent.pointerDown(screen.getAllByRole("option")[0]!));
+    });
+    await nextTick();
+    expect(view.container.childElementCount).not.toBe(0);
     await act(async () => {
-      await act(() => fireEvent.pointerDown(document.body))
-    })
-    await nextTick()
-    expect(view.container.childElementCount).toBe(0)
-    await nextTick()
-    expect(focusComposer).not.toHaveBeenCalled()
-  })
-})
+      await act(() => fireEvent.pointerDown(document.body));
+    });
+    await nextTick();
+    expect(view.container.childElementCount).toBe(0);
+    await nextTick();
+    expect(focusComposer).not.toHaveBeenCalled();
+  });
+});

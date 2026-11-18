@@ -1,19 +1,24 @@
-import { nextTick } from 'vue'
-import { h, Fragment } from 'vue'
+import { nextTick } from "vue";
+import { h, Fragment } from "vue";
 // @vitest-environment jsdom
 // Branch coverage for the mdast renderer that real parses cannot reach: the
 // grammar only emits references whose definitions exist, always stamps
 // positions and align arrays, and never emits bare list items — but the
 // renderer is a pure function over mdast, so hand-built trees exercise its
 // defensive arms directly.
-import { cleanup, render } from './content-render.ts'
-import { afterEach, describe, expect, it } from 'vitest'
-import type * as Md from 'mdast'
-import { MarkdownText } from './markdown-test-components.tsx'
-import { markdownLabels } from './labels.client.ts'
-import { collectReferenceTargets, createReferenceTargets, renderBlocks, renderFootnoteSection } from '../src/markdown/render.tsx'
-import type { MarkdownRenderContext } from '../src/markdown/render.tsx'
-afterEach(cleanup)
+import { cleanup, render } from "./content-render.ts";
+import { afterEach, describe, expect, it } from "vite-plus/test";
+import type * as Md from "mdast";
+import { MarkdownText } from "./markdown-test-components.tsx";
+import { markdownLabels } from "./labels.client.ts";
+import {
+  collectReferenceTargets,
+  createReferenceTargets,
+  renderBlocks,
+  renderFootnoteSection,
+} from "../src/markdown/render.tsx";
+import type { MarkdownRenderContext } from "../src/markdown/render.tsx";
+afterEach(cleanup);
 function makeContext(): MarkdownRenderContext {
   return {
     streaming: false,
@@ -24,222 +29,278 @@ function makeContext(): MarkdownRenderContext {
     targets: createReferenceTargets(),
     footnoteOrder: [],
     footnoteCounts: new Map(),
-  }
+  };
 }
 function renderNodes(nodes: Md.RootContent[], context = makeContext()): HTMLElement {
-  const { container } = render(h('div', null, [renderBlocks(nodes.map((node, key) => ({ node, key })), context)]))
-  return container
+  const { container } = render(
+    h("div", null, [
+      renderBlocks(
+        nodes.map((node, key) => ({ node, key })),
+        context,
+      ),
+    ]),
+  );
+  return container;
 }
-const text = (value: string): Md.Text => ({ type: 'text', value })
-describe('renderBlocks over hand-built trees', () => {
-  it('reverts unresolved references to their bracketed source', async () => {
+const text = (value: string): Md.Text => ({ type: "text", value });
+describe("renderBlocks over hand-built trees", () => {
+  it("reverts unresolved references to their bracketed source", async () => {
     const container = renderNodes([
       {
-        type: 'paragraph',
+        type: "paragraph",
         children: [
-          { type: 'linkReference', identifier: 'a', referenceType: 'shortcut', children: [text('one')] },
-          { type: 'linkReference', identifier: 'b', referenceType: 'collapsed', children: [text('two')] },
-          { type: 'linkReference', identifier: 'c', label: 'C', referenceType: 'full', children: [text('three')] },
-          { type: 'imageReference', identifier: 'd', referenceType: 'full', alt: 'pic' },
-          { type: 'imageReference', identifier: 'e', referenceType: 'shortcut', alt: null },
+          {
+            type: "linkReference",
+            identifier: "a",
+            referenceType: "shortcut",
+            children: [text("one")],
+          },
+          {
+            type: "linkReference",
+            identifier: "b",
+            referenceType: "collapsed",
+            children: [text("two")],
+          },
+          {
+            type: "linkReference",
+            identifier: "c",
+            label: "C",
+            referenceType: "full",
+            children: [text("three")],
+          },
+          { type: "imageReference", identifier: "d", referenceType: "full", alt: "pic" },
+          { type: "imageReference", identifier: "e", referenceType: "shortcut", alt: null },
         ],
       },
-    ])
-    await nextTick()
-    expect(container.textContent).toBe('[one][two][][three][C]![pic][d]![]')
-    await nextTick()
-    expect(container.querySelector('a')).toBeNull()
-  })
-  it('keeps the first definition when identifiers repeat', async () => {
-    const targets = createReferenceTargets()
-    collectReferenceTargets([
-      { type: 'definition', identifier: 'dup', url: 'https://example.com/first' },
-      { type: 'definition', identifier: 'dup', url: 'https://example.com/second' },
-      { type: 'footnoteDefinition', identifier: 'fn', children: [] },
-      { type: 'footnoteDefinition', identifier: 'fn', children: [{ type: 'paragraph', children: [text('late')] }] },
-    ], targets)
-    await nextTick()
-    expect(targets.definitions.get('DUP')?.url).toBe('https://example.com/first')
-    await nextTick()
-    expect(targets.footnotes.get('FN')?.children).toEqual([])
-  })
-  it('renders a bare list item, computing looseness from the item itself', async () => {
+    ]);
+    await nextTick();
+    expect(container.textContent).toBe("[one][two][][three][C]![pic][d]![]");
+    await nextTick();
+    expect(container.querySelector("a")).toBeNull();
+  });
+  it("keeps the first definition when identifiers repeat", async () => {
+    const targets = createReferenceTargets();
+    collectReferenceTargets(
+      [
+        { type: "definition", identifier: "dup", url: "https://example.com/first" },
+        { type: "definition", identifier: "dup", url: "https://example.com/second" },
+        { type: "footnoteDefinition", identifier: "fn", children: [] },
+        {
+          type: "footnoteDefinition",
+          identifier: "fn",
+          children: [{ type: "paragraph", children: [text("late")] }],
+        },
+      ],
+      targets,
+    );
+    await nextTick();
+    expect(targets.definitions.get("DUP")?.url).toBe("https://example.com/first");
+    await nextTick();
+    expect(targets.footnotes.get("FN")?.children).toEqual([]);
+  });
+  it("renders a bare list item, computing looseness from the item itself", async () => {
     const item: Md.ListItem = {
-      type: 'listItem',
+      type: "listItem",
       spread: null,
       children: [
-        { type: 'paragraph', children: [text('alpha')] },
-        { type: 'paragraph', children: [text('beta')] },
+        { type: "paragraph", children: [text("alpha")] },
+        { type: "paragraph", children: [text("beta")] },
       ],
-    }
-    const container = renderNodes([item])
-    await nextTick()
+    };
+    const container = renderNodes([item]);
+    await nextTick();
     // Two block children make the parentless item loose: paragraphs stay wrapped.
-    expect([...container.querySelectorAll('li > p')].map(p => p.textContent)).toEqual(['alpha', 'beta'])
-  })
-  it('renders spread-null lists and align-less tables', async () => {
+    expect([...container.querySelectorAll("li > p")].map((p) => p.textContent)).toEqual([
+      "alpha",
+      "beta",
+    ]);
+  });
+  it("renders spread-null lists and align-less tables", async () => {
     const container = renderNodes([
       {
-        type: 'list',
+        type: "list",
         ordered: false,
         spread: null,
-        children: [{ type: 'listItem', spread: null, children: [{ type: 'paragraph', children: [text('solo')] }] }],
-      },
-      {
-        type: 'table',
         children: [
-          { type: 'tableRow', children: [{ type: 'tableCell', children: [text('h')] }] },
-          { type: 'tableRow', children: [{ type: 'tableCell', children: [text('short')] }] },
+          {
+            type: "listItem",
+            spread: null,
+            children: [{ type: "paragraph", children: [text("solo")] }],
+          },
         ],
       },
-    ])
-    await nextTick()
-    expect(container.querySelector('li')?.textContent).toBe('solo')
-    await nextTick()
-    expect(container.querySelector('th')?.getAttribute('style')).toBeNull()
-    await nextTick()
-    expect(container.querySelector('td')?.textContent).toBe('short')
-  })
-  it('renders a rowless align-less table as an empty fill wrapper', async () => {
+      {
+        type: "table",
+        children: [
+          { type: "tableRow", children: [{ type: "tableCell", children: [text("h")] }] },
+          { type: "tableRow", children: [{ type: "tableCell", children: [text("short")] }] },
+        ],
+      },
+    ]);
+    await nextTick();
+    expect(container.querySelector("li")?.textContent).toBe("solo");
+    await nextTick();
+    expect(container.querySelector("th")?.getAttribute("style")).toBeNull();
+    await nextTick();
+    expect(container.querySelector("td")?.textContent).toBe("short");
+  });
+  it("renders a rowless align-less table as an empty fill wrapper", async () => {
     // Zero columns is below the wide threshold, so the fill arm applies.
-    const container = renderNodes([{ type: 'table', children: [] }])
-    const wrapper = container.querySelector('table')?.parentElement
-    await nextTick()
-    expect(wrapper?.className).not.toContain('md-table-wide')
-    await nextTick()
-    expect(container.querySelector('table')?.childElementCount).toBe(0)
-  })
-  it('pads rows against the alignment width with empty cells', async () => {
+    const container = renderNodes([{ type: "table", children: [] }]);
+    const wrapper = container.querySelector("table")?.parentElement;
+    await nextTick();
+    expect(wrapper?.className).not.toContain("md-table-wide");
+    await nextTick();
+    expect(container.querySelector("table")?.childElementCount).toBe(0);
+  });
+  it("pads rows against the alignment width with empty cells", async () => {
     const container = renderNodes([
       {
-        type: 'table',
-        align: ['left', 'right'],
+        type: "table",
+        align: ["left", "right"],
         children: [
-          { type: 'tableRow', children: [{ type: 'tableCell', children: [text('only')] }] },
+          { type: "tableRow", children: [{ type: "tableCell", children: [text("only")] }] },
         ],
       },
-    ])
-    const cells = [...container.querySelectorAll('th')]
-    await nextTick()
-    expect(cells).toHaveLength(2)
-    await nextTick()
-    expect(cells[1]?.textContent).toBe('')
-  })
-  it('renders a checked item without any content as a bare checkbox', async () => {
+    ]);
+    const cells = [...container.querySelectorAll("th")];
+    await nextTick();
+    expect(cells).toHaveLength(2);
+    await nextTick();
+    expect(cells[1]?.textContent).toBe("");
+  });
+  it("renders a checked item without any content as a bare checkbox", async () => {
     const container = renderNodes([
       {
-        type: 'list',
+        type: "list",
         ordered: false,
         children: [
-          { type: 'listItem', checked: true, children: [] },
-          { type: 'listItem', checked: false, children: [{ type: 'paragraph', children: [] }] },
+          { type: "listItem", checked: true, children: [] },
+          { type: "listItem", checked: false, children: [{ type: "paragraph", children: [] }] },
         ],
       },
-    ])
-    const items = [...container.querySelectorAll('li.task-list-item')]
-    await nextTick()
-    expect(items).toHaveLength(2)
+    ]);
+    const items = [...container.querySelectorAll("li.task-list-item")];
+    await nextTick();
+    expect(items).toHaveLength(2);
     for (const item of items) {
-      await nextTick()
-      expect(item.querySelector('input[type="checkbox"]')).not.toBeNull()
-      await nextTick()
-      expect(item.textContent?.trim()).toBe('')
+      await nextTick();
+      expect(item.querySelector('input[type="checkbox"]')).not.toBeNull();
+      await nextTick();
+      expect(item.textContent?.trim()).toBe("");
     }
-  })
-  it('renders images with a null alt as an empty alt attribute', async () => {
-    const targets = createReferenceTargets()
-    targets.definitions.set('R', { type: 'definition', identifier: 'r', url: 'https://example.com/r.png' })
-    const container = renderNodes([
-      { type: 'paragraph', children: [{ type: 'image', url: 'https://example.com/x.png', alt: null }] },
-      { type: 'paragraph', children: [{ type: 'imageReference', identifier: 'r', referenceType: 'full', alt: null }] },
-    ], { ...makeContext(), targets })
-    const images = [...container.querySelectorAll('img')]
-    await nextTick()
-    expect(images.map(image => image.getAttribute('alt'))).toEqual(['', ''])
-  })
-  it('drops a definition nested in a list item without leaving a separator behind', async () => {
+  });
+  it("renders images with a null alt as an empty alt attribute", async () => {
+    const targets = createReferenceTargets();
+    targets.definitions.set("R", {
+      type: "definition",
+      identifier: "r",
+      url: "https://example.com/r.png",
+    });
+    const container = renderNodes(
+      [
+        {
+          type: "paragraph",
+          children: [{ type: "image", url: "https://example.com/x.png", alt: null }],
+        },
+        {
+          type: "paragraph",
+          children: [{ type: "imageReference", identifier: "r", referenceType: "full", alt: null }],
+        },
+      ],
+      { ...makeContext(), targets },
+    );
+    const images = [...container.querySelectorAll("img")];
+    await nextTick();
+    expect(images.map((image) => image.getAttribute("alt"))).toEqual(["", ""]);
+  });
+  it("drops a definition nested in a list item without leaving a separator behind", async () => {
     const container = renderNodes([
       {
-        type: 'list',
+        type: "list",
         ordered: true,
         start: 3,
-        children: [{
-          type: 'listItem',
-          children: [
-            { type: 'paragraph', children: [text('body')] },
-            { type: 'definition', identifier: 'x', url: 'https://example.com' },
-          ],
-        }],
+        children: [
+          {
+            type: "listItem",
+            children: [
+              { type: "paragraph", children: [text("body")] },
+              { type: "definition", identifier: "x", url: "https://example.com" },
+            ],
+          },
+        ],
       },
-    ])
-    await nextTick()
-    expect(container.querySelector('ol')?.getAttribute('start')).toBe('3')
-    await nextTick()
+    ]);
+    await nextTick();
+    expect(container.querySelector("ol")?.getAttribute("start")).toBe("3");
+    await nextTick();
     // The two mdast children make the item loose (wrap newlines around the
     // paragraph); the dropped definition contributes nothing else.
-    expect(container.querySelector('li')?.textContent).toBe('\nbody\n')
-  })
-  it('renders nothing for node types without a mapping', async () => {
+    expect(container.querySelector("li")?.textContent).toBe("\nbody\n");
+  });
+  it("renders nothing for node types without a mapping", async () => {
     const container = renderNodes([
-      { type: 'yaml', value: 'front: matter' },
-      { type: 'tableRow', children: [] },
-      { type: 'paragraph', children: [text('after')] },
-    ])
-    await nextTick()
-    expect(container.textContent).toBe('after')
-  })
-})
-describe('renderFootnoteSection edge shapes', () => {
-  it('skips referenced footnotes without definitions and returns null when none remain', async () => {
-    const context = makeContext()
-    context.footnoteOrder.push('GHOST')
-    context.footnoteCounts.set('GHOST', 1)
-    await nextTick()
-    expect(renderFootnoteSection(context)).toBeNull()
-  })
-  it('renders no back-reference markers for an uncounted footnote', async () => {
-    const context = makeContext()
-    context.targets.footnotes.set('Q', {
-      type: 'footnoteDefinition',
-      identifier: 'q',
-      children: [{ type: 'paragraph', children: [text('quiet')] }],
-    })
-    context.footnoteOrder.push('Q')
-    const { container } = render(h('div', null, [renderFootnoteSection(context)]))
-    await nextTick()
-    await nextTick()
-    expect(container.querySelector('li')?.textContent).toBe('\nquiet \n')
-  })
-  it('appends back-references after a non-paragraph body', async () => {
-    const context = makeContext()
-    context.targets.footnotes.set('N', {
-      type: 'footnoteDefinition',
-      identifier: 'n',
-      children: [{ type: 'code', value: 'code body', lang: null }],
-    })
-    context.footnoteOrder.push('N')
-    context.footnoteCounts.set('N', 1)
-    const { container } = render(h('div', null, [renderFootnoteSection(context)]))
-    await nextTick()
-    const item = container.querySelector('li')
-    await nextTick()
-    expect(item?.querySelector('.md-code-block')).not.toBeNull()
-    await nextTick()
-    expect(item?.textContent).toContain('↩')
-  })
-})
-describe('MarkdownText inside a fragment', () => {
-  it('preserves streaming output through fragment updates', async () => {
-    const doc = 'one\n\ntwo\n\nthree\n\nfour\n\nfive'
-    const strict = render(h(Fragment, null, [h(MarkdownText, { 'text': doc.slice(0, 8), 'streaming': true })]))
-    await nextTick()
-    strict.rerender(h(Fragment, null, [h(MarkdownText, { 'text': doc, 'streaming': true })]))
-    await nextTick()
-    const plain = render(h(MarkdownText, { 'text': doc, 'streaming': true }))
-    await nextTick()
-    await nextTick()
-    expect(strict.container.innerHTML).toBe(plain.container.innerHTML)
-    strict.unmount()
-    plain.unmount()
-  })
-})
+      { type: "yaml", value: "front: matter" },
+      { type: "tableRow", children: [] },
+      { type: "paragraph", children: [text("after")] },
+    ]);
+    await nextTick();
+    expect(container.textContent).toBe("after");
+  });
+});
+describe("renderFootnoteSection edge shapes", () => {
+  it("skips referenced footnotes without definitions and returns null when none remain", async () => {
+    const context = makeContext();
+    context.footnoteOrder.push("GHOST");
+    context.footnoteCounts.set("GHOST", 1);
+    await nextTick();
+    expect(renderFootnoteSection(context)).toBeNull();
+  });
+  it("renders no back-reference markers for an uncounted footnote", async () => {
+    const context = makeContext();
+    context.targets.footnotes.set("Q", {
+      type: "footnoteDefinition",
+      identifier: "q",
+      children: [{ type: "paragraph", children: [text("quiet")] }],
+    });
+    context.footnoteOrder.push("Q");
+    const { container } = render(h("div", null, [renderFootnoteSection(context)]));
+    await nextTick();
+    await nextTick();
+    expect(container.querySelector("li")?.textContent).toBe("\nquiet \n");
+  });
+  it("appends back-references after a non-paragraph body", async () => {
+    const context = makeContext();
+    context.targets.footnotes.set("N", {
+      type: "footnoteDefinition",
+      identifier: "n",
+      children: [{ type: "code", value: "code body", lang: null }],
+    });
+    context.footnoteOrder.push("N");
+    context.footnoteCounts.set("N", 1);
+    const { container } = render(h("div", null, [renderFootnoteSection(context)]));
+    await nextTick();
+    const item = container.querySelector("li");
+    await nextTick();
+    expect(item?.querySelector(".md-code-block")).not.toBeNull();
+    await nextTick();
+    expect(item?.textContent).toContain("↩");
+  });
+});
+describe("MarkdownText inside a fragment", () => {
+  it("preserves streaming output through fragment updates", async () => {
+    const doc = "one\n\ntwo\n\nthree\n\nfour\n\nfive";
+    const strict = render(
+      h(Fragment, null, [h(MarkdownText, { text: doc.slice(0, 8), streaming: true })]),
+    );
+    await nextTick();
+    strict.rerender(h(Fragment, null, [h(MarkdownText, { text: doc, streaming: true })]));
+    await nextTick();
+    const plain = render(h(MarkdownText, { text: doc, streaming: true }));
+    await nextTick();
+    await nextTick();
+    expect(strict.container.innerHTML).toBe(plain.container.innerHTML);
+    strict.unmount();
+    plain.unmount();
+  });
+});

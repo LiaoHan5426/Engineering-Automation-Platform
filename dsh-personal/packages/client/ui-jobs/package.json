@@ -19,8 +19,8 @@
     "./locale/*.json": "./locale/*.json"
   },
   "scripts": {
-    "bundle": "tsdown",
-    "watch": "tsdown --watch"
+    "bundle": "vp pack",
+    "watch": "vp pack --watch"
   },
   "license": "MIT",
   "repository": {

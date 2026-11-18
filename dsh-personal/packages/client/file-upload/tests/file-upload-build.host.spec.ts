@@ -4,10 +4,10 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { build } from 'tsdown'
+import { build } from 'vite-plus/pack'
 import { transpileModule, ScriptTarget, ModuleKind } from 'typescript'
-import { expect, it } from 'vitest'
-import uploadBuild from '../tsdown.config.ts'
+import { expect, it } from 'vite-plus/test'
+import { loadPackConfig } from '../../../../scripts/pack-config.ts'
 
 const execute = promisify(execFile)
 
@@ -32,8 +32,17 @@ it('publishes the decorated Node service during the Host pass and preserves it d
       compilerOptions: { target: ScriptTarget.ES2024, module: ModuleKind.ESNext },
     }).outputText)
     for (const face of ['host', 'client']) {
-      for (const config of uploadBuild({ env: { DSH_BUILD_FACE: face } })) {
-        const bundles = await build({ ...config, cwd: root, config: false, tsconfig: false, logLevel: 'silent' })
+      const previousFace = process.env.DSH_BUILD_FACE
+      process.env.DSH_BUILD_FACE = face
+      let configs
+      try {
+        configs = await loadPackConfig(join(import.meta.dirname, '../vite.config.ts'))
+      } finally {
+        if (previousFace === undefined) delete process.env.DSH_BUILD_FACE
+        else process.env.DSH_BUILD_FACE = previousFace
+      }
+      for (const config of configs) {
+        const { bundles } = await build({ ...config, cwd: root, config: false, tsconfig: false, logLevel: 'silent' })
         for (const bundle of bundles) await bundle[Symbol.asyncDispose]()
       }
       const { stdout } = await execute(process.execPath, ['--input-type=module', '-e', `

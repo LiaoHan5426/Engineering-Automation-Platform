@@ -1,31 +1,35 @@
 // @vitest-environment jsdom
-import { h } from 'vue'
+import { h } from "vue";
 /** FontSizeRow behavior: value display, arrow clicks drive setFontSize,
  * bound-value arrows disable, display follows the store mirror. */
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from './vue-fixture.ts'
-import { emptyGlobalSeats, bindSnapshotSelector } from './vue-fixture.ts'
-import { FontSizeRow } from '../src/client/FontSizeRow.tsx'
-import type { FontSizeRowComponentProps } from '../src/client/FontSizeRow.tsx'
-import { createFontRowStore } from '../src/client/settings-store.ts'
-import type { FontRole } from '../src/theme-settings.ts'
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { act, cleanup, fireEvent, render, screen } from "./vue-fixture.ts";
+import { emptyGlobalSeats, bindSnapshotSelector } from "./vue-fixture.ts";
+import { FontSizeRow } from "../src/client/FontSizeRow.tsx";
+import type { FontSizeRowComponentProps } from "../src/client/FontSizeRow.tsx";
+import { createFontRowStore } from "../src/client/settings-store.ts";
+import type { FontRole } from "../src/theme-settings.ts";
 
-afterEach(cleanup)
+afterEach(cleanup);
 
 const COPY: Record<string, string> = {
-  'fontSize.text.title': 'Font size',
-  'fontSize.text.description': 'Only affects conversation content',
-  'fontSize.text.increase': 'Increase font size',
-  'fontSize.text.decrease': 'Decrease font size',
-  'fontSize.terminal.increase': 'Increase terminal font size',
-  'fontSize.terminal.decrease': 'Decrease terminal font size',
-}
+  "fontSize.text.title": "Font size",
+  "fontSize.text.description": "Only affects conversation content",
+  "fontSize.text.increase": "Increase font size",
+  "fontSize.text.decrease": "Decrease font size",
+  "fontSize.terminal.increase": "Increase terminal font size",
+  "fontSize.terminal.decrease": "Decrease terminal font size",
+};
 
-function mount(fontSize = 14, role: FontRole = 'text') {
+function mount(fontSize = 14, role: FontRole = "text") {
   // Real store instance — the sanctioned zero-machinery path for tests.
-  const store = createFontRowStore().create()
-  store.actions.sync({ text: 14, code: 11, terminal: 13, [role]: fontSize }, { text: '', code: '', terminal: '' }, 0)
-  const setFontSize = vi.fn()
+  const store = createFontRowStore().create();
+  store.actions.sync(
+    { text: 14, code: 11, terminal: 13, [role]: fontSize },
+    { text: "", code: "", terminal: "" },
+    0,
+  );
+  const setFontSize = vi.fn();
   const props: FontSizeRowComponentProps = {
     ...emptyGlobalSeats,
     useStore: bindSnapshotSelector(store),
@@ -33,59 +37,77 @@ function mount(fontSize = 14, role: FontRole = 'text') {
     t: (key: string) => COPY[key] ?? key,
     role,
     setFontSize,
-  }
-  render(() => h(FontSizeRow, props))
-  return { store, setFontSize }
+  };
+  render(() => h(FontSizeRow, props));
+  return { store, setFontSize };
 }
 
 const arrow = (name: string): HTMLButtonElement =>
-  screen.getByRole('button', { name }) as HTMLButtonElement
+  screen.getByRole("button", { name }) as HTMLButtonElement;
 
-describe('FontSizeRow', () => {
-  it('renders the title and the current size with both arrows enabled mid-range', async () => {
-    mount(14)
-    expect(screen.getByText('Font size')).toBeDefined()
-    expect(screen.getByText('Only affects conversation content')).toBeDefined()
-    expect(screen.getByText('14')).toBeDefined()
-    expect(arrow('Increase font size').disabled).toBe(false)
-    expect(arrow('Decrease font size').disabled).toBe(false)
-  })
+describe("FontSizeRow", () => {
+  it("renders the title and the current size with both arrows enabled mid-range", async () => {
+    mount(14);
+    expect(screen.getByText("Font size")).toBeDefined();
+    expect(screen.getByText("Only affects conversation content")).toBeDefined();
+    expect(screen.getByText("14")).toBeDefined();
+    expect(arrow("Increase font size").disabled).toBe(false);
+    expect(arrow("Decrease font size").disabled).toBe(false);
+  });
 
-  it('arrow clicks step by 1; display follows the store mirror, not the click echo', async () => {
-    const b = mount(14)
-    await fireEvent.click(arrow('Increase font size'))
-    expect(b.setFontSize).toHaveBeenCalledWith(15)
+  it("arrow clicks step by 1; display follows the store mirror, not the click echo", async () => {
+    const b = mount(14);
+    await fireEvent.click(arrow("Increase font size"));
+    expect(b.setFontSize).toHaveBeenCalledWith(15);
     // No store write yet: the display is unchanged.
-    expect(screen.getByText('14')).toBeDefined()
-    await act(() => { b.store.actions.sync({ text: 15, code: 11, terminal: 13 }, { text: '', code: '', terminal: '' }, 1) })
-    expect(screen.getByText('15')).toBeDefined()
-    await fireEvent.click(arrow('Decrease font size'))
-    expect(b.setFontSize).toHaveBeenCalledWith(14)
-  })
+    expect(screen.getByText("14")).toBeDefined();
+    await act(() => {
+      b.store.actions.sync(
+        { text: 15, code: 11, terminal: 13 },
+        { text: "", code: "", terminal: "" },
+        1,
+      );
+    });
+    expect(screen.getByText("15")).toBeDefined();
+    await fireEvent.click(arrow("Decrease font size"));
+    expect(b.setFontSize).toHaveBeenCalledWith(14);
+  });
 
-  it('disables the outward arrow at each bound', async () => {
-    const b = mount(21)
-    await fireEvent.click(arrow('Increase font size'))
-    expect(b.setFontSize).toHaveBeenCalledWith(22)
-    await act(() => { b.store.actions.sync({ text: 22, code: 11, terminal: 13 }, { text: '', code: '', terminal: '' }, 1) })
-    expect(screen.getByText('22')).toBeDefined()
-    expect(arrow('Increase font size').disabled).toBe(true)
-    expect(arrow('Decrease font size').disabled).toBe(false)
-    cleanup()
-    const c = mount(11)
-    await fireEvent.click(arrow('Decrease font size'))
-    expect(c.setFontSize).toHaveBeenCalledWith(10)
-    await act(() => { c.store.actions.sync({ text: 10, code: 11, terminal: 13 }, { text: '', code: '', terminal: '' }, 1) })
-    expect(screen.getByText('10')).toBeDefined()
-    expect(arrow('Increase font size').disabled).toBe(false)
-    expect(arrow('Decrease font size').disabled).toBe(true)
-  })
+  it("disables the outward arrow at each bound", async () => {
+    const b = mount(21);
+    await fireEvent.click(arrow("Increase font size"));
+    expect(b.setFontSize).toHaveBeenCalledWith(22);
+    await act(() => {
+      b.store.actions.sync(
+        { text: 22, code: 11, terminal: 13 },
+        { text: "", code: "", terminal: "" },
+        1,
+      );
+    });
+    expect(screen.getByText("22")).toBeDefined();
+    expect(arrow("Increase font size").disabled).toBe(true);
+    expect(arrow("Decrease font size").disabled).toBe(false);
+    cleanup();
+    const c = mount(11);
+    await fireEvent.click(arrow("Decrease font size"));
+    expect(c.setFontSize).toHaveBeenCalledWith(10);
+    await act(() => {
+      c.store.actions.sync(
+        { text: 10, code: 11, terminal: 13 },
+        { text: "", code: "", terminal: "" },
+        1,
+      );
+    });
+    expect(screen.getByText("10")).toBeDefined();
+    expect(arrow("Increase font size").disabled).toBe(false);
+    expect(arrow("Decrease font size").disabled).toBe(true);
+  });
 
-  it('reads its own role and bounds from the shared store', async () => {
-    const b = mount(20, 'terminal')
-    expect(screen.getByText('20')).toBeDefined()
-    expect(arrow('Increase terminal font size').disabled).toBe(true)
-    await fireEvent.click(arrow('Decrease terminal font size'))
-    expect(b.setFontSize).toHaveBeenCalledWith(19)
-  })
-})
+  it("reads its own role and bounds from the shared store", async () => {
+    const b = mount(20, "terminal");
+    expect(screen.getByText("20")).toBeDefined();
+    expect(arrow("Increase terminal font size").disabled).toBe(true);
+    await fireEvent.click(arrow("Decrease terminal font size"));
+    expect(b.setFontSize).toHaveBeenCalledWith(19);
+  });
+});

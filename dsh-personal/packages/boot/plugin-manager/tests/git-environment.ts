@@ -10,10 +10,10 @@
  * so they run Git without the host's group.
  */
 
-import { vi } from 'vitest'
+import { vi } from "vite-plus/test";
 
 /** Names Git uses for its indexed command-line configuration. */
-const COMMAND_LINE_CONFIG_NAME = /^GIT_CONFIG_(?:COUNT|PARAMETERS|KEY_\d+|VALUE_\d+)$/u
+const COMMAND_LINE_CONFIG_NAME = /^GIT_CONFIG_(?:COUNT|PARAMETERS|KEY_\d+|VALUE_\d+)$/u;
 
 /**
  * Delete Git's command-line configuration group from this process's environment.
@@ -21,8 +21,10 @@ const COMMAND_LINE_CONFIG_NAME = /^GIT_CONFIG_(?:COUNT|PARAMETERS|KEY_\d+|VALUE_
  */
 export function isolateGitCommandLineConfig(): () => void {
   for (const name of Object.keys(process.env)) {
-    if (COMMAND_LINE_CONFIG_NAME.test(name)) vi.stubEnv(name, undefined)
+    if (COMMAND_LINE_CONFIG_NAME.test(name)) vi.stubEnv(name, undefined);
   }
   // `unstubAllEnvs` is the documented inverse of `stubEnv`; neither spec stubs another name.
-  return () => { vi.unstubAllEnvs() }
+  return () => {
+    vi.unstubAllEnvs();
+  };
 }

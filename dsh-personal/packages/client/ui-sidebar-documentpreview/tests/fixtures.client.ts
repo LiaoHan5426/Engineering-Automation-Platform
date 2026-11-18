@@ -7,127 +7,205 @@
  * read, behind one documented cast, so the specs exercise the components and
  * not the slot runtime.
  */
-import { contextMenuHook } from '@deepseek-ai/dsh-client-test-runtime'
-import { onTestFinished, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { ResourceRegistry } from '../../resources/src/client/resources.ts'
-import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
-import type { Mock } from 'vitest'
-import { act } from '../../../test-support/client-runtime/src/vue-test.ts'
-import { h as createElement, computed, shallowRef, defineComponent, type Ref } from 'vue'
-import { TextPreview as NativeTextPreview } from '../src/client/TextPreview.tsx'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
-import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
-import type { ResourceSnapshot } from '@deepseek-ai/dsh-client-resources/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { WorkspaceFileStat, WorkspaceFileText } from '@deepseek-ai/dsh-api-workspace-files/types'
-import type { TextPreviewProps } from '../src/client/TextPreview.tsx'
-import { textFace } from '../src/client/face.ts'
-import type { TextInjected } from '../src/client/face.ts'
-import type { DocumentFileBytes, ReadDocumentBytes, ReadWorkspaceFilePage, SessionFile } from '../src/client/rpc.ts'
-import { createTextStore } from '../src/client/store.ts'
-import type { TextStore } from '../src/client/store.ts'
-import type { DocumentPreviewProps } from '../src/client/document/contract.ts'
-import { TextBody } from '../src/client/text/TextBody.tsx'
-import { textBodyDefinition } from '../src/client/text/index.ts'
-import type { PaneId, TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
+import { contextMenuHook } from "@deepseek-ai/dsh-client-test-runtime";
+import { onTestFinished, vi } from "vite-plus/test";
+import { Context } from "@deepseek-ai/cordis";
+import { ResourceRegistry } from "../../resources/src/client/resources.ts";
+import type { PropsRenderSlots } from "@deepseek-ai/dsh-client-ui-slots";
+import type { Mock } from "vite-plus/test";
+import { act } from "../../../test-support/client-runtime/src/vue-test.ts";
+import { h as createElement, computed, shallowRef, defineComponent, type Ref } from "vue";
+import { TextPreview as NativeTextPreview } from "../src/client/TextPreview.tsx";
+import { bindSnapshotSelector } from "@deepseek-ai/dsh-client-test-runtime";
+import type { RemoteFailure, RemoteResult } from "@deepseek-ai/dsh-api-remotes/client";
+import type { ResourceSnapshot } from "@deepseek-ai/dsh-client-resources/client";
+import type { SessionId } from "@deepseek-ai/dsh-session/types";
+import type {
+  WorkspaceFileStat,
+  WorkspaceFileText,
+} from "@deepseek-ai/dsh-api-workspace-files/types";
+import type { TextPreviewProps } from "../src/client/TextPreview.tsx";
+import { textFace } from "../src/client/face.ts";
+import type { TextInjected } from "../src/client/face.ts";
+import type {
+  DocumentFileBytes,
+  ReadDocumentBytes,
+  ReadWorkspaceFilePage,
+  SessionFile,
+} from "../src/client/rpc.ts";
+import { createTextStore } from "../src/client/store.ts";
+import type { TextStore } from "../src/client/store.ts";
+import type { DocumentPreviewProps } from "../src/client/document/contract.ts";
+import { TextBody } from "../src/client/text/TextBody.tsx";
+import { textBodyDefinition } from "../src/client/text/index.ts";
+import type { PaneId, TabId } from "@deepseek-ai/dsh-client-ui-dockkit";
 
-type BodySlot = PropsRenderSlots<'sidebar.right.tab.document'>['renderSlot']
+type BodySlot = PropsRenderSlots<"sidebar.right.tab.document">["renderSlot"];
 
 /** Keep fixture-provided seats reactive when a spec replaces its scripted source. */
-export const TextPreviewFixture = defineComponent((props: TextPreviewProps) => {
-  const tabInfo = computed(() => props.useTabInfo().value)
-  const useDocumentPreviews: TextPreviewProps['useDocumentPreviews'] = selector => computed(() => props.useDocumentPreviews(selector).value)
-  return () => createElement(NativeTextPreview, { ...props, useTabInfo: () => tabInfo, useDocumentPreviews })
-}, { inheritAttrs: false, props: ['useTabInfo','useSession','sessionId','useProjection','useAccess','useConversation','useInput','inputActions','useRemoteAccess','useSessions','useSessionRetainInfo','useSessionAccess','usePanelInfo','useContextMenu','useResource','useWorkspaces','renderSlot','__renders','SessionProvider','renderFactorySlot','useStore','actions','addResource','setResources','loadPage','reloadPages','loadAll','reloadAll','prepareRenderer','useDocumentPreviews','t'] })
+export const TextPreviewFixture = defineComponent(
+  (props: TextPreviewProps) => {
+    const tabInfo = computed(() => props.useTabInfo().value);
+    const useDocumentPreviews: TextPreviewProps["useDocumentPreviews"] = (selector) =>
+      computed(() => props.useDocumentPreviews(selector).value);
+    return () =>
+      createElement(NativeTextPreview, {
+        ...props,
+        useTabInfo: () => tabInfo,
+        useDocumentPreviews,
+      });
+  },
+  {
+    inheritAttrs: false,
+    props: [
+      "useTabInfo",
+      "useSession",
+      "sessionId",
+      "useProjection",
+      "useAccess",
+      "useConversation",
+      "useInput",
+      "inputActions",
+      "useRemoteAccess",
+      "useSessions",
+      "useSessionRetainInfo",
+      "useSessionAccess",
+      "usePanelInfo",
+      "useContextMenu",
+      "useResource",
+      "useWorkspaces",
+      "renderSlot",
+      "__renders",
+      "SessionProvider",
+      "renderFactorySlot",
+      "useStore",
+      "actions",
+      "addResource",
+      "setResources",
+      "loadPage",
+      "reloadPages",
+      "loadAll",
+      "reloadAll",
+      "prepareRenderer",
+      "useDocumentPreviews",
+      "t",
+    ],
+  },
+);
 
 export function createResources(): ResourceRegistry {
-  const ctx = new Context()
-  onTestFinished(() => ctx.fiber.dispose())
-  return new ResourceRegistry(ctx)
+  const ctx = new Context();
+  onTestFinished(() => ctx.fiber.dispose());
+  return new ResourceRegistry(ctx);
 }
 
 /** Preserve the body-slot callback used by component fixtures. */
-export function documentSlots(body: BodySlot): TextPreviewProps['renderSlot'] {
-  return (name: string, owner: unknown, options?: unknown) => name === 'sidebar.right.tab.document'
-    ? body(name, owner as Parameters<BodySlot>[1], options as Parameters<BodySlot>[2])
-    : null
+export function documentSlots(body: BodySlot): TextPreviewProps["renderSlot"] {
+  return (name: string, owner: unknown, options?: unknown) =>
+    name === "sidebar.right.tab.document"
+      ? body(name, owner as Parameters<BodySlot>[1], options as Parameters<BodySlot>[2])
+      : null;
 }
 
-export const TAB_ID = 'tab-1' as TabId
-export const SESSION = 's-1' as SessionId
+export const TAB_ID = "tab-1" as TabId;
+export const SESSION = "s-1" as SessionId;
 /** The path relative to the session's workspace root, as the Host receives it. */
-export const PATH = 'work/notes.md'
-export const ABSOLUTE_PATH = '/host/project/work/notes.md'
+export const PATH = "work/notes.md";
+export const ABSOLUTE_PATH = "/host/project/work/notes.md";
 /** The tab's address: the file under this session's scope. */
-export const ADDRESS = 'dsh-resource://file/session/s-1/work/notes.md'
+export const ADDRESS = "dsh-resource://file/session/s-1/work/notes.md";
 /** What the address names, as the face receives it. */
-export const FILE: SessionFile = { sessionId: SESSION, path: PATH }
+export const FILE: SessionFile = { sessionId: SESSION, path: PATH };
 
 /** One page the Host would return: the lines joined without a terminator, and their count. */
-export function page(offset: number, lines: readonly string[], eof: boolean, version = 'v1'): RemoteResult<WorkspaceFileText> {
-  return { ok: true, value: { absolutePath: ABSOLUTE_PATH, version, offset, text: lines.join('\n'), lines: lines.length, eof, bytes: 100 } }
+export function page(
+  offset: number,
+  lines: readonly string[],
+  eof: boolean,
+  version = "v1",
+): RemoteResult<WorkspaceFileText> {
+  return {
+    ok: true,
+    value: {
+      absolutePath: ABSOLUTE_PATH,
+      version,
+      offset,
+      text: lines.join("\n"),
+      lines: lines.length,
+      eof,
+      bytes: 100,
+    },
+  };
 }
 
 /** One failed page read. */
-export function failure(code: string, details: Record<string, unknown> = {}): RemoteResult<WorkspaceFileText> {
-  return { ok: false, error: { code, message: 'boom', details } as unknown as RemoteFailure }
+export function failure(
+  code: string,
+  details: Record<string, unknown> = {},
+): RemoteResult<WorkspaceFileText> {
+  return { ok: false, error: { code, message: "boom", details } as unknown as RemoteFailure };
 }
 
 /** The `file` resource's metadata: live, or failed beside the last live value. */
 function meta(
-  version: string | undefined, failure: RemoteFailure | undefined,
+  version: string | undefined,
+  failure: RemoteFailure | undefined,
 ): ResourceSnapshot<WorkspaceFileStat> {
-  const value = version === undefined ? undefined : { absolutePath: ABSOLUTE_PATH, version, bytes: 100 }
+  const value =
+    version === undefined ? undefined : { absolutePath: ABSOLUTE_PATH, version, bytes: 100 };
   return failure === undefined
-    ? { status: version === undefined ? 'loading' : 'live', value, failure: undefined }
-    : { status: 'failed', value, failure }
+    ? { status: version === undefined ? "loading" : "live", value, failure: undefined }
+    : { status: "failed", value, failure };
 }
 
 /** Test-local selector hook over a framework-neutral store instance. */
 function hookOf<T>(inst: { subscribe: (fn: () => void) => () => void; getSnapshot: () => T }) {
-  return bindSnapshotSelector(inst)
+  return bindSnapshotSelector(inst);
 }
 
 /** Key-echoing translate that also shows its parameters. */
 export function t(key: string, params?: Record<string, unknown>): string {
-  return params === undefined ? key : `${key}(${Object.entries(params).map(([k, v]) => `${k}=${String(v)}`).join(',')})`
+  return params === undefined
+    ? key
+    : `${key}(${Object.entries(params)
+        .map(([k, v]) => `${k}=${String(v)}`)
+        .join(",")})`;
 }
 
 /** Flush page reads that resolved since the last render, then Vue's update queue. */
 export async function settle(): Promise<void> {
   await act(async () => {
-    await Promise.resolve()
-    await Promise.resolve()
-  })
+    await Promise.resolve();
+    await Promise.resolve();
+  });
 }
 
 /** What one tab record's harness hands a spec. Named so the helper's declaration stays portable. */
 export interface Harness {
   /** The live store instance both components read. */
-  instance: ReturnType<TextStore['create']>
+  instance: ReturnType<TextStore["create"]>;
   /** The face bound to the scripted read. */
-  face: TextInjected
+  face: TextInjected;
   /** The scripted paged read. */
-  read: Mock<ReadWorkspaceFilePage>
+  read: Mock<ReadWorkspaceFilePage>;
   /** The complete byte reader. */
-  bytes: Mock<ReadDocumentBytes>
+  bytes: Mock<ReadDocumentBytes>;
   /** The tab record's lifetime. */
-  controller: AbortController
+  controller: AbortController;
   /** Current file metadata. */
-  readonly file: WorkspaceFileStat | undefined
+  readonly file: WorkspaceFileStat | undefined;
   /** The scripted `useResource`. */
-  useResource: Mock<() => Readonly<Ref<ResourceSnapshot<WorkspaceFileStat>>>>
+  useResource: Mock<() => Readonly<Ref<ResourceSnapshot<WorkspaceFileStat>>>>;
   /** Publish the resource snapshot consumed by the native body. */
-  setResource(value: ResourceSnapshot<WorkspaceFileStat>): void
+  setResource(value: ResourceSnapshot<WorkspaceFileStat>): void;
   /** Composed props for one navigation state. */
-  props: (navigation?: { params?: unknown; revision: number }) => TextPreviewProps
+  props: (navigation?: { params?: unknown; revision: number }) => TextPreviewProps;
   /** Script what one offset resolves to from now on. */
-  script(offset: number, result: RemoteResult<WorkspaceFileText>): void
+  script(offset: number, result: RemoteResult<WorkspaceFileText>): void;
   /** Publish another metadata version without acknowledging any tab's content. */
-  setVersion(version: string | undefined): void
+  setVersion(version: string | undefined): void;
   /** Script the next render's `useResource` as failed with `failure`, or live again with `undefined`. */
-  setFailure(failure: RemoteFailure | undefined): void
+  setFailure(failure: RemoteFailure | undefined): void;
 }
 
 /**
@@ -136,44 +214,77 @@ export interface Harness {
  * @param tabId - owning tab record.
  * @returns the store, the scripted faces, and a props builder.
  */
-export function harness(script: Record<number, RemoteResult<WorkspaceFileText>> = {}, tabId = TAB_ID): Harness {
-  const instance = createTextStore().create()
-  const pages: Record<number, RemoteResult<WorkspaceFileText>> = { ...script }
+export function harness(
+  script: Record<number, RemoteResult<WorkspaceFileText>> = {},
+  tabId = TAB_ID,
+): Harness {
+  const instance = createTextStore().create();
+  const pages: Record<number, RemoteResult<WorkspaceFileText>> = { ...script };
   const read = vi.fn<ReadWorkspaceFilePage>((_session, _path, offset) =>
-    Promise.resolve(pages[offset] ?? failure('workspace-file/not-found', { path: PATH })))
-  const bytes = vi.fn<ReadDocumentBytes>()
-  const face = textFace(read, bytes, createResources())(SESSION, instance.actions)
-  const current = { version: 'v1' as string | undefined, failure: undefined as RemoteFailure | undefined, snapshot: meta('v1', undefined) }
-  const resource = shallowRef(current.snapshot)
-  const refresh = (): void => { current.snapshot = meta(current.version, current.failure); resource.value = current.snapshot }
-  const useResource = vi.fn(() => resource)
-  const controller = new AbortController()
-  onTestFinished(() => { controller.abort() })
-  const tabActions = { bindCommands: vi.fn(() => vi.fn()), openResource: vi.fn(), openTab: vi.fn(), close: vi.fn(), replace: vi.fn() }
-  const definitions = [textBodyDefinition(() => t('viewer.text'))]
+    Promise.resolve(pages[offset] ?? failure("workspace-file/not-found", { path: PATH })),
+  );
+  const bytes = vi.fn<ReadDocumentBytes>();
+  const face = textFace(read, bytes, createResources())(SESSION, instance.actions);
+  const current = {
+    version: "v1" as string | undefined,
+    failure: undefined as RemoteFailure | undefined,
+    snapshot: meta("v1", undefined),
+  };
+  const resource = shallowRef(current.snapshot);
+  const refresh = (): void => {
+    current.snapshot = meta(current.version, current.failure);
+    resource.value = current.snapshot;
+  };
+  const useResource = vi.fn(() => resource);
+  const controller = new AbortController();
+  onTestFinished(() => {
+    controller.abort();
+  });
+  const tabActions = {
+    bindCommands: vi.fn(() => vi.fn()),
+    openResource: vi.fn(),
+    openTab: vi.fn(),
+    close: vi.fn(),
+    replace: vi.fn(),
+  };
+  const definitions = [textBodyDefinition(() => t("viewer.text"))];
   // The document slot renders the plain body; other positions mark their input.
-  const renderSlot: TextPreviewProps['renderSlot'] = (key: string, owner: unknown, opts?: { hookContext?: unknown }) =>
-    key === 'sidebar.right.tab.document'
+  const renderSlot: TextPreviewProps["renderSlot"] = (
+    key: string,
+    owner: unknown,
+    opts?: { hookContext?: unknown },
+  ) =>
+    key === "sidebar.right.tab.document"
       ? createElement(TextBody, {
-        ...owner as object, useTabInfo: opts?.hookContext, sessionId: SESSION, useResource,
-      } as DocumentPreviewProps)
-      : key === 'sidebar.right.tab.document.action' ? null : createElement('div', {
-        'data-slot': key,
-        'data-slot-path': (owner as { absolutePath: string }).absolutePath,
-      })
-  const tabInfo = shallowRef<ReturnType<TextPreviewProps['useTabInfo']>['value']>()
+          ...(owner as object),
+          useTabInfo: opts?.hookContext,
+          sessionId: SESSION,
+          useResource,
+        } as DocumentPreviewProps)
+      : key === "sidebar.right.tab.document.action"
+        ? null
+        : createElement("div", {
+            "data-slot": key,
+            "data-slot-path": (owner as { absolutePath: string }).absolutePath,
+          });
+  const tabInfo = shallowRef<ReturnType<TextPreviewProps["useTabInfo"]>["value"]>();
   const props = (navigation: { params?: unknown; revision: number } = { revision: 1 }) => {
     tabInfo.value = {
       sidebar: { expanded: true, fullscreen: false },
-      panel: { id: 'pane-1' as PaneId, isFloating: false },
+      panel: { id: "pane-1" as PaneId, isFloating: false },
       tab: {
-        id: tabId, kind: 'text', contentId: ADDRESS, title: 'notes.md', visible: true,
+        id: tabId,
+        kind: "text",
+        contentId: ADDRESS,
+        title: "notes.md",
+        visible: true,
         navigation: { address: ADDRESS, params: navigation.params, revision: navigation.revision },
         signal: controller.signal,
         actions: tabActions,
       },
-    } as ReturnType<TextPreviewProps['useTabInfo']>['value']
-    return { useTabInfo: () => computed(() => tabInfo.value!),
+    } as ReturnType<TextPreviewProps["useTabInfo"]>["value"];
+    return {
+      useTabInfo: () => computed(() => tabInfo.value!),
       sessionId: SESSION,
       useResource,
       useContextMenu: contextMenuHook(),
@@ -181,32 +292,56 @@ export function harness(script: Record<number, RemoteResult<WorkspaceFileText>> 
       actions: instance.actions,
       loadPage: face.loadPage,
       reloadPages: face.reloadPages,
-      prepareRenderer: face.prepareRenderer, loadAll: face.loadAll,
+      prepareRenderer: face.prepareRenderer,
+      loadAll: face.loadAll,
       reloadAll: face.reloadAll,
-      addResource: face.addResource, setResources: face.setResources,
-      useDocumentPreviews: selector => computed(() => selector(definitions)),
+      addResource: face.addResource,
+      setResources: face.setResources,
+      useDocumentPreviews: (selector) => computed(() => selector(definitions)),
       renderSlot,
-      renderFactorySlot: (key: string) => createElement('div', { 'data-navigator-factory': key }),
+      renderFactorySlot: (key: string) => createElement("div", { "data-navigator-factory": key }),
       t,
-    } as TextPreviewProps
-  }
+    } as TextPreviewProps;
+  };
   return {
     instance,
     face,
     read,
     bytes,
     controller,
-    get file() { return current.snapshot.value },
+    get file() {
+      return current.snapshot.value;
+    },
     useResource,
-    setResource(value) { resource.value = value },
+    setResource(value) {
+      resource.value = value;
+    },
     props,
-    script(offset, result) { pages[offset] = result },
-    setVersion(version) { current.version = version; refresh() },
-    setFailure(failure) { current.failure = failure; refresh() },
-  }
+    script(offset, result) {
+      pages[offset] = result;
+    },
+    setVersion(version) {
+      current.version = version;
+      refresh();
+    },
+    setFailure(failure) {
+      current.failure = failure;
+      refresh();
+    },
+  };
 }
 
 /** Native byte result returned by the generated workspace Remote. */
 export function byteResult(data = new Uint8Array([0, 1, 255])): RemoteResult<DocumentFileBytes> {
-  return { ok: true, value: { absolutePath: '/host/notes', version: 'v1', offset: 0, eof: true, bytes: data.byteLength, data } }
+  return {
+    ok: true,
+    value: {
+      absolutePath: "/host/notes",
+      version: "v1",
+      offset: 0,
+      eof: true,
+      bytes: data.byteLength,
+      data,
+    },
+  };
 }

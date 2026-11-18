@@ -7,140 +7,174 @@
  * and the acknowledgement toast mounts from the toast sequence and retires
  * through dismissToast once its fade completes.
  */
-import { computed, type Ref } from 'vue'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent } from '@testing-library/dom'
-import { h } from 'vue'
-import { cleanupVue as cleanup, flushVue as act, renderVue } from '../../ui-primitives/tests/vue-render.ts'
-import { within as queriesWithin } from '@testing-library/dom'
-import { nextTick } from 'vue'
-function render(node: Parameters<typeof renderVue>[0]) { const view = renderVue(node); return { ...view, ...queriesWithin(document.body) } }
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import { FEEDBACK_CATEGORIES } from '@deepseek-ai/dsh-command-feedback'
-import { FeedbackDialog } from '../src/client/FeedbackDialog.tsx'
-import type { FeedbackDialogState } from '../src/client/dialog.ts'
-import { en, zh } from '../src/client/locales.ts'
-afterEach(cleanup)
-const t = makeTranslate(zh, commonZh)
+import { computed, type Ref } from "vue";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { fireEvent } from "@testing-library/dom";
+import { h } from "vue";
+import {
+  cleanupVue as cleanup,
+  flushVue as act,
+  renderVue,
+} from "../../ui-primitives/tests/vue-render.ts";
+import { within as queriesWithin } from "@testing-library/dom";
+import { nextTick } from "vue";
+function render(node: Parameters<typeof renderVue>[0]) {
+  const view = renderVue(node);
+  return { ...view, ...queriesWithin(document.body) };
+}
+import { makeTranslate } from "@deepseek-ai/dsh-client-test-runtime";
+import { zh as commonZh } from "@deepseek-ai/dsh-client-locale/src/locales/zh.ts";
+import { FEEDBACK_CATEGORIES } from "@deepseek-ai/dsh-command-feedback";
+import { FeedbackDialog } from "../src/client/FeedbackDialog.tsx";
+import type { FeedbackDialogState } from "../src/client/dialog.ts";
+import { en, zh } from "../src/client/locales.ts";
+afterEach(cleanup);
+const t = makeTranslate(zh, commonZh);
 /** Render the entry over a fixed state and recording verbs. */
 function mount(overrides: Partial<FeedbackDialogState> = {}) {
   const state: FeedbackDialogState = {
-    target: { kind: 'session' }, category: null, text: '', submitting: false, failure: null, toast: 0,
+    target: { kind: "session" },
+    category: null,
+    text: "",
+    submitting: false,
+    failure: null,
+    toast: 0,
     ...overrides,
-  }
+  };
   const verbs = {
     edit: vi.fn(),
     submit: vi.fn(() => Promise.resolve()),
     dismiss: vi.fn(),
     dismissFailure: vi.fn(),
     dismissToast: vi.fn(),
-  }
-  const useDialog = (<T,>(select: (v: FeedbackDialogState) => T): Readonly<Ref<T>> => computed(() => select(state))) as never
-  const props = { useDialog, ...verbs, t } as InstanceType<typeof FeedbackDialog>['$props']
-  return { ...render(h(FeedbackDialog, {
-    ...props,
-  })), ...verbs }
+  };
+  const useDialog = (<T,>(select: (v: FeedbackDialogState) => T): Readonly<Ref<T>> =>
+    computed(() => select(state))) as never;
+  const props = { useDialog, ...verbs, t } as InstanceType<typeof FeedbackDialog>["$props"];
+  return {
+    ...render(
+      h(FeedbackDialog, {
+        ...props,
+      }),
+    ),
+    ...verbs,
+  };
 }
-describe('FeedbackDialog', () => {
-  it('owns the conversation-log disclosure and stability category in both supported locales', async () => {
-    expect(zh['dialog.hint']).toBe('填写详情以帮助我们改进体验，提交内容会包括当前对话的日志')
-    expect(en['dialog.hint']).toBe('Add details to help us improve. Your submission will include the current conversation log.')
-    expect(zh['category.service-stability']).toBe('稳定性和速度')
-    expect(en['category.service-stability']).toBe('Stability and speed')
-  })
-  it('renders nothing but the probe while closed with no toast', async () => {
-    const ui = mount({ target: null })
-    expect(ui.queryByRole('dialog')).toBeNull()
-    expect(ui.queryByRole('alert')).toBeNull()
-  })
-  it('shows every category, the detail box with the hint, and an enabled Submit for an empty draft', async () => {
-    const ui = mount()
-    const dialog = ui.getByRole('dialog', { name: zh['dialog.title'] })
-    expect(dialog).toBeTruthy()
-    const chips = ui.getByRole('group', { name: zh['dialog.categories'] }).querySelectorAll('button')
-    expect([...chips].map(chip => chip.textContent)).toEqual(FEEDBACK_CATEGORIES.map(category => zh[`category.${category}`]))
-    expect(ui.getByLabelText(zh['dialog.detail']).getAttribute('placeholder')).toBe(zh['dialog.hint'])
-    expect(ui.getByRole('button', { name: commonZh.submit }).hasAttribute('disabled')).toBe(false)
-  })
-  it('selects a chip, and clears it when the selected chip is clicked again', async () => {
-    const ui = mount({ category: 'task-result' })
-    const chips = ui.getByRole('group', { name: zh['dialog.categories'] }).querySelectorAll('button')
-    expect(chips[0]?.getAttribute('aria-pressed')).toBe('true')
-    expect(chips[1]?.getAttribute('aria-pressed')).toBe('false')
+describe("FeedbackDialog", () => {
+  it("owns the conversation-log disclosure and stability category in both supported locales", async () => {
+    expect(zh["dialog.hint"]).toBe("填写详情以帮助我们改进体验，提交内容会包括当前对话的日志");
+    expect(en["dialog.hint"]).toBe(
+      "Add details to help us improve. Your submission will include the current conversation log.",
+    );
+    expect(zh["category.service-stability"]).toBe("稳定性和速度");
+    expect(en["category.service-stability"]).toBe("Stability and speed");
+  });
+  it("renders nothing but the probe while closed with no toast", async () => {
+    const ui = mount({ target: null });
+    expect(ui.queryByRole("dialog")).toBeNull();
+    expect(ui.queryByRole("alert")).toBeNull();
+  });
+  it("shows every category, the detail box with the hint, and an enabled Submit for an empty draft", async () => {
+    const ui = mount();
+    const dialog = ui.getByRole("dialog", { name: zh["dialog.title"] });
+    expect(dialog).toBeTruthy();
+    const chips = ui
+      .getByRole("group", { name: zh["dialog.categories"] })
+      .querySelectorAll("button");
+    expect([...chips].map((chip) => chip.textContent)).toEqual(
+      FEEDBACK_CATEGORIES.map((category) => zh[`category.${category}`]),
+    );
+    expect(ui.getByLabelText(zh["dialog.detail"]).getAttribute("placeholder")).toBe(
+      zh["dialog.hint"],
+    );
+    expect(ui.getByRole("button", { name: commonZh.submit }).hasAttribute("disabled")).toBe(false);
+  });
+  it("selects a chip, and clears it when the selected chip is clicked again", async () => {
+    const ui = mount({ category: "task-result" });
+    const chips = ui
+      .getByRole("group", { name: zh["dialog.categories"] })
+      .querySelectorAll("button");
+    expect(chips[0]?.getAttribute("aria-pressed")).toBe("true");
+    expect(chips[1]?.getAttribute("aria-pressed")).toBe("false");
     {
-      fireEvent.click(chips[1]!)
-      await nextTick()
+      fireEvent.click(chips[1]!);
+      await nextTick();
     }
-    expect(ui.edit).toHaveBeenLastCalledWith({ category: 'instruction-following' })
+    expect(ui.edit).toHaveBeenLastCalledWith({ category: "instruction-following" });
     {
-      fireEvent.click(chips[0]!)
-      await nextTick()
+      fireEvent.click(chips[0]!);
+      await nextTick();
     }
-    expect(ui.edit).toHaveBeenLastCalledWith({ category: null })
-  })
-  it('forwards typing, submits, and closes through the injected verbs', async () => {
-    const ui = mount({ text: 'draft' })
+    expect(ui.edit).toHaveBeenLastCalledWith({ category: null });
+  });
+  it("forwards typing, submits, and closes through the injected verbs", async () => {
+    const ui = mount({ text: "draft" });
     {
-      fireEvent.input(ui.getByLabelText(zh['dialog.detail']), { target: { value: 'draft more' } })
-      await nextTick()
+      fireEvent.input(ui.getByLabelText(zh["dialog.detail"]), { target: { value: "draft more" } });
+      await nextTick();
     }
-    expect(ui.edit).toHaveBeenCalledWith({ text: 'draft more' })
+    expect(ui.edit).toHaveBeenCalledWith({ text: "draft more" });
     {
-      fireEvent.click(ui.getByRole('button', { name: commonZh.submit }))
-      await nextTick()
+      fireEvent.click(ui.getByRole("button", { name: commonZh.submit }));
+      await nextTick();
     }
-    expect(ui.submit).toHaveBeenCalledTimes(1)
+    expect(ui.submit).toHaveBeenCalledTimes(1);
     {
-      fireEvent.click(ui.getByRole('button', { name: commonZh.close }))
-      await nextTick()
+      fireEvent.click(ui.getByRole("button", { name: commonZh.close }));
+      await nextTick();
     }
-    expect(ui.dismiss).toHaveBeenCalledTimes(1)
-  })
-  it('disables Submit and the chips while a submission is in flight', async () => {
-    const ui = mount({ submitting: true })
-    expect(ui.getByRole('button', { name: commonZh.submitting }).hasAttribute('disabled')).toBe(true)
-    const chips = ui.getByRole('group', { name: zh['dialog.categories'] }).querySelectorAll('button')
-    expect([...chips].every(chip => chip.hasAttribute('disabled'))).toBe(true)
-  })
-  it('renders submission failures as toasts outside the dialog', async () => {
-    const conflict = mount({ failure: 'version-conflict' })
-    const conflictToast = conflict.getByRole('alert')
-    expect(conflictToast.textContent).toBe(zh['error.conflict'])
-    expect(conflict.getByRole('dialog').contains(conflictToast)).toBe(false)
-    cleanup()
-    const oversized = mount({ failure: 'note-too-large' })
-    expect(oversized.getByRole('alert').textContent).toBe(zh['error.noteTooLarge'])
-    cleanup()
-    const other = mount({ failure: 'session-not-found' })
-    expect(other.getByRole('alert').textContent).toBe(zh['error.generic'])
-  })
-  it('retires a submission-failure toast after its extended hold', async () => {
-    vi.useFakeTimers()
+    expect(ui.dismiss).toHaveBeenCalledTimes(1);
+  });
+  it("disables Submit and the chips while a submission is in flight", async () => {
+    const ui = mount({ submitting: true });
+    expect(ui.getByRole("button", { name: commonZh.submitting }).hasAttribute("disabled")).toBe(
+      true,
+    );
+    const chips = ui
+      .getByRole("group", { name: zh["dialog.categories"] })
+      .querySelectorAll("button");
+    expect([...chips].every((chip) => chip.hasAttribute("disabled"))).toBe(true);
+  });
+  it("renders submission failures as toasts outside the dialog", async () => {
+    const conflict = mount({ failure: "version-conflict" });
+    const conflictToast = conflict.getByRole("alert");
+    expect(conflictToast.textContent).toBe(zh["error.conflict"]);
+    expect(conflict.getByRole("dialog").contains(conflictToast)).toBe(false);
+    cleanup();
+    const oversized = mount({ failure: "note-too-large" });
+    expect(oversized.getByRole("alert").textContent).toBe(zh["error.noteTooLarge"]);
+    cleanup();
+    const other = mount({ failure: "session-not-found" });
+    expect(other.getByRole("alert").textContent).toBe(zh["error.generic"]);
+  });
+  it("retires a submission-failure toast after its extended hold", async () => {
+    vi.useFakeTimers();
     try {
-      const ui = mount({ failure: 'version-conflict' })
-      await act(() => { vi.advanceTimersByTime(7000) })
-      expect(ui.dismissFailure).toHaveBeenCalledTimes(1)
+      const ui = mount({ failure: "version-conflict" });
+      await act(() => {
+        vi.advanceTimersByTime(7000);
+      });
+      expect(ui.dismissFailure).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
     }
-    finally {
-      vi.useRealTimers()
-    }
-  })
-  it('retires the toast when the entry unmounts, so a Session switch does not replay it', async () => {
-    const ui = mount({ target: null, toast: 3 })
-    ui.unmount()
-    expect(ui.dismissToast).toHaveBeenCalledWith(3)
-  })
-  it('shows the acknowledgement toast and retires it after the fade', async () => {
-    vi.useFakeTimers()
+  });
+  it("retires the toast when the entry unmounts, so a Session switch does not replay it", async () => {
+    const ui = mount({ target: null, toast: 3 });
+    ui.unmount();
+    expect(ui.dismissToast).toHaveBeenCalledWith(3);
+  });
+  it("shows the acknowledgement toast and retires it after the fade", async () => {
+    vi.useFakeTimers();
     try {
-      const ui = mount({ target: null, toast: 3 })
-      expect(ui.getByRole('alert').textContent).toBe(zh['toast.recorded'])
-      await act(() => { vi.advanceTimersByTime(4000) })
-      expect(ui.dismissToast).toHaveBeenCalledWith(3)
+      const ui = mount({ target: null, toast: 3 });
+      expect(ui.getByRole("alert").textContent).toBe(zh["toast.recorded"]);
+      await act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+      expect(ui.dismissToast).toHaveBeenCalledWith(3);
+    } finally {
+      vi.useRealTimers();
     }
-    finally {
-      vi.useRealTimers()
-    }
-  })
-})
+  });
+});

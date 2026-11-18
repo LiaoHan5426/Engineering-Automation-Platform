@@ -51,7 +51,7 @@ kind: "package-library"
 <details>
 <summary>实现细节——点击展开</summary>
 
-仓库检查把 `src/bundles.ts` 中的列表当作 TypeScript 字面量读取而不执行，因此每个列表都保持为由包名组成的静态数组或对象字面量。[`tsdown.client.ts`](../../client/tsdown.client.ts) 中的 `INLINE_SAFE` 允许 Client bundle 内联整个包，因此每个导出都保持为没有需要共享的运行时身份的数据。`ui-plugin-manager` 从包入口导入 Web 列表；只要没有 Client 代码导入 profile 模板和生成的目录，tree-shaking 就会让它们不进入该 bundle。
+仓库检查把 `src/bundles.ts` 中的列表当作 TypeScript 字面量读取而不执行，因此每个列表都保持为由包名组成的静态数组或对象字面量。[`pack.client.ts`](../../client/pack.client.ts) 中的 `INLINE_SAFE` 允许 Client bundle 内联整个包，因此每个导出都保持为没有需要共享的运行时身份的数据。`ui-plugin-manager` 从包入口导入 Web 列表；只要没有 Client 代码导入 profile 模板和生成的目录，tree-shaking 就会让它们不进入该 bundle。
 
 ### 源码地图
 

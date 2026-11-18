@@ -239,7 +239,7 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // relative to import.meta.url; it is shipped without a public package subpath.
   '@deepseek-ai/dsh-plugin-market': ['lib/worker.cjs'],
   // The argv-prefix runner entry ships beside the lib as its own bundle;
-  // sandbox-local resolves it through the package's ./runner export. tsdown
+  // sandbox-local resolves it through the package's ./runner export. pack
   // also shares its generated FFI code through a hashed runtime chunk.
   '@deepseek-ai/dsh-sandbox-windows-acl': ['lib/runner.js', 'lib/types-*.js', 'assets'],
   '@deepseek-ai/dsh-skill-badge': ['assets'],
@@ -259,14 +259,14 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
     'lib/output.js',
     'scripts/ensure-spawn-helper.mjs',
   ],
-  // tsdown shares the repository/pack code between the lib entry and the bin
+  // pack shares the repository/pack code between the lib entry and the bin
   // through a hashed chunk. The committed bin.js is the link target pnpm can
   // resolve at install time, before the build produces lib/bin.js.
   '@deepseek-ai/dsh-experimental-webworker-packer': ['bin.js', 'lib/repository-*.js'],
   // Startup and runtime share the advertised URL parser.
   '@deepseek-ai/dsh-web-app': ['lib/public-url-*.js'],
   // The headless entry and its startup row share the JSON projection code
-  // through a hashed tsdown chunk; both import it by relative path.
+  // through a hashed pack chunk; both import it by relative path.
   '@deepseek-ai/dsh-headless': ['lib/json-stream-*.js'],
 }
 

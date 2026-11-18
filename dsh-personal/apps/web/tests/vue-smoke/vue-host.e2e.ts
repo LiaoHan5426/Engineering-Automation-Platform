@@ -6,10 +6,10 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { build } from 'tsdown'
-import { expect, it } from 'vitest'
+import { build } from 'vite-plus/pack'
+import { expect, it } from 'vite-plus/test'
 import { chromium } from 'playwright'
-import { clientBundle } from '../../../../packages/client/tsdown.client.ts'
+import { clientBundle } from '../../../../packages/client/pack.client.ts'
 
 const repo = fileURLToPath(new URL('../../../..', import.meta.url))
 const fixture = dirname(fileURLToPath(import.meta.url))
@@ -37,7 +37,7 @@ async function rebuild(root: string): Promise<void> {
   const configs = clientBundle(root, ['lib/types/index.js'])({ env: { DSH_BUILD_FACE: 'client' } })
   const config = configs.find(candidate => candidate.platform === 'browser')
   if (config === undefined) throw new Error('smoke: browser build configuration missing')
-  const outputs = await build({ ...config, cwd: root, config: false, tsconfig: false, clean: false, exports: false, report: false })
+  const { bundles: outputs } = await build({ ...config, cwd: root, config: false, tsconfig: false, clean: false, exports: false, report: false })
   for (const output of outputs) await output[Symbol.asyncDispose]()
   expect(await readFile(join(root, 'lib/client.js'), 'utf8')).toContain('window.__ModuleLoader__.load(')
 }
@@ -109,7 +109,8 @@ it('boots native Vue factories and releases effects, components and styles acros
       return existsSync(ready)
     }, { timeout: 30000 }).toBe(true)
     const { port } = JSON.parse(await readFile(ready, 'utf8')) as { port: number }
-    browser = await chromium.launch({ headless: true })
+    const executablePath = process.env.DSH_PLAYWRIGHT_EXECUTABLE_PATH
+    browser = await chromium.launch({ headless: true, ...(executablePath === undefined ? {} : { executablePath }) })
     const page = await browser.newPage({ extraHTTPHeaders: { 'x-vue-smoke': 'local-test' } })
     const errors: string[] = []
     page.on('pageerror', (error) => { errors.push(error.message); logs += `\nbrowser error: ${error.message}` })

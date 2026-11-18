@@ -1,7 +1,7 @@
 import { existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test'
 import { typertPlugin } from '../packages/typert/generator/src/tsdown-plugin.ts'
 import { WorkspaceTypertGenerator } from '../packages/typert/generator/src/workspace.ts'
 import { main } from './generate-typert.ts'
@@ -54,7 +54,7 @@ function typertOutputs(pkg: string): Record<string, string> {
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('bundle-free Typert pass', { timeout: 60_000 }, () => {
-  it('writes the files the workspace-mode tsdown plugin writes, from a directory inside the workspace', async () => {
+  it('writes the files the workspace-mode pack plugin writes, from a directory inside the workspace', async () => {
     const { pkg } = workspace()
     const plugin = typertPlugin({ mode: 'workspace', faces: WORKSPACE_TYPERT_FACES })
     plugin.buildStart({ cwd: pkg })

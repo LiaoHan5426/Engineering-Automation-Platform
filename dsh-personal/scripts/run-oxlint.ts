@@ -1,29 +1,28 @@
-import { spawnSync } from 'node:child_process'
-import { availableParallelism } from 'node:os'
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { defaultParallelism } from './parallelism.ts'
+import { spawnSync } from "node:child_process";
+import { availableParallelism } from "node:os";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defaultParallelism } from "./parallelism.ts";
 
-const oxlintCli = fileURLToPath(new URL('../node_modules/oxlint/bin/oxlint', import.meta.url))
-const MAX_CAPTURED_OUTPUT_BYTES = 64 * 1024 * 1024
-const FIX_FLAGS = new Set(['--fix', '--fix-dangerously', '--fix-suggestions'])
+const oxlintCli = fileURLToPath(new URL("../node_modules/vite-plus/bin/vp", import.meta.url));
+const MAX_CAPTURED_OUTPUT_BYTES = 64 * 1024 * 1024;
+const FIX_FLAGS = new Set(["--fix", "--fix-dangerously", "--fix-suggestions"]);
 
 function isFixInvocation(args: readonly string[]): boolean {
-  return args.some(arg => FIX_FLAGS.has(arg))
+  return args.some((arg) => FIX_FLAGS.has(arg));
 }
 
 function hasOutputFormat(args: readonly string[]): boolean {
-  return args.some(arg =>
-    arg === '-f'
-    || arg.startsWith('-f=')
-    || arg === '--format'
-    || arg.startsWith('--format='))
+  return args.some(
+    (arg) =>
+      arg === "-f" || arg.startsWith("-f=") || arg === "--format" || arg.startsWith("--format="),
+  );
 }
 
 /** Complete Oxlint child-process arguments and environment. */
 export interface OxlintInvocation {
-  readonly args: readonly string[]
-  readonly env: NodeJS.ProcessEnv
+  readonly args: readonly string[];
+  readonly env: NodeJS.ProcessEnv;
 }
 
 /**
@@ -40,73 +39,79 @@ export function resolveOxlintInvocation(
   env: NodeJS.ProcessEnv,
   cpus: number = availableParallelism(),
 ): OxlintInvocation {
-  const resolvedArgs = [...args]
-  if (env.CI === 'true' && !hasOutputFormat(args)) resolvedArgs.push('--format=default')
-  const raw = env.DSH_OXLINT_THREADS
-  const explicit = raw !== undefined && raw !== ''
+  const resolvedArgs = [...args];
+  if (env.CI === "true" && !hasOutputFormat(args)) resolvedArgs.push("--format=default");
+  const raw = env.DSH_OXLINT_THREADS;
+  const explicit = raw !== undefined && raw !== "";
   if (explicit) {
-    const parsed = Number.parseInt(raw, 10)
+    const parsed = Number.parseInt(raw, 10);
     if (!Number.isSafeInteger(parsed) || parsed < 1 || String(parsed) !== raw) {
-      throw new Error(`run-oxlint: DSH_OXLINT_THREADS must be a positive integer, got ${JSON.stringify(raw)}.`)
+      throw new Error(
+        `run-oxlint: DSH_OXLINT_THREADS must be a positive integer, got ${JSON.stringify(raw)}.`,
+      );
     }
   }
-  if (args.some(arg => arg === '--threads' || arg.startsWith('--threads='))) {
-    if (explicit) throw new Error('run-oxlint: use DSH_OXLINT_THREADS instead of passing --threads directly.')
-    return { args: resolvedArgs, env: { ...env } }
+  if (args.some((arg) => arg === "--threads" || arg.startsWith("--threads="))) {
+    if (explicit)
+      throw new Error("run-oxlint: use DSH_OXLINT_THREADS instead of passing --threads directly.");
+    return { args: resolvedArgs, env: { ...env } };
   }
-  if (!explicit && env.CI === 'true') return { args: resolvedArgs, env: { ...env } }
-  const threads = explicit ? raw : String(defaultParallelism(env, cpus))
+  if (!explicit && env.CI === "true") return { args: resolvedArgs, env: { ...env } };
+  const threads = explicit ? raw : String(defaultParallelism(env, cpus));
   return {
     args: [...resolvedArgs, `--threads=${threads}`],
     env: { ...env, GOMAXPROCS: threads },
-  }
+  };
 }
 
-function completeFrom(result: { readonly signal: NodeJS.Signals | null; readonly status: number | null }): void {
+function completeFrom(result: {
+  readonly signal: NodeJS.Signals | null;
+  readonly status: number | null;
+}): void {
   if (result.signal !== null) {
-    process.kill(process.pid, result.signal)
-    return
+    process.kill(process.pid, result.signal);
+    return;
   }
-  process.exitCode = result.status ?? 1
+  process.exitCode = result.status ?? 1;
 }
 
 function main(): void {
-  const invocation = resolveOxlintInvocation(process.argv.slice(2), process.env)
+  const invocation = resolveOxlintInvocation(process.argv.slice(2), process.env);
   if (!isFixInvocation(invocation.args)) {
-    const result = spawnSync(process.execPath, [oxlintCli, ...invocation.args], {
+    const result = spawnSync(process.execPath, [oxlintCli, "lint", ...invocation.args], {
       env: invocation.env,
-      stdio: 'inherit',
-    })
-    if (result.error !== undefined) throw result.error
-    completeFrom(result)
-    return
+      stdio: "inherit",
+    });
+    if (result.error !== undefined) throw result.error;
+    completeFrom(result);
+    return;
   }
 
-  const first = spawnSync(process.execPath, [oxlintCli, ...invocation.args], {
-    encoding: 'utf8',
+  const first = spawnSync(process.execPath, [oxlintCli, "lint", ...invocation.args], {
+    encoding: "utf8",
     env: invocation.env,
     maxBuffer: MAX_CAPTURED_OUTPUT_BYTES,
-  })
-  if (first.error !== undefined) throw first.error
+  });
+  if (first.error !== undefined) throw first.error;
   if (first.signal !== null) {
-    completeFrom(first)
-    return
+    completeFrom(first);
+    return;
   }
   if (first.status === 0) {
-    process.stdout.write(first.stdout)
-    process.stderr.write(first.stderr)
-    process.exitCode = 0
-    return
+    process.stdout.write(first.stdout);
+    process.stderr.write(first.stderr);
+    process.exitCode = 0;
+    return;
   }
 
   // Overlapping JS-plugin fixes can expose one more fixable diagnostic after the first pass.
-  const second = spawnSync(process.execPath, [oxlintCli, ...invocation.args], {
+  const second = spawnSync(process.execPath, [oxlintCli, "lint", ...invocation.args], {
     env: invocation.env,
-    stdio: 'inherit',
-  })
-  if (second.error !== undefined) throw second.error
-  completeFrom(second)
+    stdio: "inherit",
+  });
+  if (second.error !== undefined) throw second.error;
+  completeFrom(second);
 }
 
-const entrypoint = process.argv[1]
-if (entrypoint !== undefined && resolve(entrypoint) === fileURLToPath(import.meta.url)) main()
+const entrypoint = process.argv[1];
+if (entrypoint !== undefined && resolve(entrypoint) === fileURLToPath(import.meta.url)) main();

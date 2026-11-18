@@ -28,6 +28,7 @@
 
 | 工作项 | 当前状态与证据 | 下一验收关口 |
 |---|---|---|
+| DP-02 DSH Vite+ 打包配置与模块依赖 | **技术验证完成（2026-11-17；2026-11-18 整理提交）**：模块配置迁入 Vite+ Pack；修复空入口自动发现覆盖 Host、JavaScript 装饰器、Inspector Windows 发布及 NodeNext 建链问题。完整产物 8/8、最终聚合 2/2、Chrome Vue HMR/DevTools 2/2、NodeNext 391 API 通过。详见[计划](../dsh-personal/migration-plan.md#打包与模块依赖优化技术验证完成)及[证据](evidence/dsh-personal/validation.md#vite-pack-migration--2026-11-17)。 | 依赖策略 101 包通过，跨包静态候选无越界。文档断链/生成项已修复，Windows 文档 symlink 与既有 GUI 失败保留；未宣称全量 GUI/doc-sync 全绿、平台覆盖或用户接受，不替代 DP-01 历史证据。 |
 | DP-01 独立 DSH Vue 迁移 | **迁移实现与技术交付完成（2026-11-17）**：PR #8 已合并；沿用最终构建、类型及浏览器证据，本轮补齐当前 OpenAI 真实请求、终端输出 323、刷新恢复与原生 GIF。维护文档 test:docs 21/21；doc-sync 41/43，配对项随后通过，Windows symlink EPERM 保留。已证实上游项按用户要求延后，Forge 失败及平台跳过如实保留。见[迁移计划](../dsh-personal/migration-plan.md)与[验证记录](evidence/dsh-personal/validation.md)。 | 2026-11-17 已完成一次[上游同步核查](evidence/dsh-personal/upstream-sync-2026-11-17.md)：官方 HEAD/master 与基线相同，no-change；指南预检已执行，非空差异升级仍待上游更新后验证。用户接受及平台补验独立记录，不宣称全门全绿或远端 CI 成功。不适配 EAP 后端。 |
 | UI-01/02 桌面外壳与工作面 | 已有五入口、分组/会话、文件树和分面；媒体对照追加欢迎卡容器适配、专家/设置显式返回，四视口及Work草稿返回实测通过，最终审查见[记录](records/frontend-history.md#reference-ui-review)；2026-11-14共享焦点修复见[证据](evidence/dialog-focus/README.md)。接续按17入口×1440/390集中走查并修复草稿、异步归属、保存/刷新失败、重试和缓存浮层，逐页修改/保留理由、Before/After与本轮全量前端结果见[审计](evidence/frontend-batch/README.md)，行为合同见[决策](decisions/frontend-interaction-recovery.md) | 其他主题/系统缩放与完整辅助技术矩阵、用户接受；模拟HTTP不代表真实后端业务接受，PB-01生成候选整链关口不据此关闭 |
 | UI-03 本地服务身份 | 本机绑定和只读能力已有验证 | Electron目录选择与打包环境复核；不把分组标签当权限 |

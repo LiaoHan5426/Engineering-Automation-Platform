@@ -1,6 +1,6 @@
 /** Matcher for liveshare fork guard refusals. */
-import { expect } from 'vitest'
-import type { LiveshareForkDeniedCode } from '../src/host/fork-errors.ts'
+import { expect } from "vite-plus/test";
+import type { LiveshareForkDeniedCode } from "../src/host/fork-errors.ts";
 
 /**
  * Match a guard refusal by its reason text and recorded code.
@@ -10,9 +10,11 @@ import type { LiveshareForkDeniedCode } from '../src/host/fork-errors.ts'
  */
 export function denial(reason: string | RegExp, code: LiveshareForkDeniedCode): unknown {
   return {
-    reason: (typeof reason === 'string' ? expect.stringContaining(reason) : expect.stringMatching(reason)) as string,
-    info: { name: 'LiveshareForkDeniedError', code },
-  }
+    reason: (typeof reason === "string"
+      ? expect.stringContaining(reason)
+      : expect.stringMatching(reason)) as string,
+    info: { name: "LiveshareForkDeniedError", code },
+  };
 }
 
 /**
@@ -22,7 +24,9 @@ export function denial(reason: string | RegExp, code: LiveshareForkDeniedCode): 
  */
 export function outsideDenial(reason: string | RegExp): unknown {
   return {
-    reason: (typeof reason === 'string' ? expect.stringContaining(reason) : expect.stringMatching(reason)) as string,
-    info: { name: 'FsError', code: 'FS_SANDBOX_DENIED' },
-  }
+    reason: (typeof reason === "string"
+      ? expect.stringContaining(reason)
+      : expect.stringMatching(reason)) as string,
+    info: { name: "FsError", code: "FS_SANDBOX_DENIED" },
+  };
 }

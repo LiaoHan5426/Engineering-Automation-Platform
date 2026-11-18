@@ -7,9 +7,9 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runInNewContext } from 'node:vm'
-import { build, type Rolldown, type TsdownBundle, type UserConfig } from 'tsdown'
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
-import { clientBundle, requestedExternals, staticLinked } from '../packages/client/tsdown.client.ts'
+import { build, type Rolldown, type TsdownBundle, type UserConfig } from 'vite-plus/pack'
+import { describe, expect, it, onTestFinished, vi } from 'vite-plus/test'
+import { clientBundle, requestedExternals, staticLinked } from '../packages/client/pack.client.ts'
 import { STATIC_MODULE_MANIFEST_EXPORT } from '../packages/client/web/src/platform.ts'
 import type { DshClientModuleManifest } from '@deepseek-ai/dsh-package-manifest'
 
@@ -117,10 +117,10 @@ describe('client bundle build faces', () => {
 async function clientChunkOutput(root: string, config: UserConfig, fileName: string): Promise<string> {
   let builds: TsdownBundle[] = []
   try {
-    builds = await build({
+    builds = (await build({
       ...config, cwd: root, config: false, tsconfig: false,
       write: false, clean: false, exports: false, report: false, logLevel: 'silent',
-    })
+    })).bundles
     const chunks = builds.flatMap(bundle => bundle.chunks).filter(chunk => chunk.type === 'chunk')
     const output = chunks.find(chunk => chunk.fileName === fileName)?.code
     if (output === undefined) throw new Error(`client output missing: ${fileName}`)
@@ -213,10 +213,10 @@ describe('static Client dependency delivery', () => {
       'export { marker }',
       'export const load = () => import("ordinary-library/lazy")',
     ].join('\n'))
-    const builds = await build({
+    const builds = (await build({
       ...config(root), cwd: root, config: false, tsconfig: false,
       write: false, clean: false, exports: false, report: false, logLevel: 'silent',
-    })
+    })).bundles
     try {
       const chunks = builds.flatMap(bundle => bundle.chunks).filter(chunk => chunk.type === 'chunk')
       expect(chunks.map(chunk => chunk.fileName)).toEqual(['index.js'])
@@ -343,10 +343,10 @@ describe('client bundle dynamic imports', () => {
     }
     const config = clientConfigs(root)[0]
     if (config === undefined) throw new Error('client config missing')
-    const builds = await build({
+    const builds = (await build({
       ...config, cwd: root, config: false, tsconfig: false,
       write: false, clean: false, exports: false, report: false, logLevel: 'silent',
-    })
+    })).bundles
     try {
       const registrations: DshClientModuleManifest[] = []
       const target = { __ModuleLoader__: { load: (manifest: DshClientModuleManifest) => { registrations.push(manifest) } } }
@@ -381,10 +381,10 @@ describe('client bundle dynamic imports', () => {
     for (const platform of ['node', 'browser'] as const) {
       const config = configs.find(config => config.name?.endsWith(platform === 'node' ? '/client-node' : '/client'))
       if (config === undefined) throw new Error(`${platform} config missing`)
-      const builds = await build({
+      const builds = (await build({
         ...config, cwd: root, config: false, tsconfig: false,
         write: false, clean: false, exports: false, report: false, logLevel: 'silent',
-      })
+      })).bundles
       try {
         const names = builds.flatMap(bundle => bundle.chunks).map(chunk => chunk.fileName)
         expect(names).toContain(platform === 'node' ? 'client.node.js' : 'client.browser.js')
@@ -472,7 +472,7 @@ describe('client bundle purity gate', () => {
   })
 
   it('omits unused RRULE code from a Cron-only browser import', async () => {
-    const builds = await build({
+    const builds = (await build({
       config: false, platform: 'browser', format: ['esm'], entry: ['cron-only'],
       write: false, clean: false, exports: false, report: false, logLevel: 'silent',
       plugins: [{
@@ -481,7 +481,7 @@ describe('client bundle purity gate', () => {
         load: id => id === 'cron-only'
           ? `export { Cron } from ${JSON.stringify(join(packageDir('util/time'), 'src/index.ts'))}` : null,
       }],
-    })
+    })).bundles
     try {
       const modules = builds.flatMap(bundle => bundle.chunks).flatMap(chunk => chunk.type === 'chunk' ? chunk.moduleIds : [])
         .map(id => id.replaceAll('\\', '/'))
@@ -588,10 +588,10 @@ describe('client bundle experimental input isolation', () => {
   async function bundle(owner: string, config: UserConfig): Promise<string> {
     let builds: TsdownBundle[] = []
     try {
-      builds = await build({
+      builds = (await build({
         ...config, cwd: owner, config: false, tsconfig: false,
         write: false, clean: false, exports: false, report: false, logLevel: 'silent',
-      })
+      })).bundles
       return builds.flatMap(build => build.chunks.filter(chunk => chunk.type === 'chunk').map(chunk => chunk.code)).join('\n')
     } finally {
       for (const build of builds) await build[Symbol.asyncDispose]()

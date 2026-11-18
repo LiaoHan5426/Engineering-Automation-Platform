@@ -9,9 +9,9 @@
  * and both aggregate programs without bundling.
  */
 
-import { rmSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { parseArgs } from 'node:util'
+import { rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { parseArgs } from "node:util";
 import {
   CLIENT_BUILD_RECORD_PATH,
   CLIENT_BUILD_PROFILE_SELECTOR,
@@ -19,27 +19,32 @@ import {
   repositoryClientBuildEnvironment,
   resolveClientBuildEnvironment,
   writeClientBuildRecord,
-} from './client-build-environment.ts'
-import { aggregateBuildArgs, aggregateCheckArgs, contractSteps, libraryBuildSteps } from './compile-referenced-projects.ts'
-import type { LibraryStep } from './compile-referenced-projects.ts'
-import { pnpmCommand } from './release/process.ts'
-import { defaultParallelism, describeDefaultParallelism } from './parallelism.ts'
-import { runAggregate } from './run-gates.ts'
-import type { Gate } from './run-gates.ts'
+} from "./client-build-environment.ts";
+import {
+  aggregateBuildArgs,
+  aggregateCheckArgs,
+  contractSteps,
+  libraryBuildSteps,
+} from "./compile-referenced-projects.ts";
+import type { LibraryStep } from "./compile-referenced-projects.ts";
+import { pnpmCommand } from "./release/process.ts";
+import { defaultParallelism, describeDefaultParallelism } from "./parallelism.ts";
+import { runAggregate } from "./run-gates.ts";
+import type { Gate } from "./run-gates.ts";
 
 /**
  * Steps one build invocation runs: every artifact and check, only artifacts, only aggregate checks,
  * or every type check with the generated Typert declarations it needs.
  */
-export type BuildScope = 'complete' | 'artifacts' | 'check' | 'typecheck'
+export type BuildScope = "complete" | "artifacts" | "check" | "typecheck";
 
 /** Parsed command-line selection of one build invocation. */
 export interface BuildArguments {
-  readonly scope: BuildScope
+  readonly scope: BuildScope;
   /** Client build profile requested by `--profile`; `complete` and `artifacts` scopes only. */
-  readonly profile: string | undefined
+  readonly profile: string | undefined;
   /** Run build steps without overlap, including when a concurrency override is set. */
-  readonly serial: boolean
+  readonly serial: boolean;
 }
 
 /**
@@ -53,20 +58,29 @@ export function parseBuildArguments(args: readonly string[]): BuildArguments {
   const { values } = parseArgs({
     args: [...args],
     options: {
-      profile: { type: 'string' },
-      scope: { type: 'string' },
-      serial: { type: 'boolean', default: false },
+      profile: { type: "string" },
+      scope: { type: "string" },
+      serial: { type: "boolean", default: false },
     },
     allowPositionals: false,
-  })
-  if (values.scope !== undefined && values.scope !== 'artifacts' && values.scope !== 'check' && values.scope !== 'typecheck') {
-    throw new Error(`build: --scope must be artifacts, check, or typecheck, got ${JSON.stringify(values.scope)}; omit it for the complete build`)
+  });
+  if (
+    values.scope !== undefined &&
+    values.scope !== "artifacts" &&
+    values.scope !== "check" &&
+    values.scope !== "typecheck"
+  ) {
+    throw new Error(
+      `build: --scope must be artifacts, check, or typecheck, got ${JSON.stringify(values.scope)}; omit it for the complete build`,
+    );
   }
-  const scope: BuildScope = values.scope ?? 'complete'
-  if ((scope === 'check' || scope === 'typecheck') && values.profile !== undefined) {
-    throw new Error(`build: --profile selects artifact values and does not apply to --scope ${scope}`)
+  const scope: BuildScope = values.scope ?? "complete";
+  if ((scope === "check" || scope === "typecheck") && values.profile !== undefined) {
+    throw new Error(
+      `build: --profile selects artifact values and does not apply to --scope ${scope}`,
+    );
   }
-  return { scope, profile: values.profile, serial: values.serial }
+  return { scope, profile: values.profile, serial: values.serial };
 }
 
 /**
@@ -92,41 +106,49 @@ export function buildGates(
   environment: Readonly<Record<string, string | undefined>> = {},
   serial = false,
 ): Gate[] {
-  const env = { ...environment }
-  const gates: Gate[] = []
-  if (scope === 'complete' || scope === 'artifacts') {
-    gates.push(pnpmGate('native', 'native addon', ['run', 'build:native-system'], [], env))
-    for (const step of libraryBuildSteps(root, 'all')) {
-      gates.push(libraryGate(step, step.id === 'host-src' ? ['native', ...step.needs] : step.needs, env))
+  const env = { ...environment };
+  const gates: Gate[] = [];
+  if (scope === "complete" || scope === "artifacts") {
+    gates.push(pnpmGate("native", "native addon", ["run", "build:native-system"], [], env));
+    for (const step of libraryBuildSteps(root, "all")) {
+      gates.push(
+        libraryGate(step, step.id === "host-src" ? ["native", ...step.needs] : step.needs, env),
+      );
     }
-    gates.push(pnpmGate('web', 'Web build', ['run', 'build:web'], ['client-bundle'], env))
+    gates.push(pnpmGate("web", "Web build", ["run", "build:web"], ["client-bundle"], env));
   }
-  if (scope === 'typecheck') {
-    for (const step of contractSteps(root, 'all')) gates.push(libraryGate(step, step.needs, env))
+  if (scope === "typecheck") {
+    for (const step of contractSteps(root, "all")) gates.push(libraryGate(step, step.needs, env));
   }
-  if (scope !== 'artifacts') {
-    for (const face of ['host', 'client'] as const) {
+  if (scope !== "artifacts") {
+    for (const face of ["host", "client"] as const) {
       gates.push({
         id: `${face}-check`,
         label: `${face} aggregate check`,
-        displayCommand: `${face === 'client' ? 'vue-tsc' : 'tsc'} ${scope === 'typecheck' ? '-b' : '-p'} tsconfig.${face}.json`,
+        displayCommand: `${face === "client" ? "vue-tsc" : "tsc"} ${scope === "typecheck" ? "-b" : "-p"} tsconfig.${face}.json`,
         command: process.execPath,
-        args: scope === 'typecheck' ? aggregateBuildArgs(face) : aggregateCheckArgs(face),
-        needs: scope === 'check' ? [] : [`${face}-src`],
+        args: scope === "typecheck" ? aggregateBuildArgs(face) : aggregateCheckArgs(face),
+        needs: scope === "check" ? [] : [`${face}-src`],
         env,
-      })
+      });
     }
   }
   if (serial) {
     return gates.map((gate, index) => {
-      const previous = gates[index - 1]
-      return previous === undefined ? gate : { ...gate, needs: [...new Set([...(gate.needs ?? []), previous.id])] }
-    })
+      const previous = gates[index - 1];
+      return previous === undefined
+        ? gate
+        : { ...gate, needs: [...new Set([...(gate.needs ?? []), previous.id])] };
+    });
   }
-  return gates
+  return gates;
 }
 
-function libraryGate(step: LibraryStep, needs: readonly string[], env: Record<string, string | undefined>): Gate {
+function libraryGate(
+  step: LibraryStep,
+  needs: readonly string[],
+  env: Record<string, string | undefined>,
+): Gate {
   return {
     id: step.id,
     label: step.label,
@@ -134,8 +156,8 @@ function libraryGate(step: LibraryStep, needs: readonly string[], env: Record<st
     command: step.command,
     args: [...step.args],
     needs: [...needs],
-    env,
-  }
+    env: { ...env, ...step.env },
+  };
 }
 
 function pnpmGate(
@@ -145,8 +167,16 @@ function pnpmGate(
   needs: readonly string[],
   env: Record<string, string | undefined>,
 ): Gate {
-  const [command, ...prefix] = pnpmCommand()
-  return { id, label, displayCommand: `pnpm ${args.join(' ')}`, command, args: [...prefix, ...args], needs: [...needs], env }
+  const [command, ...prefix] = pnpmCommand();
+  return {
+    id,
+    label,
+    displayCommand: `pnpm ${args.join(" ")}`,
+    command,
+    args: [...prefix, ...args],
+    needs: [...needs],
+    env,
+  };
 }
 
 /**
@@ -155,40 +185,52 @@ function pnpmGate(
  * @param child - Complete environment every step must observe.
  * @returns `child` plus an `undefined` entry for each parent key it omits.
  */
-function environmentOverlay(parent: NodeJS.ProcessEnv, child: NodeJS.ProcessEnv): Record<string, string | undefined> {
-  return { ...Object.fromEntries(Object.keys(parent).map(name => [name, undefined])), ...child }
+function environmentOverlay(
+  parent: NodeJS.ProcessEnv,
+  child: NodeJS.ProcessEnv,
+): Record<string, string | undefined> {
+  return { ...Object.fromEntries(Object.keys(parent).map((name) => [name, undefined])), ...child };
 }
 
 async function main(): Promise<number> {
-  // tsdown.config.ts loads only through Node type stripping (`--config-loader native`); this names the cause before tsdown fails.
+  // Package pack configuration loading uses Node type stripping; report its absence before starting the build.
   if (!process.features.typescript) {
-    throw new Error('build: Node.js TypeScript type stripping is unavailable in this Node.js process; remove --no-experimental-strip-types from NODE_OPTIONS or use a Node.js build with TypeScript support')
+    throw new Error(
+      "build: Node.js TypeScript type stripping is unavailable in this Node.js process; remove --no-experimental-strip-types from NODE_OPTIONS or use a Node.js build with TypeScript support",
+    );
   }
-  const { scope, profile, serial } = parseBuildArguments(process.argv.slice(2))
-  const root = resolve(import.meta.dirname, '..')
-  const name = scope === 'complete' ? 'build' : scope === 'typecheck' ? 'typecheck' : `build:${scope}`
-  const budget = defaultParallelism()
+  const { scope, profile, serial } = parseBuildArguments(process.argv.slice(2));
+  const root = resolve(import.meta.dirname, "..");
+  const name =
+    scope === "complete" ? "build" : scope === "typecheck" ? "typecheck" : `build:${scope}`;
+  const budget = defaultParallelism();
   const workers = (gates: readonly Gate[]) => ({
     workers: serial ? 1 : Math.min(gates.length, budget),
-    source: serial ? '--serial' : describeDefaultParallelism(),
-  })
-  if (scope === 'check' || scope === 'typecheck') {
-    const gates = buildGates(root, scope, {}, serial)
-    return runAggregate(name, gates, workers(gates))
+    source: serial ? "--serial" : describeDefaultParallelism(),
+  });
+  if (scope === "check" || scope === "typecheck") {
+    const gates = buildGates(root, scope, {}, serial);
+    return runAggregate(name, gates, workers(gates));
   }
 
-  const repositoryEnvironment = repositoryClientBuildEnvironment(root, process.env)
-  const clientEnvironment = resolveClientBuildEnvironment(repositoryEnvironment, profile ?? process.env[CLIENT_BUILD_PROFILE_SELECTOR])
-  const environment = environmentOverlay(process.env, clientBuildProcessEnvironment(process.env, clientEnvironment))
-  rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true })
-  const gates = buildGates(root, scope, environment, serial)
-  const exitCode = await runAggregate(name, gates, workers(gates))
-  if (exitCode !== 0) return exitCode
-  const record = writeClientBuildRecord(root, clientEnvironment)
+  const repositoryEnvironment = repositoryClientBuildEnvironment(root, process.env);
+  const clientEnvironment = resolveClientBuildEnvironment(
+    repositoryEnvironment,
+    profile ?? process.env[CLIENT_BUILD_PROFILE_SELECTOR],
+  );
+  const environment = environmentOverlay(
+    process.env,
+    clientBuildProcessEnvironment(process.env, clientEnvironment),
+  );
+  rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true });
+  const gates = buildGates(root, scope, environment, serial);
+  const exitCode = await runAggregate(name, gates, workers(gates));
+  if (exitCode !== 0) return exitCode;
+  const record = writeClientBuildRecord(root, clientEnvironment);
   console.log(
     `build: recorded ${String(record.artifacts.fileCount)} client artifact(s) with ${String(Object.keys(record.environment).length)} public value(s)`,
-  )
-  return 0
+  );
+  return 0;
 }
 
-if (import.meta.main) process.exitCode = await main()
+if (import.meta.main) process.exitCode = await main();

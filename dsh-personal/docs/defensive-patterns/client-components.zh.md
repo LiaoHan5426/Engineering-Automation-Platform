@@ -383,9 +383,9 @@ useEffect(() => {
 
 ## 构建与样式各归其主
 
-客户端包的每项构建调整都经该包的 tsdown 插件完成，包内不新开自己的构建分支。样式走 CSS Module，只有图像、GIF 与 SVG 需要内联——且内联到 CSS 而不是 JSX。TSX 里绝不内联大文本，`style` 对象只放运行期计算的值，因为静态值与多样式切换属于 CSS Module 的 class name。
+客户端包的每项构建调整都经该包的 Vite+ Pack 插件完成，包内不新开自己的构建分支。样式走 CSS Module，只有图像、GIF 与 SVG 需要内联——且内联到 CSS 而不是 JSX。TSX 里绝不内联大文本，`style` 对象只放运行期计算的值，因为静态值与多样式切换属于 CSS Module 的 class name。
 
-- 判定方式：包内新开构建分支而不是走 tsdown 插件；feature 样式里出现字面颜色、组件库或 Tailwind；TSX 里出现 base64 数据或大文本；`style` 对象承载静态值或样式切换。
+- 判定方式：包内新开构建分支而不是走 Vite+ Pack 插件；feature 样式里出现字面颜色、组件库或 Tailwind；TSX 里出现 base64 数据或大文本；`style` 对象承载静态值或样式切换。
 - 不在范围内：运行期计算的值（量到的 gutter、进度百分比）可以进 `style`，组件局部自定义属性也可以承载布局值。[组件规则](../web-styling.zh.md#component-rules) 正家负责 token、CSS Module 与 class name 规则。
 - 例外：新增构建分支或新的内联形态在落地前于 review 中说明理由，由所属包的规则决定是否保留。
 - 修法：把样式切换移进用 `className` 切换的 CSS Module class，base64 交给构建链写进 CSS，并从 TSX 模块里删掉大文本常量。

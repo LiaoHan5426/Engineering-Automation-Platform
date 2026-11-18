@@ -12,7 +12,7 @@
   "scripts": {
     "test:installer": "node scripts/test-windows-installer.mjs",
     "build": "tsc -b && pnpm run bundle",
-    "bundle": "tsdown --config-loader native",
+    "bundle": "vp pack",
     "dev": "tsx scripts/dev.ts",
     "start": "tsx scripts/dev.ts --skip-build",
     "test:updates:channels": "pnpm run build && node scripts/test-update-channels.mjs",
@@ -84,7 +84,7 @@
     "@deepseek-ai/dsh-deepseek-account": "workspace:*",
     "@types/ws": "^8.18.1",
     "@deepseek-ai/dsh-client-ui-primitives": "workspace:*",
-    "vite": "^6.4.3",
+    "vite": "catalog:",
     "@deepseek-ai/dsh-client-ui-theme": "workspace:*",
     "@deepseek-ai/dsh-client-shortcuts": "workspace:*",
     "@deepseek-ai/dsh-atomic-write": "workspace:*",

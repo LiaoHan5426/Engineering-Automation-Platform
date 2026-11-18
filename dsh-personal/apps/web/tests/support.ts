@@ -1,36 +1,36 @@
 // Shared plumbing for the web smoke tests (dist location, free port, failure shots).
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { createServer } from 'node:net'
-import { createRequire } from 'node:module'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import type { Browser, Locator, Page } from 'playwright'
-import { expect, vi, type MockInstance } from 'vitest'
-import type { RegionRect } from '../../../packages/client/web/src/window-drag/regions.ts'
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { createServer } from "node:net";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { Browser, Locator, Page } from "playwright";
+import { expect, vi, type MockInstance } from "vite-plus/test";
+import type { RegionRect } from "../../../packages/client/web/src/window-drag/regions.ts";
 
 /** The built page under test; `pnpm run test:web` rebuilds it before running. */
-export const DIST_INDEX = fileURLToPath(new URL('../dist/index.html', import.meta.url))
+export const DIST_INDEX = fileURLToPath(new URL("../dist/index.html", import.meta.url));
 
-export const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
+export const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 /** A visible control, including controls that declare no native window region. */
-interface WindowControlBox extends Omit<RegionRect, 'draggable'> {
+interface WindowControlBox extends Omit<RegionRect, "draggable"> {
   /** Sample points where the browser hit test reaches this control or its content. */
-  readonly hits: readonly (readonly [number, number])[]
+  readonly hits: readonly (readonly [number, number])[];
 }
 
 /** Native region owners and optional control probes from one browser evaluation. */
 export interface CollectedWindowSurface {
-  readonly regions: readonly RegionRect[]
+  readonly regions: readonly RegionRect[];
   /** Empty when no control probe was requested. */
-  readonly controls: readonly WindowControlBox[]
+  readonly controls: readonly WindowControlBox[];
 }
 
 /** Controls to probe alongside the native region owners. */
 interface WindowControlProbe {
-  readonly selector: string
+  readonly selector: string;
   /** Containers whose nested drag rows own their pixels independently of the container. */
-  readonly containersWithDragRows: string
+  readonly containersWithDragRows: string;
 }
 
 /**
@@ -45,42 +45,42 @@ export async function collectWindowSurface(
   controlProbe?: WindowControlProbe,
 ): Promise<CollectedWindowSurface> {
   return page.evaluate((probe) => {
-    const regions: RegionRect[] = []
-    const controls: WindowControlBox[] = []
-    for (const element of document.querySelectorAll('*')) {
-      const style = getComputedStyle(element)
-      const region = style.getPropertyValue('-webkit-app-region')
-      if (style.visibility === 'hidden' || style.display === 'none') continue
-      const rect = element.getBoundingClientRect()
-      if (rect.width === 0 || rect.height === 0) continue
-      const box = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-      if (region === 'drag' || region === 'no-drag')
-        regions.push({ ...box, draggable: region === 'drag' })
-      if (probe === undefined || !element.matches(probe.selector)) continue
-      const insetX = Math.min(2, rect.width / 4)
-      const insetY = Math.min(2, rect.height / 4)
+    const regions: RegionRect[] = [];
+    const controls: WindowControlBox[] = [];
+    for (const element of document.querySelectorAll("*")) {
+      const style = getComputedStyle(element);
+      const region = style.getPropertyValue("-webkit-app-region");
+      if (style.visibility === "hidden" || style.display === "none") continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      const box = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      if (region === "drag" || region === "no-drag")
+        regions.push({ ...box, draggable: region === "drag" });
+      if (probe === undefined || !element.matches(probe.selector)) continue;
+      const insetX = Math.min(2, rect.width / 4);
+      const insetY = Math.min(2, rect.height / 4);
       const samples: [number, number][] = [
         [rect.x + rect.width / 2, rect.y + rect.height / 2],
         [rect.x + insetX, rect.y + insetY],
         [rect.x + rect.width - insetX, rect.y + insetY],
         [rect.x + insetX, rect.y + rect.height - insetY],
         [rect.x + rect.width - insetX, rect.y + rect.height - insetY],
-      ]
+      ];
       const hits = samples.filter(([x, y]) => {
-        const top = document.elementFromPoint(x, y)
-        const strip = top?.closest('[data-window-drag]')
+        const top = document.elementFromPoint(x, y);
+        const strip = top?.closest("[data-window-drag]");
         if (
           element.matches(probe.containersWithDragRows) &&
           strip != null &&
           element.contains(strip)
         )
-          return false
-        return top !== null && (top === element || element.contains(top))
-      })
-      controls.push({ ...box, hits })
+          return false;
+        return top !== null && (top === element || element.contains(top));
+      });
+      controls.push({ ...box, hits });
     }
-    return { regions, controls }
-  }, controlProbe)
+    return { regions, controls };
+  }, controlProbe);
 }
 
 /**
@@ -92,14 +92,14 @@ export async function collectWindowSurface(
 export function experimentalBundleDescription(bundle: string, locale: string): string {
   const resource = JSON.parse(
     readFileSync(
-      join(REPO_ROOT, 'packages/experimental', bundle, 'locale', `${locale}.json`),
-      'utf8',
+      join(REPO_ROOT, "packages/experimental", bundle, "locale", `${locale}.json`),
+      "utf8",
     ),
-  ) as { meta: { description: string } }
-  return resource.meta.description
+  ) as { meta: { description: string } };
+  return resource.meta.description;
 }
 
-const installationRequire = createRequire(join(REPO_ROOT, 'apps/cli/package.json'))
+const installationRequire = createRequire(join(REPO_ROOT, "apps/cli/package.json"));
 
 /**
  * Check the shared warning title, theme color, and compact body alignment.
@@ -107,28 +107,28 @@ const installationRequire = createRequire(join(REPO_ROOT, 'apps/cli/package.json
  */
 export async function assertWarningDialogLayout(dialog: Locator): Promise<void> {
   const layout = await dialog.evaluate((element) => {
-    const title = element.querySelector('h2')!
-    const icon = title.querySelector('svg')!
-    const paragraph = element.querySelector('p')!
-    const titleRect = title.getBoundingClientRect()
-    const bodyRect = paragraph.getBoundingClientRect()
-    const color = getComputedStyle(icon).color
-    const previous = icon.style.color
-    icon.style.color = 'var(--dsw-alias-state-warn-primary)'
-    const warningColor = getComputedStyle(icon).color
-    icon.style.color = previous
+    const title = element.querySelector("h2")!;
+    const icon = title.querySelector("svg")!;
+    const paragraph = element.querySelector("p")!;
+    const titleRect = title.getBoundingClientRect();
+    const bodyRect = paragraph.getBoundingClientRect();
+    const color = getComputedStyle(icon).color;
+    const previous = icon.style.color;
+    icon.style.color = "var(--dsw-alias-state-warn-primary)";
+    const warningColor = getComputedStyle(icon).color;
+    icon.style.color = previous;
     return {
-      decorative: icon.getAttribute('aria-hidden'),
+      decorative: icon.getAttribute("aria-hidden"),
       matchesWarningColor: color === warningColor,
       leftGap: Math.abs(bodyRect.left - titleRect.left),
       topGap: bodyRect.top - titleRect.bottom,
-    }
-  })
-  expect(layout.decorative).toBe('true')
-  expect(layout.matchesWarningColor).toBe(true)
-  expect(layout.leftGap).toBeLessThan(1)
-  expect(layout.topGap).toBeGreaterThanOrEqual(0)
-  expect(layout.topGap).toBeLessThanOrEqual(16)
+    };
+  });
+  expect(layout.decorative).toBe("true");
+  expect(layout.matchesWarningColor).toBe(true);
+  expect(layout.leftGap).toBeLessThan(1);
+  expect(layout.topGap).toBeGreaterThanOrEqual(0);
+  expect(layout.topGap).toBeLessThanOrEqual(16);
 }
 
 /**
@@ -145,7 +145,7 @@ export async function assertWarningDialogLayout(dialog: Locator): Promise<void> 
  * @returns the package's built module namespace, for the caller to type as the package's own.
  */
 export function requireBuilt(name: string): unknown {
-  return installationRequire(name)
+  return installationRequire(name);
 }
 
 /**
@@ -153,10 +153,10 @@ export function requireBuilt(name: string): unknown {
  * surface: with no stored preference the client derives its initial locale
  * from the browser, and Playwright's default browser asks for English.
  */
-export const ZH_BROWSER_LOCALE = 'zh-CN'
+export const ZH_BROWSER_LOCALE = "zh-CN";
 
 /** Same-day anchor for seeded event times and the Asia/Shanghai browser clock. */
-export const WEB_FIXTURE_TIME = Date.parse('2026-01-15T12:00:00+08:00')
+export const WEB_FIXTURE_TIME = Date.parse("2026-01-15T12:00:00+08:00");
 
 /**
  * Budget for a plugin-manager switch to republish its state after a click: the
@@ -165,7 +165,7 @@ export const WEB_FIXTURE_TIME = Date.parse('2026-01-15T12:00:00+08:00')
  * 0.5-0.8 s on an idle host and 2.0-4.8 s across 32 samples in a 16-worker lane,
  * so Vitest's 1-second `expect.poll` default expires first.
  */
-export const PLUGIN_TOGGLE_SETTLE_MS = 10_000
+export const PLUGIN_TOGGLE_SETTLE_MS = 10_000;
 
 /**
  * Pin the Host clock to the shared fixture day for one scenario suite.
@@ -182,10 +182,10 @@ export const PLUGIN_TOGGLE_SETTLE_MS = 10_000
  * @returns the installed `Date.now` spy, restored by the caller in teardown.
  */
 export function pinHostClock(): MockInstance<typeof Date.now> {
-  const startedAt = performance.now()
+  const startedAt = performance.now();
   return vi
-    .spyOn(Date, 'now')
-    .mockImplementation(() => WEB_FIXTURE_TIME + Math.floor(performance.now() - startedAt))
+    .spyOn(Date, "now")
+    .mockImplementation(() => WEB_FIXTURE_TIME + Math.floor(performance.now() - startedAt));
 }
 
 /**
@@ -208,20 +208,20 @@ export function pinHostClock(): MockInstance<typeof Date.now> {
  */
 export async function pinBrowserClock(page: Page, time = WEB_FIXTURE_TIME): Promise<void> {
   // The worker's `new Date()` keeps the real clock even when `Date.now` is pinned.
-  const offset = time - new Date().getTime()
+  const offset = time - new Date().getTime();
   const install = (offset: number): void => {
-    const NativeDate = Date
-    const now = (): number => NativeDate.now() + offset
+    const NativeDate = Date;
+    const now = (): number => NativeDate.now() + offset;
     globalThis.Date = new Proxy(NativeDate, {
       construct: (target, args, newTarget): Date =>
         Reflect.construct(target, args.length === 0 ? [now()] : args, newTarget) as Date,
       apply: () => new NativeDate(now()).toString(),
       get: (target, property, receiver): unknown =>
-        property === 'now' ? now : Reflect.get(target, property, receiver),
-    })
-  }
-  await page.addInitScript(install, offset)
-  await page.evaluate(install, offset)
+        property === "now" ? now : Reflect.get(target, property, receiver),
+    });
+  };
+  await page.addInitScript(install, offset);
+  await page.evaluate(install, offset);
 }
 
 /**
@@ -238,9 +238,9 @@ export async function pinBrowserClock(page: Page, time = WEB_FIXTURE_TIME): Prom
 export async function newEnglishPage(browser: Browser, height = 1000): Promise<Page> {
   return await browser.newPage({
     viewport: { width: 1680, height },
-    locale: 'en-US',
-    timezoneId: 'Asia/Shanghai',
-  })
+    locale: "en-US",
+    timezoneId: "Asia/Shanghai",
+  });
 }
 
 /**
@@ -252,13 +252,13 @@ export async function scrollIntoView(target: Locator): Promise<void> {
     .poll(
       () =>
         target.evaluate((element) => {
-          if (!element.isConnected) return false
-          element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' })
-          return true
+          if (!element.isConnected) return false;
+          element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+          return true;
         }),
       { timeout: 10_000 },
     )
-    .toBe(true)
+    .toBe(true);
 }
 
 /**
@@ -266,10 +266,10 @@ export async function scrollIntoView(target: Locator): Promise<void> {
  * @param page - Page showing the English Chat history control.
  */
 export async function loadEarlierChatPage(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Load earlier', exact: true }).evaluate((button) => {
-    button.focus({ preventScroll: true })
-  })
-  await page.keyboard.press('Enter')
+  await page.getByRole("button", { name: "Load earlier", exact: true }).evaluate((button) => {
+    button.focus({ preventScroll: true });
+  });
+  await page.keyboard.press("Enter");
 }
 
 /**
@@ -279,13 +279,13 @@ export async function loadEarlierChatPage(page: Page): Promise<void> {
  * @param page - page containing the Chat view.
  */
 export async function expandTurnProcesses(page: Page): Promise<void> {
-  const controls = page.locator('[data-turn-process], [data-process-activity]')
-  await controls.first().waitFor({ state: 'visible', timeout: 10_000 })
-  const count = await controls.count()
+  const controls = page.locator("[data-turn-process], [data-process-activity]");
+  await controls.first().waitFor({ state: "visible", timeout: 10_000 });
+  const count = await controls.count();
   for (let index = 0; index < count; index++) {
-    const control = controls.nth(index)
-    if ((await control.isVisible()) && (await control.getAttribute('aria-expanded')) === 'false')
-      await control.click()
+    const control = controls.nth(index);
+    if ((await control.isVisible()) && (await control.getAttribute("aria-expanded")) === "false")
+      await control.click();
   }
 }
 
@@ -295,50 +295,50 @@ export async function expandTurnProcesses(page: Page): Promise<void> {
  * @param target - descendant whose outer process disclosures should open.
  */
 export async function expandOwningTurnProcess(page: Page, target: Locator): Promise<void> {
-  if (await target.isVisible()) return
+  if (await target.isVisible()) return;
   const turn = await target.evaluate(
-    element => element.closest<HTMLElement>('[data-chat-turn]')?.dataset.chatTurn,
-  )
+    (element) => element.closest<HTMLElement>("[data-chat-turn]")?.dataset.chatTurn,
+  );
   if (turn !== undefined) {
-    const control = page.locator(`[data-turn-process="${turn}"]`)
+    const control = page.locator(`[data-turn-process="${turn}"]`);
     if ((await control.count()) > 0) {
-      await control.waitFor({ state: 'visible', timeout: 10_000 })
-      if ((await control.getAttribute('aria-expanded')) === 'false') await control.click()
+      await control.waitFor({ state: "visible", timeout: 10_000 });
+      if ((await control.getAttribute("aria-expanded")) === "false") await control.click();
     }
   }
-  const group = target.locator('xpath=ancestor::*[@data-chat-group-key][1]')
-  const header = group.locator('[data-process-activity]').first()
-  if ((await header.isVisible()) && (await header.getAttribute('aria-expanded')) === 'false')
-    await header.click()
+  const group = target.locator("xpath=ancestor::*[@data-chat-group-key][1]");
+  const header = group.locator("[data-process-activity]").first();
+  if ((await header.isVisible()) && (await header.getAttribute("aria-expanded")) === "false")
+    await header.click();
 }
 
 /** Fail loud on a stale checkout instead of testing yesterday's bundle. */
 export function requireDist(): void {
   if (!existsSync(DIST_INDEX)) {
     throw new Error(
-      'web app dist not built — run `pnpm run build` from the repository root (`pnpm run test:web` does this first)',
-    )
+      "web app dist not built — run `pnpm run build` from the repository root (`pnpm run test:web` does this first)",
+    );
   }
 }
 
 /** OS-assigned free port, released before use (the spawned `dsh web` needs a concrete --port). */
 export function probeFreePort(): Promise<number> {
   return new Promise((resolvePort, reject) => {
-    const probe = createServer()
-    probe.once('error', reject)
-    probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address()
-      if (address === null || typeof address === 'string') {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const address = probe.address();
+      if (address === null || typeof address === "string") {
         probe.close(() => {
-          reject(new Error('port probe returned no address'))
-        })
-        return
+          reject(new Error("port probe returned no address"));
+        });
+        return;
       }
       probe.close(() => {
-        resolvePort(address.port)
-      })
-    })
-  })
+        resolvePort(address.port);
+      });
+    });
+  });
 }
 
 /**
@@ -348,26 +348,26 @@ export function probeFreePort(): Promise<number> {
  */
 export async function revealNavigationDrawer(
   page: Page,
-  locale: 'en' | 'zh' | 'ja',
+  locale: "en" | "zh" | "ja",
 ): Promise<void> {
   const drawer = await page.evaluate(
     () =>
-      window.innerWidth < 768 && !document.documentElement.hasAttribute('data-windows-titlebar'),
-  )
+      window.innerWidth < 768 && !document.documentElement.hasAttribute("data-windows-titlebar"),
+  );
   await page.waitForFunction(
-    expected => Boolean(document.querySelector('[data-sidebar-drawer]')) === expected,
+    (expected) => Boolean(document.querySelector("[data-sidebar-drawer]")) === expected,
     drawer,
-  )
-  const closed = page.locator('[data-sidebar-drawer][data-sidebar-collapsed]')
-  if ((await closed.count()) === 0) return
+  );
+  const closed = page.locator("[data-sidebar-drawer][data-sidebar-collapsed]");
+  if ((await closed.count()) === 0) return;
   await page
-    .locator('[data-shell-leading]')
-    .getByRole('button', {
-      name: { en: 'Open sidebar', zh: '打开侧边栏', ja: 'サイドバーを開く' }[locale],
+    .locator("[data-shell-leading]")
+    .getByRole("button", {
+      name: { en: "Open sidebar", zh: "打开侧边栏", ja: "サイドバーを開く" }[locale],
       exact: true,
     })
-    .click()
-  await closed.waitFor({ state: 'detached' })
+    .click();
+  await closed.waitFor({ state: "detached" });
 }
 
 /**
@@ -390,25 +390,25 @@ export async function revealNavigationDrawer(
 export async function connectFreshWorkspace(
   page: Page,
   root: string,
-  name = 'workspace',
+  name = "workspace",
 ): Promise<void> {
-  mkdirSync(join(root, name), { recursive: true })
-  await revealNavigationDrawer(page, 'en')
-  await page.getByRole('button', { name: 'Add workspace', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: 'Select Workspace Directory' })
-  await dialog.waitFor({ timeout: 10_000 })
-  await dialog.getByRole('button', { name: 'Edit path' }).click()
-  const pathInput = dialog.getByRole('textbox', { name: 'Edit path' })
-  await pathInput.fill(join(root, name))
-  await pathInput.press('Enter')
-  await dialog.getByRole('button', { name: 'Open', exact: true }).click()
+  mkdirSync(join(root, name), { recursive: true });
+  await revealNavigationDrawer(page, "en");
+  await page.getByRole("button", { name: "Add workspace", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Select Workspace Directory" });
+  await dialog.waitFor({ timeout: 10_000 });
+  await dialog.getByRole("button", { name: "Edit path" }).click();
+  const pathInput = dialog.getByRole("textbox", { name: "Edit path" });
+  await pathInput.fill(join(root, name));
+  await pathInput.press("Enter");
+  await dialog.getByRole("button", { name: "Open", exact: true }).click();
   // The pick connected the workspace: the blank session's live composer
   // replaces the locked placeholder and enables.
   await page
     .locator(
       '[data-composer-input][contenteditable="true"][data-placeholder="Describe what you want to build, / commands, @ files or sessions"]',
     )
-    .waitFor({ timeout: 15_000 })
+    .waitFor({ timeout: 15_000 });
 }
 
 /**
@@ -424,25 +424,25 @@ export async function connectFreshWorkspace(
 export async function connectFreshWorkspaceZh(
   page: Page,
   root: string,
-  name = 'workspace',
+  name = "workspace",
   modelAvailable = true,
 ): Promise<void> {
-  mkdirSync(join(root, name), { recursive: true })
-  await revealNavigationDrawer(page, 'zh')
-  await page.getByRole('button', { name: '添加工作区', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: '选择工作区目录' })
-  await dialog.waitFor({ timeout: 10_000 })
-  await dialog.getByRole('button', { name: '编辑路径' }).click()
-  const pathInput = dialog.getByRole('textbox', { name: '编辑路径' })
-  await pathInput.fill(join(root, name))
-  await pathInput.press('Enter')
-  await dialog.getByRole('button', { name: '打开', exact: true }).click()
-  const editable = modelAvailable ? '[contenteditable="true"]' : ''
+  mkdirSync(join(root, name), { recursive: true });
+  await revealNavigationDrawer(page, "zh");
+  await page.getByRole("button", { name: "添加工作区", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "选择工作区目录" });
+  await dialog.waitFor({ timeout: 10_000 });
+  await dialog.getByRole("button", { name: "编辑路径" }).click();
+  const pathInput = dialog.getByRole("textbox", { name: "编辑路径" });
+  await pathInput.fill(join(root, name));
+  await pathInput.press("Enter");
+  await dialog.getByRole("button", { name: "打开", exact: true }).click();
+  const editable = modelAvailable ? '[contenteditable="true"]' : "";
   await page
     .locator(
       `[data-composer-input]${editable}[data-placeholder="描述你想要构建的内容, / 调用指令, @ 文件或对话"]`,
     )
-    .waitFor({ timeout: 15_000 })
+    .waitFor({ timeout: 15_000 });
 }
 
 /**
@@ -468,22 +468,22 @@ export async function connectFreshWorkspaceZh(
  */
 export async function writeComposerDraft(
   page: Page,
-  input: ReturnType<Page['locator']>,
+  input: ReturnType<Page["locator"]>,
   text: string,
 ): Promise<void> {
-  await input.and(page.locator('[contenteditable="true"]')).waitFor({ timeout: 15_000 })
-  await input.click()
-  await page.keyboard.press('ControlOrMeta+A')
-  if (text === '') await page.keyboard.press('Backspace')
-  else await page.keyboard.type(text)
+  await input.and(page.locator('[contenteditable="true"]')).waitFor({ timeout: 15_000 });
+  await input.click();
+  await page.keyboard.press("ControlOrMeta+A");
+  if (text === "") await page.keyboard.press("Backspace");
+  else await page.keyboard.type(text);
 }
 
 /** Failure evidence goes to the gitignored .artifacts/ (repo convention). */
 export async function saveFailureShot(page: Page, name: string): Promise<void> {
-  const dir = fileURLToPath(new URL('../../../.artifacts', import.meta.url))
-  mkdirSync(dir, { recursive: true })
+  const dir = fileURLToPath(new URL("../../../.artifacts", import.meta.url));
+  mkdirSync(dir, { recursive: true });
   try {
-    await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true })
+    await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true });
   } catch {
     // Best-effort evidence: a dead page/browser at failure time must not mask the real assertion error.
   }
@@ -498,21 +498,21 @@ export async function saveFailureShot(page: Page, name: string): Promise<void> {
  */
 export async function expectTooltipOnTop(tooltip: Locator): Promise<void> {
   const probes = await tooltip.evaluate((bubble) => {
-    const rect = bubble.getBoundingClientRect()
-    const previous = bubble.style.pointerEvents
-    bubble.style.pointerEvents = 'auto'
+    const rect = bubble.getBoundingClientRect();
+    const previous = bubble.style.pointerEvents;
+    bubble.style.pointerEvents = "auto";
     const probe = (y: number): string => {
-      const hit = document.elementFromPoint(rect.left + rect.width / 2, y)
-      if (hit === null) return 'none'
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, y);
+      if (hit === null) return "none";
       return bubble.contains(hit)
-        ? 'tooltip'
-        : `${hit.tagName}.${hit.classList.value}`.slice(0, 120)
-    }
-    const probes = { center: probe(rect.top + rect.height / 2), bottom: probe(rect.bottom - 1) }
-    bubble.style.pointerEvents = previous
-    return probes
-  })
-  expect(probes).toEqual({ center: 'tooltip', bottom: 'tooltip' })
+        ? "tooltip"
+        : `${hit.tagName}.${hit.classList.value}`.slice(0, 120);
+    };
+    const probes = { center: probe(rect.top + rect.height / 2), bottom: probe(rect.bottom - 1) };
+    bubble.style.pointerEvents = previous;
+    return probes;
+  });
+  expect(probes).toEqual({ center: "tooltip", bottom: "tooltip" });
 }
 
 /**
@@ -526,36 +526,36 @@ export async function expectTooltipOnTop(tooltip: Locator): Promise<void> {
  * @returns the engine-owned Context key.
  */
 export function conversationContextKey(kind: string, id: string): string {
-  return `${kind.length}:${kind}${id}`
+  return `${kind.length}:${kind}${id}`;
 }
 
 /** Open Settings through the sidebar account menu.
  * @param page - browser page with the mounted sidebar.
  * @param locale - current UI language.
  */
-export async function openSettings(page: Page, locale: 'en' | 'zh' | 'ja'): Promise<void> {
+export async function openSettings(page: Page, locale: "en" | "zh" | "ja"): Promise<void> {
   const labels = {
-    en: ['Account menu', 'Settings'],
-    zh: ['账号菜单', '设置'],
-    ja: ['アカウントメニュー', '設定'],
-  } as const
-  const trigger = page.getByRole('button', {
+    en: ["Account menu", "Settings"],
+    zh: ["账号菜单", "设置"],
+    ja: ["アカウントメニュー", "設定"],
+  } as const;
+  const trigger = page.getByRole("button", {
     name: labels[locale][0],
     exact: true,
     includeHidden: true,
-  })
-  await trigger.waitFor({ state: 'attached' })
-  await revealNavigationDrawer(page, locale)
+  });
+  await trigger.waitFor({ state: "attached" });
+  await revealNavigationDrawer(page, locale);
   if (!(await trigger.isVisible())) {
     await page
-      .getByRole('button', {
-        name: { en: 'Open sidebar', zh: '打开侧边栏', ja: 'サイドバーを開く' }[locale],
+      .getByRole("button", {
+        name: { en: "Open sidebar", zh: "打开侧边栏", ja: "サイドバーを開く" }[locale],
         exact: true,
       })
-      .click()
+      .click();
   }
-  await trigger.click()
-  await page.getByRole('menuitem', { name: labels[locale][1], exact: true }).click()
+  await trigger.click();
+  await page.getByRole("menuitem", { name: labels[locale][1], exact: true }).click();
 }
 
 /**
@@ -565,10 +565,10 @@ export async function openSettings(page: Page, locale: 'en' | 'zh' | 'ja'): Prom
  * @returns the panel's expected bounding box.
  */
 export function fullscreenBox(viewport: { width: number; height: number }): {
-  x: number
-  y: number
-  width: number
-  height: number
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 } {
-  return { x: -1, y: 0, width: viewport.width + 1, height: viewport.height }
+  return { x: -1, y: 0, width: viewport.width + 1, height: viewport.height };
 }

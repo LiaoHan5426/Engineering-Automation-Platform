@@ -1,75 +1,83 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
-import { brandString } from '@deepseek-ai/dsh-brand'
-import type { ToolCallId } from '@deepseek-ai/dsh-llm'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { SessionId } from '@deepseek-ai/dsh-session'
-import ApprovalService, { type ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
-import { makeBridgeHarness, type BridgeHarness } from './harness.ts'
+import { afterEach, describe, expect, it } from "vite-plus/test";
+import { PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
+import { brandString } from "@deepseek-ai/dsh-brand";
+import type { ToolCallId } from "@deepseek-ai/dsh-llm";
+import type { Agent } from "@deepseek-ai/dsh-agent";
+import type { SessionId } from "@deepseek-ai/dsh-session";
+import ApprovalService, { type ApprovalRequest } from "@deepseek-ai/dsh-user-approval";
+import { makeBridgeHarness, type BridgeHarness } from "./harness.ts";
 
-describe('ACP machine permission policy', () => {
-  let harness: BridgeHarness | undefined
+describe("ACP machine permission policy", () => {
+  let harness: BridgeHarness | undefined;
 
   afterEach(async () => {
-    await harness?.dispose()
-    harness = undefined
-  })
+    await harness?.dispose();
+    harness = undefined;
+  });
 
   async function ownedRequest(overrides: Partial<ApprovalRequest> = {}): Promise<ApprovalRequest> {
-    if (harness === undefined) throw new Error('missing harness')
-    await harness.ctx.plugin(ApprovalService)
-    await harness.client.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {} })
-    const { sessionId } = await harness.client.newSession({ cwd: process.cwd(), mcpServers: [] })
-    const agent = harness.ctx.agents.get(brandString<SessionId>(sessionId))!
-    agent.session.append('turn/start', { turn: 1 })
-    agent.session.append('step/start', { turn: 1, step: 1 })
-    agent.session.append('tool/call', { turn: 1, step: 1, callId: brandString<ToolCallId>('call-9'), name: 'bash', arguments: '{}' })
-    return { agent, toolName: 'bash', callId: brandString<ToolCallId>('call-9'), ...overrides }
+    if (harness === undefined) throw new Error("missing harness");
+    await harness.ctx.plugin(ApprovalService);
+    await harness.client.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {} });
+    const { sessionId } = await harness.client.newSession({ cwd: process.cwd(), mcpServers: [] });
+    const agent = harness.ctx.agents.get(brandString<SessionId>(sessionId))!;
+    agent.session.append("turn/start", { turn: 1 });
+    agent.session.append("step/start", { turn: 1, step: 1 });
+    agent.session.append("tool/call", {
+      turn: 1,
+      step: 1,
+      callId: brandString<ToolCallId>("call-9"),
+      name: "bash",
+      arguments: "{}",
+    });
+    return { agent, toolName: "bash", callId: brandString<ToolCallId>("call-9"), ...overrides };
   }
 
-  it('maps the two advertised one-shot choices', async () => {
-    harness = await makeBridgeHarness()
+  it("maps the two advertised one-shot choices", async () => {
+    harness = await makeBridgeHarness();
     harness.onPermission = () => {
       expect(harness?.sessionUpdates.at(-1)?.update).toMatchObject({
-        sessionUpdate: 'tool_call',
-        toolCallId: 'call-9',
-      })
-      return { outcome: { outcome: 'selected', optionId: 'allow-once' } }
-    }
-    const request = await ownedRequest()
-    await expect(harness.ctx.approval.request(request)).resolves.toBe('allowed-once')
+        sessionUpdate: "tool_call",
+        toolCallId: "call-9",
+      });
+      return { outcome: { outcome: "selected", optionId: "allow-once" } };
+    };
+    const request = await ownedRequest();
+    await expect(harness.ctx.approval.request(request)).resolves.toBe("allowed-once");
     expect(harness.permissionRequests[0]).toMatchObject({
       sessionId: request.agent.session.id,
-      toolCall: { toolCallId: 'call-9' },
+      toolCall: { toolCallId: "call-9" },
       options: [
-        { optionId: 'allow-once', kind: 'allow_once' },
-        { optionId: 'reject-once', kind: 'reject_once' },
+        { optionId: "allow-once", kind: "allow_once" },
+        { optionId: "reject-once", kind: "reject_once" },
       ],
-    })
+    });
 
-    harness.onPermission = () => ({ outcome: { outcome: 'selected', optionId: 'reject-once' } })
-    await expect(harness.ctx.approval.request(request)).resolves.toBe('rejected')
-  })
+    harness.onPermission = () => ({ outcome: { outcome: "selected", optionId: "reject-once" } });
+    await expect(harness.ctx.approval.request(request)).resolves.toBe("rejected");
+  });
 
-  it('maps cancellation and unknown choices without granting access', async () => {
-    harness = await makeBridgeHarness()
-    const request = await ownedRequest()
-    await expect(harness.ctx.approval.request(request)).resolves.toBe('cancelled')
-    harness.onPermission = () => ({ outcome: { outcome: 'selected', optionId: 'unknown-grant' } })
-    await expect(harness.ctx.approval.request(request)).resolves.toBe('rejected')
-  })
+  it("maps cancellation and unknown choices without granting access", async () => {
+    harness = await makeBridgeHarness();
+    const request = await ownedRequest();
+    await expect(harness.ctx.approval.request(request)).resolves.toBe("cancelled");
+    harness.onPermission = () => ({ outcome: { outcome: "selected", optionId: "unknown-grant" } });
+    await expect(harness.ctx.approval.request(request)).resolves.toBe("rejected");
+  });
 
-  it('fails closed when the client errors the permission request', async () => {
-    harness = await makeBridgeHarness()
-    const request = await ownedRequest()
-    harness.onPermission = () => { throw new Error('client gone') }
-    await expect(harness.ctx.approval.request(request)).resolves.toBe('unavailable')
-  })
+  it("fails closed when the client errors the permission request", async () => {
+    harness = await makeBridgeHarness();
+    const request = await ownedRequest();
+    harness.onPermission = () => {
+      throw new Error("client gone");
+    };
+    await expect(harness.ctx.approval.request(request)).resolves.toBe("unavailable");
+  });
 
-  it('delegates a same-id foreign agent', async () => {
-    harness = await makeBridgeHarness()
-    const request = await ownedRequest()
-    const events = [{ type: 'turn/start', seq: 0, time: 0, data: { turn: 1 } }]
+  it("delegates a same-id foreign agent", async () => {
+    harness = await makeBridgeHarness();
+    const request = await ownedRequest();
+    const events = [{ type: "turn/start", seq: 0, time: 0, data: { turn: 1 } }];
     const foreign = {
       session: {
         id: request.agent.session.id,
@@ -78,17 +86,23 @@ describe('ACP machine permission policy', () => {
         snapshotEvents: () => events,
         append: () => ({}),
       },
-    } as unknown as Agent
-    await expect(harness.ctx.approval.request({ agent: foreign, toolName: 'bash', callId: brandString<ToolCallId>('call') }))
-      .resolves.toBe('unavailable')
-    expect(harness.permissionRequests).toHaveLength(0)
-  })
+    } as unknown as Agent;
+    await expect(
+      harness.ctx.approval.request({
+        agent: foreign,
+        toolName: "bash",
+        callId: brandString<ToolCallId>("call"),
+      }),
+    ).resolves.toBe("unavailable");
+    expect(harness.permissionRequests).toHaveLength(0);
+  });
 
-  it('delegates requests that have no protocol tool-call identity', async () => {
-    harness = await makeBridgeHarness()
-    const request = await ownedRequest()
-    await expect(harness.ctx.approval.request({ agent: request.agent, toolName: request.toolName }))
-      .resolves.toBe('unavailable')
-    expect(harness.permissionRequests).toHaveLength(0)
-  })
-})
+  it("delegates requests that have no protocol tool-call identity", async () => {
+    harness = await makeBridgeHarness();
+    const request = await ownedRequest();
+    await expect(
+      harness.ctx.approval.request({ agent: request.agent, toolName: request.toolName }),
+    ).resolves.toBe("unavailable");
+    expect(harness.permissionRequests).toHaveLength(0);
+  });
+});

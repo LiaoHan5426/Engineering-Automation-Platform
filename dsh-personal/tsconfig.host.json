@@ -9,9 +9,9 @@
   },
   "include": [
     // Node build tooling used by the real Host Vue smoke; the suffix names its output face.
-    "packages/client/tsdown.client.ts",
-    "packages/client/file-upload/tsdown.config.ts",
-    "packages/client/ui-sidebar-documentpreview/tsdown.config.ts",
+    "packages/client/pack.client.ts",
+    "packages/client/file-upload/vite.config.ts",
+    "packages/client/ui-sidebar-documentpreview/vite.config.ts",
     "snapshots/session/headless.snapshot.ts",
     "apps/web/tests/home-whale.e2e.ts",
     "apps/web/tests/sidebar-drawer.e2e.ts",

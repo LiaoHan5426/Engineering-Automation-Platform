@@ -1,16 +1,17 @@
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { execa } from 'execa'
-import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
-import { describe, expect, it } from 'vitest'
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execa } from "execa";
+import { SESSION_FORMAT_VERSION } from "@deepseek-ai/dsh-session";
+import { describe, expect, it } from "vite-plus/test";
 
-const packageRoot = fileURLToPath(new URL('..', import.meta.url))
-const built = ['lib/index.js', 'lib/worker.cjs']
-  .every(path => existsSync(join(packageRoot, path)))
+const packageRoot = fileURLToPath(new URL("..", import.meta.url));
+const built = ["lib/index.js", "lib/worker.cjs"].every((path) =>
+  existsSync(join(packageRoot, path)),
+);
 
-describe.skipIf(!built)('built migration verifier (plain node)', () => {
-  it('publishes history and verifies it without runtime workspace imports', async () => {
+describe.skipIf(!built)("built migration verifier (plain node)", () => {
+  it("publishes history and verifies it without runtime workspace imports", async () => {
     const script = `
       import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
       import { tmpdir } from 'node:os'
@@ -71,22 +72,30 @@ describe.skipIf(!built)('built migration verifier (plain node)', () => {
         await ctx.fiber.dispose()
         await rm(root, { recursive: true, force: true })
       }
-    `
+    `;
     const { exitCode, stdout, stderr, timedOut, signal } = await execa(
       process.execPath,
-      ['--input-type=module', '-e', script],
+      ["--input-type=module", "-e", script],
       {
-        cwd: packageRoot, env: { NODE_PATH: undefined, NODE_OPTIONS: undefined },
-        stdin: 'ignore', timeout: 30_000, killSignal: 'SIGKILL', reject: false,
+        cwd: packageRoot,
+        env: { NODE_PATH: undefined, NODE_OPTIONS: undefined },
+        stdin: "ignore",
+        timeout: 30_000,
+        killSignal: "SIGKILL",
+        reject: false,
       },
-    )
+    );
 
-    expect(timedOut).toBe(false)
-    expect(signal).toBeUndefined()
-    expect(exitCode, `stderr:\n${stderr}`).toBe(0)
+    expect(timedOut).toBe(false);
+    expect(signal).toBeUndefined();
+    expect(exitCode, `stderr:\n${stderr}`).toBe(0);
     expect(JSON.parse(stdout.trim())).toEqual({
-      id: 'built-migration-worker', version: SESSION_FORMAT_VERSION, verified: true, refused: false,
-      refusal: 'current session generation contains 0 events, expected 1', terminations: 0,
-    })
-  })
-})
+      id: "built-migration-worker",
+      version: SESSION_FORMAT_VERSION,
+      verified: true,
+      refused: false,
+      refusal: "current session generation contains 0 events, expected 1",
+      terminations: 0,
+    });
+  });
+});

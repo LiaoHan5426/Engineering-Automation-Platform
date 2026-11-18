@@ -1,35 +1,35 @@
 // @vitest-environment jsdom
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { ClientEntryState } from '@deepseek-ai/dsh-client-modules/client'
-import type { PluginEntryId } from '@deepseek-ai/dsh-api-remotes/client'
-import { Context } from '@deepseek-ai/cordis'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
-import { fireEvent, screen, waitFor } from '@testing-library/dom'
-import { defineComponent, h } from 'vue'
-import { cleanup, render, act } from '../../../test-support/client-runtime/src/vue-test.ts'
-import { nextTick } from 'vue'
+import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
+import type { ClientEntryState } from "@deepseek-ai/dsh-client-modules/client";
+import type { PluginEntryId } from "@deepseek-ai/dsh-api-remotes/client";
+import { Context } from "@deepseek-ai/cordis";
+import { LocaleRuntime } from "@deepseek-ai/dsh-client-locale/client";
+import { bindSnapshotSelector } from "@deepseek-ai/dsh-client-test-runtime";
+import { fireEvent, screen, waitFor } from "@testing-library/dom";
+import { defineComponent, h } from "vue";
+import { cleanup, render, act } from "../../../test-support/client-runtime/src/vue-test.ts";
+import { nextTick } from "vue";
 
-import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
-import { PluginInventorySettingsTab } from '../src/client/PluginInventorySettingsTab.tsx'
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
+import { PluginInventorySettingsTab } from "../src/client/PluginInventorySettingsTab.tsx";
 import type {
   PluginInventorySettingsTabInjected,
   PluginInventorySettingsTabProps,
-} from '../src/client/PluginInventorySettingsTab.tsx'
-import { en, zh, type PluginInventoryLocaleKey } from '../src/client/locales.ts'
-afterEach(cleanup)
-type Snapshot = Awaited<ReturnType<PluginInventorySettingsTabInjected['list']>>
+} from "../src/client/PluginInventorySettingsTab.tsx";
+import { en, zh, type PluginInventoryLocaleKey } from "../src/client/locales.ts";
+afterEach(cleanup);
+type Snapshot = Awaited<ReturnType<PluginInventorySettingsTabInjected["list"]>>;
 const t = ((key: PluginInventoryLocaleKey, params?: Record<string, string>): string =>
   Object.entries(params ?? {}).reduce(
     (text, [name, value]) => text.replaceAll(`{${name}}`, value),
     en[key],
-  )) as PluginInventorySettingsTabProps['t']
+  )) as PluginInventorySettingsTabProps["t"];
 function props(
-  list: PluginInventorySettingsTabInjected['list'],
-  presetName: PluginInventorySettingsTabInjected['presetName'] = preset =>
+  list: PluginInventorySettingsTabInjected["list"],
+  presetName: PluginInventorySettingsTabInjected["presetName"] = (preset) =>
     preset.name ?? preset.id,
-  resolveText: PluginInventorySettingsTabInjected['resolveText'] = text =>
-    typeof text === 'string' ? text : text.en,
+  resolveText: PluginInventorySettingsTabInjected["resolveText"] = (text) =>
+    typeof text === "string" ? text : text.en,
 ): PluginInventorySettingsTabProps {
   return {
     t,
@@ -40,1008 +40,1094 @@ function props(
       createSnapshotStore<ClientEntryState>({ syncing: false, failures: [] }),
     ),
     retryClient: vi.fn(),
-  } as PluginInventorySettingsTabProps
+  } as PluginInventorySettingsTabProps;
 }
-function localizedProps(list: PluginInventorySettingsTabInjected['list']) {
-  const ctx = new Context()
+function localizedProps(list: PluginInventorySettingsTabInjected["list"]) {
+  const ctx = new Context();
   onTestFinished(async () => {
-    await ctx.fiber.dispose()
-  })
-  const locale = new LocaleRuntime(ctx)
+    await ctx.fiber.dispose();
+  });
+  const locale = new LocaleRuntime(ctx);
   ctx.effect(
-    () => locale.register('settings.pluginInventory', 'en', en),
-    'test: English inventory dictionary',
-  )
+    () => locale.register("settings.pluginInventory", "en", en),
+    "test: English inventory dictionary",
+  );
   ctx.effect(
-    () => locale.register('settings.pluginInventory', 'zh', zh),
-    'test: Chinese inventory dictionary',
-  )
-  locale.setLocale('en')
+    () => locale.register("settings.pluginInventory", "zh", zh),
+    "test: Chinese inventory dictionary",
+  );
+  locale.setLocale("en");
   const pageProps: PluginInventorySettingsTabProps = {
     ...props(
       list,
-      preset => preset.name ?? preset.id,
-      text => locale.resolveText(text),
+      (preset) => preset.name ?? preset.id,
+      (text) => locale.resolveText(text),
     ),
-    t: locale.bind('settings.pluginInventory'),
-  }
+    t: locale.bind("settings.pluginInventory"),
+  };
   const Page = defineComponent(() => {
-    const revision = bindSnapshotSelector(locale)(snapshot => snapshot.revision)
+    const revision = bindSnapshotSelector(locale)((snapshot) => snapshot.revision);
     return () => {
-      void revision.value
+      void revision.value;
       return h(PluginInventorySettingsTab, {
         ...pageProps,
-        t: locale.bind('settings.pluginInventory'),
-        resolveText: text => locale.resolveText(text),
-      })
-    }
-  })
-  return { locale, Page }
+        t: locale.bind("settings.pluginInventory"),
+        resolveText: (text) => locale.resolveText(text),
+      });
+    };
+  });
+  return { locale, Page };
 }
 /** A deployment with a roster: one failed global row, two preset-provided rows. */
 const SNAPSHOT = {
   entries: [
-    { entryId: 'telemetry', moduleName: '@fixture/telemetry', enabled: true, fiberPhase: 'failed' },
-    { entryId: 'timer', moduleName: 'cordis:timer', enabled: true, fiberPhase: 'active' },
-    { entryId: '8a1b2c3d', moduleName: '@deepseek-ai/cordis-plugin-hmr', enabled: true, fiberPhase: 'active' },
-    { entryId: 'unobserved', moduleName: '@fixture/unobserved-name', enabled: true, fiberPhase: null },
-    { entryId: 'bash-host', moduleName: '@deepseek-ai/dsh-tool-bash', enabled: false, fiberPhase: null },
-    { entryId: 'fs-host', moduleName: '@deepseek-ai/dsh-tool-fs', enabled: false, fiberPhase: null },
-    { entryId: 'dormant', moduleName: '@fixture/dormant', enabled: false, fiberPhase: null },
+    { entryId: "telemetry", moduleName: "@fixture/telemetry", enabled: true, fiberPhase: "failed" },
+    { entryId: "timer", moduleName: "cordis:timer", enabled: true, fiberPhase: "active" },
+    {
+      entryId: "8a1b2c3d",
+      moduleName: "@deepseek-ai/cordis-plugin-hmr",
+      enabled: true,
+      fiberPhase: "active",
+    },
+    {
+      entryId: "unobserved",
+      moduleName: "@fixture/unobserved-name",
+      enabled: true,
+      fiberPhase: null,
+    },
+    {
+      entryId: "bash-host",
+      moduleName: "@deepseek-ai/dsh-tool-bash",
+      enabled: false,
+      fiberPhase: null,
+    },
+    {
+      entryId: "fs-host",
+      moduleName: "@deepseek-ai/dsh-tool-fs",
+      enabled: false,
+      fiberPhase: null,
+    },
+    { entryId: "dormant", moduleName: "@fixture/dormant", enabled: false, fiberPhase: null },
   ],
   agentPresets: [
     {
-      id: 'standard',
-      name: '标准模式',
+      id: "standard",
+      name: "标准模式",
       isDefault: true,
       rows: [
-        { entryId: 'bash', moduleName: '@deepseek-ai/dsh-tool-bash', enabled: true, fiberPhase: 'active' },
-        { entryId: 'fs', moduleName: '@deepseek-ai/dsh-tool-fs', enabled: true, fiberPhase: null },
         {
-          entryId: 'pwsh',
-          moduleName: '@fixture/pwsh',
-          enabled: 'conditional',
-          condition: 'process.platform === \'win32\'',
+          entryId: "bash",
+          moduleName: "@deepseek-ai/dsh-tool-bash",
+          enabled: true,
+          fiberPhase: "active",
+        },
+        { entryId: "fs", moduleName: "@deepseek-ai/dsh-tool-fs", enabled: true, fiberPhase: null },
+        {
+          entryId: "pwsh",
+          moduleName: "@fixture/pwsh",
+          enabled: "conditional",
+          condition: "process.platform === 'win32'",
           fiberPhase: null,
         },
-        { entryId: 'codex', moduleName: '@fixture/codex', enabled: false, fiberPhase: null },
-        { entryId: 'crashy', moduleName: '@fixture/crashy', enabled: true, fiberPhase: 'failed' },
-        { entryId: null, moduleName: '@fixture/anonymous', enabled: true, fiberPhase: null },
+        { entryId: "codex", moduleName: "@fixture/codex", enabled: false, fiberPhase: null },
+        { entryId: "crashy", moduleName: "@fixture/crashy", enabled: true, fiberPhase: "failed" },
+        { entryId: null, moduleName: "@fixture/anonymous", enabled: true, fiberPhase: null },
       ],
     },
     {
-      id: 'ptc',
+      id: "ptc",
       isDefault: false,
       rows: [
-        { entryId: 'bash', moduleName: '@deepseek-ai/dsh-tool-bash', enabled: true, fiberPhase: null },
-        { entryId: 'bash-fork', moduleName: '@deepseek-ai/dsh-tool-bash', enabled: true, fiberPhase: null },
-        { entryId: 'fs', moduleName: '@deepseek-ai/dsh-tool-fs', enabled: 'conditional', fiberPhase: null },
+        {
+          entryId: "bash",
+          moduleName: "@deepseek-ai/dsh-tool-bash",
+          enabled: true,
+          fiberPhase: null,
+        },
+        {
+          entryId: "bash-fork",
+          moduleName: "@deepseek-ai/dsh-tool-bash",
+          enabled: true,
+          fiberPhase: null,
+        },
+        {
+          entryId: "fs",
+          moduleName: "@deepseek-ai/dsh-tool-fs",
+          enabled: "conditional",
+          fiberPhase: null,
+        },
       ],
     },
-    { id: 'shattered', name: '坏预设', isDefault: false, broken: 'the composition file is missing', rows: [] },
+    {
+      id: "shattered",
+      name: "坏预设",
+      isDefault: false,
+      broken: "the composition file is missing",
+      rows: [],
+    },
   ],
-} as unknown as Snapshot
+} as unknown as Snapshot;
 async function renderReady(snapshot: Snapshot = SNAPSHOT): Promise<ReturnType<typeof render>> {
   const view = render(
     h(PluginInventorySettingsTab, {
       ...props(async () => snapshot),
     }),
-  )
-  await screen.findByRole('searchbox', { name: en.search })
-  return view
+  );
+  await screen.findByRole("searchbox", { name: en.search });
+  return view;
 }
 const globalToggle = (): HTMLElement =>
-  screen.getByRole('button', { name: (name: string) => name.startsWith(en.globalTitle) })
-const presetToggle = (): HTMLElement => screen.getByRole('button', { name: en.presetTitle })
-describe('PluginInventorySettingsTab', () => {
-  it.each(['global', 'preset'])(
-    'shortens package and module name fallbacks in the %s inventory',
+  screen.getByRole("button", { name: (name: string) => name.startsWith(en.globalTitle) });
+const presetToggle = (): HTMLElement => screen.getByRole("button", { name: en.presetTitle });
+describe("PluginInventorySettingsTab", () => {
+  it.each(["global", "preset"])(
+    "shortens package and module name fallbacks in the %s inventory",
     async (scope) => {
       const names = [
-        ['@deepseek-ai/dsh-tool-subagent', 'tool-subagent'],
-        ['@deepseek-ai/dsh-host-web', 'web'],
-        ['@deepseek-ai/dsh-client-tabs', 'tabs'],
-        ['@deepseek-ai/cordis-plugin-hmr', 'hmr'],
-        ['cordis:timer', 'timer'],
-        ['@acme/dsh-sidebar/navigation', 'sidebar/navigation'],
-        ['plain-plugin', 'plain-plugin'],
-      ] as const
+        ["@deepseek-ai/dsh-tool-subagent", "tool-subagent"],
+        ["@deepseek-ai/dsh-host-web", "web"],
+        ["@deepseek-ai/dsh-client-tabs", "tabs"],
+        ["@deepseek-ai/cordis-plugin-hmr", "hmr"],
+        ["cordis:timer", "timer"],
+        ["@acme/dsh-sidebar/navigation", "sidebar/navigation"],
+        ["plain-plugin", "plain-plugin"],
+      ] as const;
       const rows = names.flatMap(([moduleName], index) =>
-        [false, true].map(fromManifest => ({
+        [false, true].map((fromManifest) => ({
           entryId: `include:short-${String(index)}-${String(fromManifest)}` as PluginEntryId,
           moduleName,
           enabled: true,
           fiberPhase: null,
           ...(fromManifest
-            ? { meta: { title: moduleName, description: 'Package description.' } }
+            ? { meta: { title: moduleName, description: "Package description." } }
             : {}),
         })),
-      )
+      );
       const snapshot: Snapshot =
-        scope === 'global'
+        scope === "global"
           ? { entries: rows }
-          : { entries: [], agentPresets: [{ id: 'custom', isDefault: true, rows }] }
-      const view = await renderReady(snapshot)
-      if (scope === 'global') {
-        fireEvent.click(globalToggle())
-        await nextTick()
+          : { entries: [], agentPresets: [{ id: "custom", isDefault: true, rows }] };
+      const view = await renderReady(snapshot);
+      if (scope === "global") {
+        fireEvent.click(globalToggle());
+        await nextTick();
       }
       for (const [index, [moduleName, title]] of names.entries()) {
         for (const fromManifest of [false, true]) {
-          const entryId = `include:short-${String(index)}-${String(fromManifest)}`
-          const card = screen.getByRole('button', { name: `${title}, ${entryId}, Enabled` })
+          const entryId = `include:short-${String(index)}-${String(fromManifest)}`;
+          const card = screen.getByRole("button", { name: `${title}, ${entryId}, Enabled` });
           if (fromManifest) {
             expect(
-              document.getElementById(card.getAttribute('aria-describedby')!)?.textContent,
-            ).toBe('Package description.')
+              document.getElementById(card.getAttribute("aria-describedby")!)?.textContent,
+            ).toBe("Package description.");
           }
           {
-            fireEvent.click(card)
-            await nextTick()
+            fireEvent.click(card);
+            await nextTick();
           }
-          expect(screen.getByText(en.moduleLabel).nextElementSibling?.textContent).toBe(moduleName)
-          expect(view.container.querySelector('[data-loader-entry]')?.textContent).toBe(entryId)
+          expect(screen.getByText(en.moduleLabel).nextElementSibling?.textContent).toBe(moduleName);
+          expect(view.container.querySelector("[data-loader-entry]")?.textContent).toBe(entryId);
           {
-            fireEvent.click(card)
-            await nextTick()
+            fireEvent.click(card);
+            await nextTick();
           }
         }
       }
       {
-        fireEvent.input(screen.getByRole('searchbox', { name: en.search }), {
-          target: { value: '@deepseek-ai/dsh-tool-subagent' },
-        })
-        await nextTick()
+        fireEvent.input(screen.getByRole("searchbox", { name: en.search }), {
+          target: { value: "@deepseek-ai/dsh-tool-subagent" },
+        });
+        await nextTick();
       }
-      expect(screen.getAllByRole('listitem')).toHaveLength(2)
+      expect(screen.getAllByRole("listitem")).toHaveLength(2);
       expect(
-        screen.getAllByRole('button', { name: /^tool-subagent, include:short-0-/ }),
-      ).toHaveLength(2)
+        screen.getAllByRole("button", { name: /^tool-subagent, include:short-0-/ }),
+      ).toHaveLength(2);
     },
-  )
-  it('keeps authored locale titles verbatim when they resemble module names', async () => {
+  );
+  it("keeps authored locale titles verbatim when they resemble module names", async () => {
     const { locale, Page } = localizedProps(async () => ({
       entries: [
         {
-          entryId: 'include:navigation' as PluginEntryId,
-          moduleName: '@acme/dsh-navigation',
+          entryId: "include:navigation" as PluginEntryId,
+          moduleName: "@acme/dsh-navigation",
           enabled: true,
           fiberPhase: null,
-          meta: { title: { en: 'dsh-Navigation', zh: 'dsh-导航' } },
+          meta: { title: { en: "dsh-Navigation", zh: "dsh-导航" } },
         },
       ],
-    }))
-    const view = render(h(Page))
-    await screen.findByRole('searchbox', { name: en.search })
+    }));
+    const view = render(h(Page));
+    await screen.findByRole("searchbox", { name: en.search });
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
     expect(
-      screen.getByRole('button', { name: 'dsh-Navigation, include:navigation, Enabled' }),
-    ).toBeTruthy()
-    locale.setLocale('zh')
-    await act(() => view.rerender(h(Page)))
+      screen.getByRole("button", { name: "dsh-Navigation, include:navigation, Enabled" }),
+    ).toBeTruthy();
+    locale.setLocale("zh");
+    await act(() => view.rerender(h(Page)));
     expect(
-      screen.getByRole('button', { name: 'dsh-导航, include:navigation, 已启用' }),
-    ).toBeTruthy()
-  })
-  it('localizes global and preset metadata at render time while preserving identities and query state', async () => {
-    const globalError = 'locale/zh.json: invalid title'
-    const presetError = 'locale/fr.json: invalid description'
+      screen.getByRole("button", { name: "dsh-导航, include:navigation, 已启用" }),
+    ).toBeTruthy();
+  });
+  it("localizes global and preset metadata at render time while preserving identities and query state", async () => {
+    const globalError = "locale/zh.json: invalid title";
+    const presetError = "locale/fr.json: invalid description";
     const snapshot: Snapshot = {
       entries: [
         {
-          entryId: 'include:global-navigation' as PluginEntryId,
-          moduleName: '@acme/navigation',
+          entryId: "include:global-navigation" as PluginEntryId,
+          moduleName: "@acme/navigation",
           enabled: true,
-          fiberPhase: 'active',
+          fiberPhase: "active",
           meta: {
-            title: { en: 'Navigation', zh: '导航' },
-            description: { en: 'Global navigation controls', zh: '全局导航控件' },
+            title: { en: "Navigation", zh: "导航" },
+            description: { en: "Global navigation controls", zh: "全局导航控件" },
             error: globalError,
           },
         },
       ],
       agentPresets: [
         {
-          id: 'custom',
-          name: 'My preset',
+          id: "custom",
+          name: "My preset",
           isDefault: true,
           rows: [
             {
-              entryId: 'include:preset-runner',
-              moduleName: '@acme/runner',
+              entryId: "include:preset-runner",
+              moduleName: "@acme/runner",
               enabled: true,
               fiberPhase: null,
               meta: {
-                title: { en: 'Session runner', zh: '会话执行器' },
-                description: { en: 'Run per session', zh: '运行会话命令' },
+                title: { en: "Session runner", zh: "会话执行器" },
+                description: { en: "Run per session", zh: "运行会话命令" },
                 error: presetError,
               },
             },
           ],
         },
       ],
-    }
-    const list = vi.fn(async () => snapshot)
-    const { locale, Page } = localizedProps(list)
-    const view = render(h(Page))
-    await screen.findByRole('searchbox', { name: en.search })
-    expect(screen.getByText(en.presetSubtitle).textContent).toBe(en.presetSubtitle)
-    expect(screen.getByText(en.globalSubtitle).textContent).toBe(en.globalSubtitle)
+    };
+    const list = vi.fn(async () => snapshot);
+    const { locale, Page } = localizedProps(list);
+    const view = render(h(Page));
+    await screen.findByRole("searchbox", { name: en.search });
+    expect(screen.getByText(en.presetSubtitle).textContent).toBe(en.presetSubtitle);
+    expect(screen.getByText(en.globalSubtitle).textContent).toBe(en.globalSubtitle);
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
-    const global = screen.getByRole('button', {
-      name: 'Navigation, include:global-navigation, Enabled',
-    })
-    const preset = screen.getByRole('button', {
-      name: 'Session runner, include:preset-runner, Enabled',
-    })
-    expect(document.getElementById(global.getAttribute('aria-describedby')!)?.textContent).toBe(
-      'Global navigation controls',
-    )
-    expect(document.getElementById(preset.getAttribute('aria-describedby')!)?.textContent).toBe(
-      'Run per session',
-    )
-    expect(screen.getByText(en.metadataError.replace('{error}', globalError))).toBeTruthy()
-    expect(screen.getByText(en.metadataError.replace('{error}', presetError))).toBeTruthy()
-    expect(global.closest('li')?.getAttribute('data-failed')).toBeNull()
+    const global = screen.getByRole("button", {
+      name: "Navigation, include:global-navigation, Enabled",
+    });
+    const preset = screen.getByRole("button", {
+      name: "Session runner, include:preset-runner, Enabled",
+    });
+    expect(document.getElementById(global.getAttribute("aria-describedby")!)?.textContent).toBe(
+      "Global navigation controls",
+    );
+    expect(document.getElementById(preset.getAttribute("aria-describedby")!)?.textContent).toBe(
+      "Run per session",
+    );
+    expect(screen.getByText(en.metadataError.replace("{error}", globalError))).toBeTruthy();
+    expect(screen.getByText(en.metadataError.replace("{error}", presetError))).toBeTruthy();
+    expect(global.closest("li")?.getAttribute("data-failed")).toBeNull();
     {
-      fireEvent.click(global)
-      await nextTick()
+      fireEvent.click(global);
+      await nextTick();
     }
     expect(screen.getByText(en.moduleLabel).nextElementSibling?.textContent).toBe(
-      '@acme/navigation',
-    )
+      "@acme/navigation",
+    );
     {
-      fireEvent.click(preset)
-      await nextTick()
+      fireEvent.click(preset);
+      await nextTick();
     }
-    expect(screen.getByText(en.moduleLabel).nextElementSibling?.textContent).toBe('@acme/runner')
-    expect(view.container.querySelector('[data-loader-entry]')?.textContent).toBe(
-      'include:preset-runner',
-    )
-    locale.setLocale('zh')
-    await act(() => view.rerender(h(Page)))
-    expect(screen.getByText(zh.presetSubtitle).textContent).toBe(zh.presetSubtitle)
-    expect(screen.getByText(zh.globalSubtitle).textContent).toBe(zh.globalSubtitle)
+    expect(screen.getByText(en.moduleLabel).nextElementSibling?.textContent).toBe("@acme/runner");
+    expect(view.container.querySelector("[data-loader-entry]")?.textContent).toBe(
+      "include:preset-runner",
+    );
+    locale.setLocale("zh");
+    await act(() => view.rerender(h(Page)));
+    expect(screen.getByText(zh.presetSubtitle).textContent).toBe(zh.presetSubtitle);
+    expect(screen.getByText(zh.globalSubtitle).textContent).toBe(zh.globalSubtitle);
     expect(
-      screen.getByRole('button', { name: '导航, include:global-navigation, 已启用' }),
-    ).toBeTruthy()
+      screen.getByRole("button", { name: "导航, include:global-navigation, 已启用" }),
+    ).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: '会话执行器, include:preset-runner, 已启用' }),
-    ).toBeTruthy()
-    expect(screen.getByText('全局导航控件')).toBeTruthy()
-    expect(screen.getByText('运行会话命令')).toBeTruthy()
-    expect(screen.getByText(zh.metadataError.replace('{error}', presetError))).toBeTruthy()
-    expect(view.container.querySelector('[data-loader-entry]')?.textContent).toBe(
-      'include:preset-runner',
-    )
-    const search = screen.getByRole('searchbox', { name: zh.search })
-    for (const query of ['导航', '全局导航控件', '@acme/navigation', 'include:global-navigation']) {
+      screen.getByRole("button", { name: "会话执行器, include:preset-runner, 已启用" }),
+    ).toBeTruthy();
+    expect(screen.getByText("全局导航控件")).toBeTruthy();
+    expect(screen.getByText("运行会话命令")).toBeTruthy();
+    expect(screen.getByText(zh.metadataError.replace("{error}", presetError))).toBeTruthy();
+    expect(view.container.querySelector("[data-loader-entry]")?.textContent).toBe(
+      "include:preset-runner",
+    );
+    const search = screen.getByRole("searchbox", { name: zh.search });
+    for (const query of ["导航", "全局导航控件", "@acme/navigation", "include:global-navigation"]) {
       {
-        fireEvent.input(search, { target: { value: query } })
-        await nextTick()
+        fireEvent.input(search, { target: { value: query } });
+        await nextTick();
       }
-      expect(screen.getAllByRole('listitem')).toHaveLength(1)
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
       expect(
-        screen.getByRole('button', { name: '导航, include:global-navigation, 已启用' }),
-      ).toBeTruthy()
+        screen.getByRole("button", { name: "导航, include:global-navigation, 已启用" }),
+      ).toBeTruthy();
     }
     {
-      fireEvent.input(search, { target: { value: '运行会话命令' } })
-      await nextTick()
+      fireEvent.input(search, { target: { value: "运行会话命令" } });
+      await nextTick();
     }
-    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(
-      screen.getByRole('button', { name: '会话执行器, include:preset-runner, 已启用' }),
-    ).toBeTruthy()
+      screen.getByRole("button", { name: "会话执行器, include:preset-runner, 已启用" }),
+    ).toBeTruthy();
     {
       // The Chinese page still finds the row by its English description.
-      fireEvent.input(search, { target: { value: 'Run per session' } })
-      await nextTick()
+      fireEvent.input(search, { target: { value: "Run per session" } });
+      await nextTick();
     }
     expect(
-      screen.getByRole('button', { name: '会话执行器, include:preset-runner, 已启用' }),
-    ).toBeTruthy()
+      screen.getByRole("button", { name: "会话执行器, include:preset-runner, 已启用" }),
+    ).toBeTruthy();
     {
-      fireEvent.input(search, { target: { value: 'no such plugin' } })
-      await nextTick()
+      fireEvent.input(search, { target: { value: "no such plugin" } });
+      await nextTick();
     }
-    expect(screen.getByText(zh.emptySearch)).toBeTruthy()
+    expect(screen.getByText(zh.emptySearch)).toBeTruthy();
     {
-      fireEvent.input(search, { target: { value: 'Run per session' } })
-      await nextTick()
+      fireEvent.input(search, { target: { value: "Run per session" } });
+      await nextTick();
     }
-    locale.setLocale('en')
-    await act(() => view.rerender(h(Page)))
+    locale.setLocale("en");
+    await act(() => view.rerender(h(Page)));
     expect(
-      screen.getByRole('button', { name: 'Session runner, include:preset-runner, Enabled' }),
-    ).toBeTruthy()
-    expect(screen.getByRole('searchbox', { name: en.search })).toHaveProperty(
-      'value',
-      'Run per session',
-    )
-    expect(list).toHaveBeenCalledOnce()
-  })
-  it.each(['global', 'preset'])(
-    'resolves each %s row field independently and hides empty English descriptions',
+      screen.getByRole("button", { name: "Session runner, include:preset-runner, Enabled" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("searchbox", { name: en.search })).toHaveProperty(
+      "value",
+      "Run per session",
+    );
+    expect(list).toHaveBeenCalledOnce();
+  });
+  it.each(["global", "preset"])(
+    "resolves each %s row field independently and hides empty English descriptions",
     async (scope) => {
-      const rows: Snapshot['entries'] = [
+      const rows: Snapshot["entries"] = [
         {
-          entryId: 'include:navigation' as PluginEntryId,
-          moduleName: '@acme/dsh-sidebar/navigation',
+          entryId: "include:navigation" as PluginEntryId,
+          moduleName: "@acme/dsh-sidebar/navigation",
           enabled: true,
           fiberPhase: null,
-          meta: { description: { en: 'Navigation description.' } },
+          meta: { description: { en: "Navigation description." } },
         },
         {
-          entryId: 'include:commands' as PluginEntryId,
-          moduleName: '@acme/dsh-sidebar/commands',
-          enabled: true,
-          fiberPhase: null,
-          meta: {
-            title: { en: 'English title' },
-            description: { en: 'Package description.', zh: '中文命令说明。' },
-          },
-        },
-        {
-          entryId: 'include:theme' as PluginEntryId,
-          moduleName: '@acme/dsh-theme/client',
+          entryId: "include:commands" as PluginEntryId,
+          moduleName: "@acme/dsh-sidebar/commands",
           enabled: true,
           fiberPhase: null,
           meta: {
-            title: { en: '@acme/dsh-theme', zh: '主题插件' },
-            description: { en: '', zh: '中文主题说明。' },
+            title: { en: "English title" },
+            description: { en: "Package description.", zh: "中文命令说明。" },
           },
         },
-      ]
+        {
+          entryId: "include:theme" as PluginEntryId,
+          moduleName: "@acme/dsh-theme/client",
+          enabled: true,
+          fiberPhase: null,
+          meta: {
+            title: { en: "@acme/dsh-theme", zh: "主题插件" },
+            description: { en: "", zh: "中文主题说明。" },
+          },
+        },
+      ];
       const snapshot: Snapshot =
-        scope === 'global'
+        scope === "global"
           ? { entries: rows }
-          : { entries: [], agentPresets: [{ id: 'custom', isDefault: true, rows }] }
-      const list = vi.fn(async () => snapshot)
-      const { locale, Page } = localizedProps(list)
-      const view = render(h(Page))
-      await screen.findByRole('searchbox', { name: en.search })
-      if (scope === 'global') {
-        fireEvent.click(globalToggle())
-        await nextTick()
+          : { entries: [], agentPresets: [{ id: "custom", isDefault: true, rows }] };
+      const list = vi.fn(async () => snapshot);
+      const { locale, Page } = localizedProps(list);
+      const view = render(h(Page));
+      await screen.findByRole("searchbox", { name: en.search });
+      if (scope === "global") {
+        fireEvent.click(globalToggle());
+        await nextTick();
       }
       expect(
-        screen.getByRole('button', { name: 'sidebar/navigation, include:navigation, Enabled' }),
-      ).toBeTruthy()
-      expect(screen.getByText('Navigation description.')).toBeTruthy()
+        screen.getByRole("button", { name: "sidebar/navigation, include:navigation, Enabled" }),
+      ).toBeTruthy();
+      expect(screen.getByText("Navigation description.")).toBeTruthy();
       expect(
-        screen.getByRole('button', { name: 'English title, include:commands, Enabled' }),
-      ).toBeTruthy()
-      expect(screen.getByText('Package description.')).toBeTruthy()
-      const theme = screen.getByRole('button', { name: '@acme/dsh-theme, include:theme, Enabled' })
-      expect(theme.getAttribute('aria-describedby')).toBeNull()
-      expect(screen.queryByText('中文主题说明。')).toBeNull()
-      locale.setLocale('zh')
-      await act(() => view.rerender(h(Page)))
+        screen.getByRole("button", { name: "English title, include:commands, Enabled" }),
+      ).toBeTruthy();
+      expect(screen.getByText("Package description.")).toBeTruthy();
+      const theme = screen.getByRole("button", { name: "@acme/dsh-theme, include:theme, Enabled" });
+      expect(theme.getAttribute("aria-describedby")).toBeNull();
+      expect(screen.queryByText("中文主题说明。")).toBeNull();
+      locale.setLocale("zh");
+      await act(() => view.rerender(h(Page)));
       for (const [name, description] of [
-        ['sidebar/navigation, include:navigation, 已启用', 'Navigation description.'],
-        ['English title, include:commands, 已启用', '中文命令说明。'],
-        ['主题插件, include:theme, 已启用', '中文主题说明。'],
+        ["sidebar/navigation, include:navigation, 已启用", "Navigation description."],
+        ["English title, include:commands, 已启用", "中文命令说明。"],
+        ["主题插件, include:theme, 已启用", "中文主题说明。"],
       ] as const) {
-        const card = screen.getByRole('button', { name })
-        expect(screen.getByText(description)).toBeTruthy()
-        expect(document.getElementById(card.getAttribute('aria-describedby')!)?.textContent).toBe(
+        const card = screen.getByRole("button", { name });
+        expect(screen.getByText(description)).toBeTruthy();
+        expect(document.getElementById(card.getAttribute("aria-describedby")!)?.textContent).toBe(
           description,
-        )
+        );
       }
-      expect(screen.queryByText('Package description.')).toBeNull()
+      expect(screen.queryByText("Package description.")).toBeNull();
       {
-        fireEvent.click(screen.getByRole('button', { name: '主题插件, include:theme, 已启用' }))
-        await nextTick()
+        fireEvent.click(screen.getByRole("button", { name: "主题插件, include:theme, 已启用" }));
+        await nextTick();
       }
-      expect(view.container.querySelector('[data-loader-entry]')?.textContent).toBe(
-        'include:theme',
-      )
+      expect(view.container.querySelector("[data-loader-entry]")?.textContent).toBe(
+        "include:theme",
+      );
       expect(screen.getByText(zh.moduleLabel).nextElementSibling?.textContent).toBe(
-        '@acme/dsh-theme/client',
-      )
+        "@acme/dsh-theme/client",
+      );
       {
-        fireEvent.input(screen.getByRole('searchbox', { name: zh.search }), {
-          target: { value: '中文主题说明。' },
-        })
-        await nextTick()
+        fireEvent.input(screen.getByRole("searchbox", { name: zh.search }), {
+          target: { value: "中文主题说明。" },
+        });
+        await nextTick();
       }
-      expect(screen.getAllByRole('listitem')).toHaveLength(1)
-      locale.setLocale('en')
-      await act(() => view.rerender(h(Page)))
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+      locale.setLocale("en");
+      await act(() => view.rerender(h(Page)));
       // The English page still finds the row by its Chinese description, shown in English.
-      expect(screen.getAllByRole('listitem')).toHaveLength(1)
-      expect(screen.queryByText('中文主题说明。')).toBeNull()
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+      expect(screen.queryByText("中文主题说明。")).toBeNull();
       {
-        fireEvent.input(screen.getByRole('searchbox', { name: en.search }), {
-          target: { value: '@acme/dsh-theme/client' },
-        })
-        await nextTick()
+        fireEvent.input(screen.getByRole("searchbox", { name: en.search }), {
+          target: { value: "@acme/dsh-theme/client" },
+        });
+        await nextTick();
       }
-      expect(screen.getAllByRole('listitem')).toHaveLength(1)
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
       expect(
         screen
-          .getByRole('button', { name: '@acme/dsh-theme, include:theme, Enabled' })
-          .getAttribute('aria-describedby'),
-      ).toBeNull()
-      expect(list).toHaveBeenCalledOnce()
+          .getByRole("button", { name: "@acme/dsh-theme, include:theme, Enabled" })
+          .getAttribute("aria-describedby"),
+      ).toBeNull();
+      expect(list).toHaveBeenCalledOnce();
     },
-  )
-  it('keeps metadata-error-only rows inspectable by their full module specifier', async () => {
-    const error = 'locale/zh.json: invalid title'
+  );
+  it("keeps metadata-error-only rows inspectable by their full module specifier", async () => {
+    const error = "locale/zh.json: invalid title";
     await renderReady({
       entries: [
         {
-          entryId: 'include:legacy' as PluginEntryId,
-          moduleName: '@acme/dsh-legacy',
+          entryId: "include:legacy" as PluginEntryId,
+          moduleName: "@acme/dsh-legacy",
           enabled: false,
           fiberPhase: null,
           meta: { error },
         },
       ],
-    })
+    });
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
-    expect(screen.getByText(en.metadataError.replace('{error}', error))).toBeTruthy()
-    const card = screen.getByRole('button', { name: 'legacy, Disabled' })
-    expect(card).toHaveProperty('disabled', false)
-    expect(card.closest('li')?.getAttribute('data-failed')).toBeNull()
+    expect(screen.getByText(en.metadataError.replace("{error}", error))).toBeTruthy();
+    const card = screen.getByRole("button", { name: "legacy, Disabled" });
+    expect(card).toHaveProperty("disabled", false);
+    expect(card.closest("li")?.getAttribute("data-failed")).toBeNull();
     {
-      fireEvent.click(card)
-      await nextTick()
+      fireEvent.click(card);
+      await nextTick();
     }
     expect(screen.getByText(en.moduleLabel).nextElementSibling?.textContent).toBe(
-      '@acme/dsh-legacy',
-    )
-  })
-  it('shows the default preset first with its group open and the global plane folded', async () => {
-    const view = await renderReady()
-    const switcher = screen.getByRole('button', { name: en.switcherLabel })
-    expect(switcher.textContent).toBe('标准模式 (default)')
+      "@acme/dsh-legacy",
+    );
+  });
+  it("shows the default preset first with its group open and the global plane folded", async () => {
+    const view = await renderReady();
+    const switcher = screen.getByRole("button", { name: en.switcherLabel });
+    expect(switcher.textContent).toBe("标准模式 (default)");
     {
-      fireEvent.click(switcher)
-      await nextTick()
+      fireEvent.click(switcher);
+      await nextTick();
     }
-    expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
-      '标准模式 (default)',
-      'ptc',
-      '坏预设 (failed to load)',
-    ])
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "标准模式 (default)",
+      "ptc",
+      "坏预设 (failed to load)",
+    ]);
     {
-      fireEvent.keyDown(document, { key: 'Escape' })
-      await nextTick()
+      fireEvent.keyDown(document, { key: "Escape" });
+      await nextTick();
     }
-    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
-    expect(screen.getByText(en.presetSubtitle).textContent).toBe(en.presetSubtitle)
+    expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
+    expect(screen.getByText(en.presetSubtitle).textContent).toBe(en.presetSubtitle);
     // The preset group starts open with its rows while the larger global plane stays folded.
-    expect(presetToggle().getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getAllByRole('listitem')).toHaveLength(6)
+    expect(presetToggle().getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getAllByRole("listitem")).toHaveLength(6);
     // Only the states that depart from plainly enabled carry a tag.
-    expect(screen.queryByText(en.enabledTag)).toBeNull()
-    expect(screen.getByText(en.conditionalTag)).toBeTruthy()
-    expect(screen.getByText(en.disabledTag)).toBeTruthy()
-    expect(screen.getByText(en.failedTag)).toBeTruthy()
+    expect(screen.queryByText(en.enabledTag)).toBeNull();
+    expect(screen.getByText(en.conditionalTag)).toBeTruthy();
+    expect(screen.getByText(en.disabledTag)).toBeTruthy();
+    expect(screen.getByText(en.failedTag)).toBeTruthy();
     // A settled row carries no phase dot: an active fiber and a row with no live
     // fiber both render without one.
-    expect(screen.queryByRole('img', { name: en.active })).toBeNull()
-    expect(screen.queryByRole('img', { name: en.unobserved })).toBeNull()
-    expect(globalToggle().getAttribute('aria-expanded')).toBe('false')
-    expect(screen.getByText(en.globalSubtitle).textContent).toBe(en.globalSubtitle)
+    expect(screen.queryByRole("img", { name: en.active })).toBeNull();
+    expect(screen.queryByRole("img", { name: en.unobserved })).toBeNull();
+    expect(globalToggle().getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByText(en.globalSubtitle).textContent).toBe(en.globalSubtitle);
     {
       // A preset row expands into its source facts.
-      fireEvent.click(screen.getByRole('button', { name: 'pwsh, Conditional' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "pwsh, Conditional" }));
+      await nextTick();
     }
-    expect(screen.getByText(en.fromPreset)).toBeTruthy()
-    expect(screen.getByText('标准模式')).toBeTruthy()
-    expect(screen.getByText(en.condition)).toBeTruthy()
-    expect(screen.getByText("process.platform === 'win32'")).toBeTruthy()
+    expect(screen.getByText(en.fromPreset)).toBeTruthy();
+    expect(screen.getByText("标准模式")).toBeTruthy();
+    expect(screen.getByText(en.condition)).toBeTruthy();
+    expect(screen.getByText("process.platform === 'win32'")).toBeTruthy();
     {
-      fireEvent.click(screen.getByRole('button', { name: 'pwsh, Conditional' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "pwsh, Conditional" }));
+      await nextTick();
     }
-    expect(screen.queryByText(en.condition)).toBeNull()
+    expect(screen.queryByText(en.condition)).toBeNull();
     {
       // A failed preset row names its runtime state instead of a condition.
-      fireEvent.click(screen.getByRole('button', { name: 'crashy, Failed' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "crashy, Failed" }));
+      await nextTick();
     }
-    expect(screen.getByText(en.runtime)).toBeTruthy()
-    expect(screen.getByText('Failed to start')).toBeTruthy()
+    expect(screen.getByText(en.runtime)).toBeTruthy();
+    expect(screen.getByText("Failed to start")).toBeTruthy();
     {
       // A row declaring no id has no Loader identity line, only its module.
-      fireEvent.click(screen.getByRole('button', { name: 'anonymous, Enabled' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "anonymous, Enabled" }));
+      await nextTick();
     }
-    expect(view.container.querySelector('[data-loader-entry]')).toBeNull()
+    expect(view.container.querySelector("[data-loader-entry]")).toBeNull();
     expect(screen.getByText(en.moduleLabel).nextElementSibling?.textContent).toBe(
-      '@fixture/anonymous',
-    )
-  })
-  it('marks a live phase with a dot on an untagged enabled row', async () => {
+      "@fixture/anonymous",
+    );
+  });
+  it("marks a live phase with a dot on an untagged enabled row", async () => {
     await renderReady({
       entries: [
-        { entryId: 'booting', moduleName: '@fixture/booting', enabled: true, fiberPhase: 'loading' },
-        { entryId: 'waiting', moduleName: '@fixture/waiting', enabled: true, fiberPhase: 'pending' },
-        { entryId: 'running', moduleName: '@fixture/running', enabled: true, fiberPhase: 'active' },
-        { entryId: 'unobserved', moduleName: '@fixture/unobserved', enabled: true, fiberPhase: null },
+        {
+          entryId: "booting",
+          moduleName: "@fixture/booting",
+          enabled: true,
+          fiberPhase: "loading",
+        },
+        {
+          entryId: "waiting",
+          moduleName: "@fixture/waiting",
+          enabled: true,
+          fiberPhase: "pending",
+        },
+        { entryId: "running", moduleName: "@fixture/running", enabled: true, fiberPhase: "active" },
+        {
+          entryId: "unobserved",
+          moduleName: "@fixture/unobserved",
+          enabled: true,
+          fiberPhase: null,
+        },
       ],
-      agentPresets: [{
-        id: 'standard',
-        isDefault: true,
-        rows: [
-          { entryId: 'stopping', moduleName: '@fixture/stopping', enabled: true, fiberPhase: 'unloading' },
-          { entryId: 'preset-running', moduleName: '@fixture/preset-running', enabled: true, fiberPhase: 'active' },
-        ],
-      }],
-    } as unknown as Snapshot)
+      agentPresets: [
+        {
+          id: "standard",
+          isDefault: true,
+          rows: [
+            {
+              entryId: "stopping",
+              moduleName: "@fixture/stopping",
+              enabled: true,
+              fiberPhase: "unloading",
+            },
+            {
+              entryId: "preset-running",
+              moduleName: "@fixture/preset-running",
+              enabled: true,
+              fiberPhase: "active",
+            },
+          ],
+        },
+      ],
+    } as unknown as Snapshot);
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
-    expect(screen.getAllByRole('listitem')).toHaveLength(6)
-    expect(screen.queryByText(en.enabledTag)).toBeNull()
-    expect(screen.getByRole('img', { name: en.loadingPhase })).toBeTruthy()
-    expect(screen.getByRole('img', { name: en.pending })).toBeTruthy()
-    expect(screen.getByRole('img', { name: en.unloading })).toBeTruthy()
-    expect(screen.queryByRole('img', { name: en.active })).toBeNull()
-    expect(screen.queryByRole('img', { name: en.unobserved })).toBeNull()
-  })
-  it('distinguishes collapsed same-module rows by stable entry id', async () => {
-    const longId = 'include:agent-presets:tool-subagent-secondary-with-a-complete-stable-identity'
-    const subtitle = 'agent-presets:tool-subagent-secondary-with-a-complete-stable-identity'
+    expect(screen.getAllByRole("listitem")).toHaveLength(6);
+    expect(screen.queryByText(en.enabledTag)).toBeNull();
+    expect(screen.getByRole("img", { name: en.loadingPhase })).toBeTruthy();
+    expect(screen.getByRole("img", { name: en.pending })).toBeTruthy();
+    expect(screen.getByRole("img", { name: en.unloading })).toBeTruthy();
+    expect(screen.queryByRole("img", { name: en.active })).toBeNull();
+    expect(screen.queryByRole("img", { name: en.unobserved })).toBeNull();
+  });
+  it("distinguishes collapsed same-module rows by stable entry id", async () => {
+    const longId = "include:agent-presets:tool-subagent-secondary-with-a-complete-stable-identity";
+    const subtitle = "agent-presets:tool-subagent-secondary-with-a-complete-stable-identity";
     await renderReady({
       entries: [],
       agentPresets: [
         {
-          id: 'same-module',
+          id: "same-module",
           isDefault: true,
           rows: [
             {
-              entryId: 'tool-subagent-primary',
-              moduleName: '@deepseek-ai/dsh-tool-subagent',
+              entryId: "tool-subagent-primary",
+              moduleName: "@deepseek-ai/dsh-tool-subagent",
               enabled: true,
               fiberPhase: null,
             },
             {
               entryId: longId,
-              moduleName: '@deepseek-ai/dsh-tool-subagent',
+              moduleName: "@deepseek-ai/dsh-tool-subagent",
               enabled: false,
               fiberPhase: null,
             },
           ],
         },
       ],
-    })
+    });
     expect(
       screen
-        .getByRole('button', { name: 'tool-subagent, tool-subagent-primary, Enabled' })
-        .getAttribute('aria-expanded'),
-    ).toBe('false')
-    const secondary = screen.getByRole('button', { name: `tool-subagent, ${longId}, Disabled` })
-    expect(secondary.getAttribute('aria-expanded')).toBe('false')
-    expect(secondary.children).toHaveLength(2)
-    expect(secondary.children[0]?.textContent).toContain('tool-subagent')
-    expect(secondary.children[0]?.textContent).toContain('Disabled')
-    expect(secondary.children[1]?.textContent).toBe(subtitle)
-    expect(screen.getByTitle(longId).textContent).toBe(subtitle)
+        .getByRole("button", { name: "tool-subagent, tool-subagent-primary, Enabled" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+    const secondary = screen.getByRole("button", { name: `tool-subagent, ${longId}, Disabled` });
+    expect(secondary.getAttribute("aria-expanded")).toBe("false");
+    expect(secondary.children).toHaveLength(2);
+    expect(secondary.children[0]?.textContent).toContain("tool-subagent");
+    expect(secondary.children[0]?.textContent).toContain("Disabled");
+    expect(secondary.children[1]?.textContent).toBe(subtitle);
+    expect(screen.getByTitle(longId).textContent).toBe(subtitle);
     {
-      fireEvent.input(screen.getByRole('searchbox', { name: en.search }), {
-        target: { value: 'include:agent-presets:tool-subagent-secondary' },
-      })
-      await nextTick()
+      fireEvent.input(screen.getByRole("searchbox", { name: en.search }), {
+        target: { value: "include:agent-presets:tool-subagent-secondary" },
+      });
+      await nextTick();
     }
     expect(
-      screen.queryByRole('button', { name: 'tool-subagent, tool-subagent-primary, Enabled' }),
-    ).toBeNull()
-    const filteredSecondary = screen.getByRole('button', {
+      screen.queryByRole("button", { name: "tool-subagent, tool-subagent-primary, Enabled" }),
+    ).toBeNull();
+    const filteredSecondary = screen.getByRole("button", {
       name: `tool-subagent, ${longId}, Disabled`,
-    })
+    });
     {
-      fireEvent.click(filteredSecondary)
-      await nextTick()
+      fireEvent.click(filteredSecondary);
+      await nextTick();
     }
-    expect(filteredSecondary.getAttribute('aria-expanded')).toBe('true')
-  })
-  it('shows the entry id only where it adds to the title', async () => {
+    expect(filteredSecondary.getAttribute("aria-expanded")).toBe("true");
+  });
+  it("shows the entry id only where it adds to the title", async () => {
     await renderReady({
       entries: [
         {
-          entryId: 'timer' as PluginEntryId,
-          moduleName: 'cordis:timer',
+          entryId: "timer" as PluginEntryId,
+          moduleName: "cordis:timer",
           enabled: true,
-          fiberPhase: 'active',
+          fiberPhase: "active",
         },
         {
-          entryId: 'include:hmr' as PluginEntryId,
-          moduleName: '@deepseek-ai/cordis-plugin-hmr',
+          entryId: "include:hmr" as PluginEntryId,
+          moduleName: "@deepseek-ai/cordis-plugin-hmr",
           enabled: true,
-          fiberPhase: 'active',
+          fiberPhase: "active",
         },
         {
-          entryId: 'typert' as PluginEntryId,
-          moduleName: '@fixture/typert-registry',
+          entryId: "typert" as PluginEntryId,
+          moduleName: "@fixture/typert-registry",
           enabled: true,
           fiberPhase: null,
         },
       ],
-    })
+    });
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
     // An id equal to the title leaves both the card and its accessible name.
-    expect(screen.getByRole('button', { name: 'timer, Enabled' }).querySelector('code')).toBeNull()
+    expect(screen.getByRole("button", { name: "timer, Enabled" }).querySelector("code")).toBeNull();
     // A composition id that matches the title once its include: marker drops is left out the same way.
-    expect(screen.getByRole('button', { name: 'hmr, Enabled' }).querySelector('code')).toBeNull()
+    expect(screen.getByRole("button", { name: "hmr, Enabled" }).querySelector("code")).toBeNull();
     const typert = screen
-      .getByRole('button', { name: 'typert-registry, typert, Enabled' })
-      .querySelector('code')
-    expect(typert?.textContent).toBe('typert')
-    expect(typert?.getAttribute('title')).toBe('typert')
-  })
-  it('expands the global plane with failures first and preset-provided rows inline', async () => {
-    const view = await renderReady()
-    expect(screen.queryByText(en.presetEnabledTag)).toBeNull()
+      .getByRole("button", { name: "typert-registry, typert, Enabled" })
+      .querySelector("code");
+    expect(typert?.textContent).toBe("typert");
+    expect(typert?.getAttribute("title")).toBe("typert");
+  });
+  it("expands the global plane with failures first and preset-provided rows inline", async () => {
+    const view = await renderReady();
+    expect(screen.queryByText(en.presetEnabledTag)).toBeNull();
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
-    expect(globalToggle().getAttribute('aria-expanded')).toBe('true')
+    expect(globalToggle().getAttribute("aria-expanded")).toBe("true");
     const failed = view.container.querySelector(
       '[data-plugin-scope="global"] [data-failed="true"]',
-    )
-    expect(failed?.getAttribute('data-plugin-entry')).toBe('telemetry')
+    );
+    expect(failed?.getAttribute("data-plugin-entry")).toBe("telemetry");
     // Failures float above the Loader-ordered remainder.
-    expect(view.container.querySelector('[data-plugin-scope="global"] li')).toBe(failed)
+    expect(view.container.querySelector('[data-plugin-scope="global"] li')).toBe(failed);
     // Rows the presets took over sit inline, marked instead of plainly disabled.
-    expect(screen.getAllByText(en.presetEnabledTag)).toHaveLength(2)
+    expect(screen.getAllByText(en.presetEnabledTag)).toHaveLength(2);
     {
-      fireEvent.click(screen.getByRole('button', { name: 'tool-bash, bash-host, Via presets' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "tool-bash, bash-host, Via presets" }));
+      await nextTick();
     }
-    expect(screen.getByText(en.presetProvidedDetail)).toBeTruthy()
-    expect(screen.getByText(en.enabledIn)).toBeTruthy()
-    expect(screen.getByText('标准模式 · ptc')).toBeTruthy()
+    expect(screen.getByText(en.presetProvidedDetail)).toBeTruthy();
+    expect(screen.getByText(en.enabledIn)).toBeTruthy();
+    expect(screen.getByText("标准模式 · ptc")).toBeTruthy();
     {
       // The failed global card reports its runtime state.
-      fireEvent.click(screen.getByRole('button', { name: 'telemetry, Failed' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "telemetry, Failed" }));
+      await nextTick();
     }
-    expect(screen.getByText('Failed to start')).toBeTruthy()
+    expect(screen.getByText("Failed to start")).toBeTruthy();
     {
       // An enabled entry with no live fiber says so in its details, dot-free.
-      fireEvent.click(screen.getByRole('button', { name: 'unobserved-name, unobserved, Enabled' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "unobserved-name, unobserved, Enabled" }));
+      await nextTick();
     }
-    expect(screen.getByText('Not running')).toBeTruthy()
+    expect(screen.getByText("Not running")).toBeTruthy();
     {
       // A disabled row outside every preset stays plainly disabled.
-      fireEvent.click(screen.getByRole('button', { name: 'dormant, Disabled' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "dormant, Disabled" }));
+      await nextTick();
     }
-    expect(screen.queryByText(en.presetProvidedDetail)).toBeNull()
+    expect(screen.queryByText(en.presetProvidedDetail)).toBeNull();
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
-    expect(globalToggle().getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText(en.presetEnabledTag)).toBeNull()
-  })
-  it('switches the inspected preset in place, including broken ones', async () => {
-    const view = await renderReady()
+    expect(globalToggle().getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText(en.presetEnabledTag)).toBeNull();
+  });
+  it("switches the inspected preset in place, including broken ones", async () => {
+    const view = await renderReady();
     const pickPreset = async (label: string): Promise<void> => {
       {
-        fireEvent.click(screen.getByRole('button', { name: en.switcherLabel }))
-        await nextTick()
+        fireEvent.click(screen.getByRole("button", { name: en.switcherLabel }));
+        await nextTick();
       }
       {
-        fireEvent.click(screen.getByRole('menuitem', { name: label }))
-        await nextTick()
+        fireEvent.click(screen.getByRole("menuitem", { name: label }));
+        await nextTick();
       }
-    }
-    await pickPreset('ptc')
-    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(3)
+    };
+    await pickPreset("ptc");
+    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(3);
     {
-      fireEvent.click(screen.getByRole('button', { name: 'tool-bash, bash, Enabled' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "tool-bash, bash, Enabled" }));
+      await nextTick();
     }
     // An unnamed preset labels its source by id.
-    expect(screen.getByText(en.fromPreset).nextElementSibling?.textContent).toBe('ptc')
-    await pickPreset('坏预设 (failed to load)')
-    expect(screen.getByRole('alert').textContent).toBe('the composition file is missing')
-    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(0)
-  })
-  it('folds the preset group on demand and reopens it for a search', async () => {
-    const view = await renderReady()
-    const toggle = presetToggle()
-    expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(6)
+    expect(screen.getByText(en.fromPreset).nextElementSibling?.textContent).toBe("ptc");
+    await pickPreset("坏预设 (failed to load)");
+    expect(screen.getByRole("alert").textContent).toBe("the composition file is missing");
+    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(0);
+  });
+  it("folds the preset group on demand and reopens it for a search", async () => {
+    const view = await renderReady();
+    const toggle = presetToggle();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(6);
     {
       // The explanatory subtitle remains visible while the rows are folded away.
-      fireEvent.click(toggle)
-      await nextTick()
+      fireEvent.click(toggle);
+      await nextTick();
     }
-    expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.getByText(en.presetSubtitle).textContent).toBe(en.presetSubtitle)
-    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(0)
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByText(en.presetSubtitle).textContent).toBe(en.presetSubtitle);
+    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(0);
     {
-      fireEvent.input(screen.getByRole('searchbox', { name: en.search }), {
-        target: { value: 'pwsh' },
-      })
-      await nextTick()
+      fireEvent.input(screen.getByRole("searchbox", { name: en.search }), {
+        target: { value: "pwsh" },
+      });
+      await nextTick();
     }
-    expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByText(en.conditionalTag)).toBeTruthy()
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText(en.conditionalTag)).toBeTruthy();
     {
-      fireEvent.input(screen.getByRole('searchbox', { name: en.search }), {
-        target: { value: '' },
-      })
-      await nextTick()
+      fireEvent.input(screen.getByRole("searchbox", { name: en.search }), {
+        target: { value: "" },
+      });
+      await nextTick();
     }
-    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
     {
-      fireEvent.click(toggle)
-      await nextTick()
+      fireEvent.click(toggle);
+      await nextTick();
     }
-    expect(toggle.getAttribute('aria-expanded')).toBe('true')
-  })
-  it('routes every preset name through the display resolver', async () => {
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  });
+  it("routes every preset name through the display resolver", async () => {
     // The resolver stands in for presetDisplayText: shipped presets localize,
     // user-authored ones keep their own metadata.
-    const localized: PluginInventorySettingsTabInjected['presetName'] = preset =>
-      ['standard', 'ptc'].includes(preset.id)
+    const localized: PluginInventorySettingsTabInjected["presetName"] = (preset) =>
+      ["standard", "ptc"].includes(preset.id)
         ? `Localized ${preset.id}`
-        : (preset.name ?? preset.id)
+        : (preset.name ?? preset.id);
     render(
       h(PluginInventorySettingsTab, {
         ...props(async () => SNAPSHOT, localized),
       }),
-    )
-    await screen.findByRole('searchbox', { name: en.search })
-    const switcher = screen.getByRole('button', { name: en.switcherLabel })
-    expect(switcher.textContent).toBe('Localized standard (default)')
+    );
+    await screen.findByRole("searchbox", { name: en.search });
+    const switcher = screen.getByRole("button", { name: en.switcherLabel });
+    expect(switcher.textContent).toBe("Localized standard (default)");
     {
-      fireEvent.click(switcher)
-      await nextTick()
+      fireEvent.click(switcher);
+      await nextTick();
     }
-    expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
-      'Localized standard (default)',
-      'Localized ptc',
-      '坏预设 (failed to load)',
-    ])
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Localized standard (default)",
+      "Localized ptc",
+      "坏预设 (failed to load)",
+    ]);
     {
-      fireEvent.keyDown(document, { key: 'Escape' })
-      await nextTick()
+      fireEvent.keyDown(document, { key: "Escape" });
+      await nextTick();
     }
     {
-      fireEvent.click(screen.getByRole('button', { name: 'pwsh, Conditional' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "pwsh, Conditional" }));
+      await nextTick();
     }
     expect(screen.getByText(en.fromPreset).nextElementSibling?.textContent).toBe(
-      'Localized standard',
-    )
+      "Localized standard",
+    );
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
     {
-      fireEvent.click(screen.getByRole('button', { name: 'tool-bash, bash-host, Via presets' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "tool-bash, bash-host, Via presets" }));
+      await nextTick();
     }
-    expect(screen.getByText('Localized standard · Localized ptc')).toBeTruthy()
-  })
-  it('searches across scopes and points at matches in other presets', async () => {
-    const view = await renderReady()
-    const search = screen.getByRole('searchbox', { name: en.search })
+    expect(screen.getByText("Localized standard · Localized ptc")).toBeTruthy();
+  });
+  it("searches across scopes and points at matches in other presets", async () => {
+    const view = await renderReady();
+    const search = screen.getByRole("searchbox", { name: en.search });
     {
-      fireEvent.input(search, { target: { value: 'tool-bash' } })
-      await nextTick()
+      fireEvent.input(search, { target: { value: "tool-bash" } });
+      await nextTick();
     }
     // Searching forces the collapsed global plane and drawer open.
-    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(1)
-    expect(view.container.querySelectorAll('[data-plugin-scope="global"] li')).toHaveLength(1)
-    expect(screen.getByText(en.presetEnabledTag)).toBeTruthy()
-    const hint = screen.getByText((text: string) => text.startsWith('2 more matches'))
-    expect(hint).toBeTruthy()
+    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(1);
+    expect(view.container.querySelectorAll('[data-plugin-scope="global"] li')).toHaveLength(1);
+    expect(screen.getByText(en.presetEnabledTag)).toBeTruthy();
+    const hint = screen.getByText((text: string) => text.startsWith("2 more matches"));
+    expect(hint).toBeTruthy();
     {
-      fireEvent.click(screen.getByRole('button', { name: 'ptc' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "ptc" }));
+      await nextTick();
     }
-    expect(screen.getByRole('button', { name: en.switcherLabel }).textContent).toBe('ptc')
+    expect(screen.getByRole("button", { name: en.switcherLabel }).textContent).toBe("ptc");
     {
       // A match visible only in another preset keeps the pointer without rows.
-      fireEvent.input(search, { target: { value: 'crashy' } })
-      await nextTick()
+      fireEvent.input(search, { target: { value: "crashy" } });
+      await nextTick();
     }
-    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(0)
-    expect(screen.getByText((text: string) => text.startsWith('1 more matches'))).toBeTruthy()
-    expect(screen.queryByText(en.emptySearch)).toBeNull()
+    expect(view.container.querySelectorAll('[data-plugin-scope="preset"] li')).toHaveLength(0);
+    expect(screen.getByText((text: string) => text.startsWith("1 more matches"))).toBeTruthy();
+    expect(screen.queryByText(en.emptySearch)).toBeNull();
     {
       // A match on a Loader entry id only reaches the global plane.
-      fireEvent.input(search, { target: { value: '8a1b2c3d' } })
-      await nextTick()
+      fireEvent.input(search, { target: { value: "8a1b2c3d" } });
+      await nextTick();
     }
-    expect(view.container.querySelectorAll('[data-plugin-scope="global"] li')).toHaveLength(1)
-    expect(screen.queryByText((text: string) => text.includes('more matches'))).toBeNull()
+    expect(view.container.querySelectorAll('[data-plugin-scope="global"] li')).toHaveLength(1);
+    expect(screen.queryByText((text: string) => text.includes("more matches"))).toBeNull();
     {
-      fireEvent.input(search, { target: { value: 'not-a-plugin' } })
-      await nextTick()
+      fireEvent.input(search, { target: { value: "not-a-plugin" } });
+      await nextTick();
     }
-    expect(screen.getByText(en.emptySearch)).toBeTruthy()
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-  })
-  it('renders a rosterless deployment as one global list, folded until opened', async () => {
+    expect(screen.getByText(en.emptySearch)).toBeTruthy();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+  it("renders a rosterless deployment as one global list, folded until opened", async () => {
     const view = await renderReady({
       entries: [
-        { entryId: 'hmr', moduleName: '@deepseek-ai/cordis-plugin-hmr', enabled: true, fiberPhase: 'active' },
-        { entryId: 'off', moduleName: '@fixture/off', enabled: false, fiberPhase: null },
+        {
+          entryId: "hmr",
+          moduleName: "@deepseek-ai/cordis-plugin-hmr",
+          enabled: true,
+          fiberPhase: "active",
+        },
+        { entryId: "off", moduleName: "@fixture/off", enabled: false, fiberPhase: null },
       ],
-    } as unknown as Snapshot)
-    expect(screen.queryByRole('button', { name: en.switcherLabel })).toBeNull()
-    expect(globalToggle().getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+    } as unknown as Snapshot);
+    expect(screen.queryByRole("button", { name: en.switcherLabel })).toBeNull();
+    expect(globalToggle().getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
     {
-      fireEvent.click(globalToggle())
-      await nextTick()
+      fireEvent.click(globalToggle());
+      await nextTick();
     }
-    expect(globalToggle().getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(globalToggle().getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
     {
-      fireEvent.click(screen.getByRole('button', { name: 'hmr, Enabled' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "hmr, Enabled" }));
+      await nextTick();
     }
-    expect(screen.getByText(en.runtime)).toBeTruthy()
-    expect(view.container.querySelector('[data-loader-entry]')?.textContent).toBe('hmr')
+    expect(screen.getByText(en.runtime)).toBeTruthy();
+    expect(view.container.querySelector("[data-loader-entry]")?.textContent).toBe("hmr");
     {
-      fireEvent.click(screen.getByRole('button', { name: 'off, Disabled' }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: "off, Disabled" }));
+      await nextTick();
     }
-    expect(screen.getAllByText(en.moduleLabel).length).toBeGreaterThan(0)
-    expect(screen.queryByText(en.runtime)).toBeNull()
-  })
-  it('renders a preset-only snapshot without the global section', async () => {
+    expect(screen.getAllByText(en.moduleLabel).length).toBeGreaterThan(0);
+    expect(screen.queryByText(en.runtime)).toBeNull();
+  });
+  it("renders a preset-only snapshot without the global section", async () => {
     await renderReady({
       entries: [],
       agentPresets: [
         {
-          id: 'solo',
+          id: "solo",
           isDefault: false,
-          rows: [{ entryId: 'one', moduleName: '@fixture/one', enabled: true, fiberPhase: null }],
+          rows: [{ entryId: "one", moduleName: "@fixture/one", enabled: true, fiberPhase: null }],
         },
       ],
-    })
+    });
     expect(
-      screen.queryByRole('button', { name: (name: string) => name.startsWith(en.globalTitle) }),
-    ).toBeNull()
-    expect(screen.queryByText(en.empty)).toBeNull()
-    expect(screen.getAllByRole('listitem')).toHaveLength(1)
-  })
-  it('shows a generic failure and retries into the empty state', async () => {
+      screen.queryByRole("button", { name: (name: string) => name.startsWith(en.globalTitle) }),
+    ).toBeNull();
+    expect(screen.queryByText(en.empty)).toBeNull();
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  });
+  it("shows a generic failure and retries into the empty state", async () => {
     const list = vi
-      .fn<PluginInventorySettingsTabInjected['list']>()
-      .mockRejectedValueOnce(new Error('private transport detail'))
-      .mockResolvedValueOnce({ entries: [] })
+      .fn<PluginInventorySettingsTabInjected["list"]>()
+      .mockRejectedValueOnce(new Error("private transport detail"))
+      .mockResolvedValueOnce({ entries: [] });
     render(
       h(PluginInventorySettingsTab, {
         ...props(list),
       }),
-    )
-    expect((await screen.findByRole('alert')).querySelector('[data-state="error"]')).not.toBeNull()
-    expect(screen.queryByText('private transport detail')).toBeNull()
+    );
+    expect((await screen.findByRole("alert")).querySelector('[data-state="error"]')).not.toBeNull();
+    expect(screen.queryByText("private transport detail")).toBeNull();
     {
-      fireEvent.click(screen.getByRole('button', { name: en.retry }))
-      await nextTick()
+      fireEvent.click(screen.getByRole("button", { name: en.retry }));
+      await nextTick();
     }
     await waitFor(() => {
-      expect(list).toHaveBeenCalledTimes(2)
-    })
-    expect(await screen.findByText(en.empty)).toBeTruthy()
-  })
-  it('ignores a superseded request generation without replacing the setup selector', async () => {
-    let resolveOld!: (snapshot: Snapshot) => void
-    let resolveCurrent!: (snapshot: Snapshot) => void
+      expect(list).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByText(en.empty)).toBeTruthy();
+  });
+  it("ignores a superseded request generation without replacing the setup selector", async () => {
+    let resolveOld!: (snapshot: Snapshot) => void;
+    let resolveCurrent!: (snapshot: Snapshot) => void;
     const oldList = vi.fn(
       () =>
         new Promise<Snapshot>((resolve) => {
-          resolveOld = resolve
+          resolveOld = resolve;
         }),
-    )
+    );
     const currentList = vi.fn(
       () =>
         new Promise<Snapshot>((resolve) => {
-          resolveCurrent = resolve
+          resolveCurrent = resolve;
         }),
-    )
-    const initial = props(oldList)
-    const view = render(h(PluginInventorySettingsTab, initial))
-    await waitFor(() => { expect(oldList).toHaveBeenCalledOnce() })
+    );
+    const initial = props(oldList);
+    const view = render(h(PluginInventorySettingsTab, initial));
+    await waitFor(() => {
+      expect(oldList).toHaveBeenCalledOnce();
+    });
     await act(() =>
       view.rerender(h(PluginInventorySettingsTab, { ...initial, list: currentList })),
-    )
-    await waitFor(() => { expect(currentList).toHaveBeenCalledOnce() })
-    await act(() => { resolveCurrent({ entries: [] }) })
-    expect(screen.getByText(en.empty)).toBeTruthy()
-    await act(() => { resolveOld(SNAPSHOT) })
-    expect(screen.getByText(en.empty)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: en.presetTitle })).toBeNull()
-  })
-  it('contains a synchronous Remote failure and ignores a result after unmount', async () => {
+    );
+    await waitFor(() => {
+      expect(currentList).toHaveBeenCalledOnce();
+    });
+    await act(() => {
+      resolveCurrent({ entries: [] });
+    });
+    expect(screen.getByText(en.empty)).toBeTruthy();
+    await act(() => {
+      resolveOld(SNAPSHOT);
+    });
+    expect(screen.getByText(en.empty)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: en.presetTitle })).toBeNull();
+  });
+  it("contains a synchronous Remote failure and ignores a result after unmount", async () => {
     const syncFailure = vi.fn(() => {
-      throw new Error('namespace unavailable')
-    }) as PluginInventorySettingsTabInjected['list']
+      throw new Error("namespace unavailable");
+    }) as PluginInventorySettingsTabInjected["list"];
     const failed = render(
       h(PluginInventorySettingsTab, {
         ...props(syncFailure),
       }),
-    )
-    expect((await screen.findByRole('alert')).textContent).toBe(en.error)
-    failed.unmount()
-    const deferred = Promise.withResolvers<Snapshot>()
+    );
+    expect((await screen.findByRole("alert")).textContent).toBe(en.error);
+    failed.unmount();
+    const deferred = Promise.withResolvers<Snapshot>();
     const pending = render(
       h(PluginInventorySettingsTab, {
         ...props(() => deferred.promise),
       }),
-    )
+    );
     // Loading shows skeleton cards; the status region announces the label as visually hidden text.
-    expect(screen.getByRole('status').textContent).toBe(en.loading)
-    pending.unmount()
+    expect(screen.getByRole("status").textContent).toBe(en.loading);
+    pending.unmount();
     await act(async () => {
-      deferred.resolve(SNAPSHOT)
-    })
-    const deferredFailure = Promise.withResolvers<Snapshot>()
+      deferred.resolve(SNAPSHOT);
+    });
+    const deferredFailure = Promise.withResolvers<Snapshot>();
     const pendingFailure = render(
       h(PluginInventorySettingsTab, {
         ...props(() => deferredFailure.promise),
       }),
-    )
-    pendingFailure.unmount()
+    );
+    pendingFailure.unmount();
     await act(async () => {
-      deferredFailure.reject(new Error('late failure'))
-    })
-  })
-})
-it('shows current-page sync errors and retries without re-reading Host inventory', async () => {
-  const list = vi.fn(async () => ({ entries: [] }))
-  const sync = createSnapshotStore<ClientEntryState>({ syncing: true, failures: [] })
-  const retryClient = vi.fn()
+      deferredFailure.reject(new Error("late failure"));
+    });
+  });
+});
+it("shows current-page sync errors and retries without re-reading Host inventory", async () => {
+  const list = vi.fn(async () => ({ entries: [] }));
+  const sync = createSnapshotStore<ClientEntryState>({ syncing: true, failures: [] });
+  const retryClient = vi.fn();
   render(
     h(PluginInventorySettingsTab, {
       ...props(list),
       useClientSync: bindSnapshotSelector(sync),
       retryClient: retryClient,
     }),
-  )
+  );
   expect(
     screen
       .getByText(en.clientSyncing)
       .closest('[role="status"]')
       ?.querySelector('[data-state="ongoing"]'),
-  ).not.toBeNull()
+  ).not.toBeNull();
   await waitFor(() => {
-    expect(list).toHaveBeenCalledOnce()
-  })
+    expect(list).toHaveBeenCalledOnce();
+  });
   await act(() => {
-    sync.set({ syncing: false, failures: [{ id: 'client-addon', message: 'download failed' }] })
-  })
-  expect(screen.getByRole('alert').querySelector('[data-state="error"]')).not.toBeNull()
-  expect(screen.getByText('client-addon: download failed')).toBeTruthy()
+    sync.set({ syncing: false, failures: [{ id: "client-addon", message: "download failed" }] });
+  });
+  expect(screen.getByRole("alert").querySelector('[data-state="error"]')).not.toBeNull();
+  expect(screen.getByText("client-addon: download failed")).toBeTruthy();
   {
-    fireEvent.click(screen.getByRole('button', { name: 'Retry this page' }))
-    await nextTick()
+    fireEvent.click(screen.getByRole("button", { name: "Retry this page" }));
+    await nextTick();
   }
-  expect(retryClient).toHaveBeenCalledOnce()
-  expect(list).toHaveBeenCalledOnce()
+  expect(retryClient).toHaveBeenCalledOnce();
+  expect(list).toHaveBeenCalledOnce();
   await act(() => {
-    sync.set({ syncing: false, failures: [] })
-  })
-  expect(screen.queryByRole('alert')).toBeNull()
-})
+    sync.set({ syncing: false, failures: [] });
+  });
+  expect(screen.queryByRole("alert")).toBeNull();
+});

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { h as vueH, shallowRef, defineComponent } from 'vue'
+import { h as vueH, shallowRef, defineComponent } from "vue";
 /**
  * The `workspace.picker` Factory as another plugin renders it: a test-owned
  * dialog component inside the primitives Modal calls the standard
@@ -10,218 +10,218 @@ import { h as vueH, shallowRef, defineComponent } from 'vue'
  * listed Workspaces, the occupancy-gated add entry, and the creation hop
  * before `onPick`.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, screen } from './vue-render.client.ts'
-import type { Context } from '@deepseek-ai/cordis'
-import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsRenderFactories, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import { SlotTestRuntime, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { act, cleanup, fireEvent, screen } from "./vue-render.client.ts";
+import type { Context } from "@deepseek-ai/cordis";
+import type { WorkspaceId, WorkspaceView } from "@deepseek-ai/dsh-api-workspace-controller/client";
+import type { SessionId } from "@deepseek-ai/dsh-session/types";
+import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
+import { LocaleRuntime } from "@deepseek-ai/dsh-client-locale/client";
+import { Modal } from "@deepseek-ai/dsh-client-ui-primitives";
+import type { PropsRenderFactories, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
+import { SlotTestRuntime, usePinnedBrowserLanguages } from "@deepseek-ai/dsh-client-test-runtime";
 import {
   apply as applyMenus,
   inject as injectMenus,
-} from '@deepseek-ai/dsh-client-ui-context-menu/client'
-import { apply, inject } from '@deepseek-ai/dsh-client-ui-workspace/client'
+} from "@deepseek-ai/dsh-client-ui-context-menu/client";
+import { apply, inject } from "@deepseek-ai/dsh-client-ui-workspace/client";
 // The service reads its initial locale from the browser; these specs assert
 // the shipped Chinese copy, so they state the browser they assume.
-usePinnedBrowserLanguages('zh-CN')
-afterEach(cleanup)
+usePinnedBrowserLanguages("zh-CN");
+afterEach(cleanup);
 beforeEach(() => {
-  localStorage.clear()
-})
-const ALPHA = 'w-alpha' as WorkspaceId
-const ADD = '添加工作区…'
+  localStorage.clear();
+});
+const ALPHA = "w-alpha" as WorkspaceId;
+const ADD = "添加工作区…";
 /** Test-owned consumer surface: another plugin's dialog that owns the anchor, open state, and pick meaning. */
 const ImportDialog = defineComponent(
   ({ renderFactorySlot }: PropsRenderFactories) => {
-    const anchorRef = shallowRef<HTMLButtonElement | null>(null)
-    const open = shallowRef(false)
-    const picked = shallowRef<WorkspaceId>()
+    const anchorRef = shallowRef<HTMLButtonElement | null>(null);
+    const open = shallowRef(false);
+    const picked = shallowRef<WorkspaceId>();
     return () =>
       vueH(
         Modal,
-        { open: true, title: 'import', closeLabel: 'close', onClose: () => {} },
+        { open: true, title: "import", closeLabel: "close", onClose: () => {} },
         {
           default: () => [
             vueH(
-              'button',
+              "button",
               {
                 ref: anchorRef,
-                type: 'button',
+                type: "button",
                 onClick: () => {
-                  open.value = !open.value
+                  open.value = !open.value;
                 },
               },
-              ['choose'],
+              ["choose"],
             ),
-            vueH('output', {}, [picked.value ?? 'none']),
-            renderFactorySlot('workspace.picker', {
+            vueH("output", {}, [picked.value ?? "none"]),
+            renderFactorySlot("workspace.picker", {
               open: open.value,
               anchorRef,
               ...(picked.value === undefined ? {} : { selectedId: picked.value }),
               onPick: (workspaceId) => {
-                open.value = false
-                picked.value = workspaceId
+                open.value = false;
+                picked.value = workspaceId;
               },
               onClose: () => {
-                open.value = false
+                open.value = false;
               },
             }),
           ],
         },
-      )
+      );
   },
-  { props: ['renderFactorySlot'] },
-)
+  { props: ["renderFactorySlot"] },
+);
 /** Probe directory-flow occupant: one button that reports a fixed picked path while the flow is open. */
-function ProbeFlow({ open, busy, onPicked }: PropsRuntime<'workspace.picker.directoryFlow'>) {
+function ProbeFlow({ open, busy, onPicked }: PropsRuntime<"workspace.picker.directoryFlow">) {
   return open
     ? vueH(
-      'button',
-      {
-        type: 'button',
-        disabled: busy,
-        onClick: () => {
-          onPicked('/tmp/project')
+        "button",
+        {
+          type: "button",
+          disabled: busy,
+          onClick: () => {
+            onPicked("/tmp/project");
+          },
         },
-      },
-      ['probe pick'],
-    )
-    : null
+        ["probe pick"],
+      )
+    : null;
 }
 /** A picker package's client half, reduced to the Factory hole it fills. */
 const probeFlowPlugin = {
-  inject: ['slots'],
+  inject: ["slots"],
   apply(ctx: Context) {
-    ctx.slots.inject('workspace.picker.directoryFlow', () =>
+    ctx.slots.inject("workspace.picker.directoryFlow", () =>
       ctx.slots.register(
         {
-          name: 'workspace.picker.directoryFlow',
+          name: "workspace.picker.directoryFlow",
         },
         ProbeFlow,
       ),
-    )
+    );
   },
-}
+};
 /**
  * The assembled consumer dialog over one existing Workspace.
  * @returns the runtime, with ui-workspace and its context-menu dependency mounted.
  */
 async function bench(): Promise<SlotTestRuntime> {
-  const runtime = await SlotTestRuntime.create()
-  runtime.ctx.provide('shortcuts', { register: () => () => {}, catalog: createSnapshotStore([]) })
-  runtime.ctx.provide('layout', {
+  const runtime = await SlotTestRuntime.create();
+  runtime.ctx.provide("shortcuts", { register: () => () => {}, catalog: createSnapshotStore([]) });
+  runtime.ctx.provide("layout", {
     selectPanel: vi.fn(),
     beginNavigation: () => new AbortController().signal,
-  })
-  runtime.releaseWorkspaceSource()
+  });
+  runtime.releaseWorkspaceSource();
   // Directory picking goes through the probe occupant; the namespace only has
   // to be there for ui-workspace's inject to settle.
-  runtime.remote.provideNamespaces({ directoryPicker: {} })
-  const locale = new LocaleRuntime(runtime.ctx)
-  runtime.ctx.provide('locale', locale)
-  runtime.slots.installLocale(locale)
+  runtime.remote.provideNamespaces({ directoryPicker: {} });
+  const locale = new LocaleRuntime(runtime.ctx);
+  runtime.ctx.provide("locale", locale);
+  runtime.slots.installLocale(locale);
   // Startup restoration opens a blank in the seeded Workspace; the picker
   // does not depend on that Session, so its creation stays pending.
-  runtime.sessions.stubCreate(() => new Promise<SessionId>(() => {}))
+  runtime.sessions.stubCreate(() => new Promise<SessionId>(() => {}));
   await runtime.workspaces.update((draft) => {
     draft.items = [
       {
         workspaceId: ALPHA,
-        title: 'Alpha',
-        path: '/projects/alpha',
+        title: "Alpha",
+        path: "/projects/alpha",
         sessionIds: [],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
       },
-    ] as never
-  })
-  await runtime.mount({ inject: [...injectMenus], apply: applyMenus })
-  await runtime.mount({ inject: [...inject], apply })
-  await runtime.root.declare({} as never, ImportDialog as never)
-  runtime.renderRoot()
-  return runtime
+    ] as never;
+  });
+  await runtime.mount({ inject: [...injectMenus], apply: applyMenus });
+  await runtime.mount({ inject: [...inject], apply });
+  await runtime.root.declare({} as never, ImportDialog as never);
+  runtime.renderRoot();
+  return runtime;
 }
 async function openMenu(): Promise<void> {
-  await fireEvent.click(screen.getByRole('button', { name: 'choose' }))
+  await fireEvent.click(screen.getByRole("button", { name: "choose" }));
 }
-describe('workspace.picker Factory', () => {
-  it('lists the existing Workspaces inside a caller Modal and reports a chosen one through onPick', async () => {
-    const runtime = await bench()
+describe("workspace.picker Factory", () => {
+  it("lists the existing Workspaces inside a caller Modal and reports a chosen one through onPick", async () => {
+    const runtime = await bench();
     try {
-      await runtime.mount(probeFlowPlugin)
-      await openMenu()
-      expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
-        'Alpha',
+      await runtime.mount(probeFlowPlugin);
+      await openMenu();
+      expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+        "Alpha",
         ADD,
-      ])
-      await fireEvent.click(screen.getByRole('menuitem', { name: 'Alpha' }))
-      expect(screen.getByRole('status').textContent).toBe(ALPHA)
-      expect(screen.queryByRole('menu')).toBeNull()
-      expect(runtime.workspaces.calls.filter(call => call.method === 'create')).toEqual([])
+      ]);
+      await fireEvent.click(screen.getByRole("menuitem", { name: "Alpha" }));
+      expect(screen.getByRole("status").textContent).toBe(ALPHA);
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(runtime.workspaces.calls.filter((call) => call.method === "create")).toEqual([]);
     } finally {
-      await runtime.dispose()
+      await runtime.dispose();
     }
-  })
-  it('creates the Workspace from the directory flow occupant before reporting it through onPick', async () => {
-    const runtime = await bench()
+  });
+  it("creates the Workspace from the directory flow occupant before reporting it through onPick", async () => {
+    const runtime = await bench();
     try {
-      await runtime.mount(probeFlowPlugin)
-      let resolve!: (workspace: WorkspaceView) => void
+      await runtime.mount(probeFlowPlugin);
+      let resolve!: (workspace: WorkspaceView) => void;
       runtime.workspaces.stub(
-        'create',
+        "create",
         () =>
           new Promise<WorkspaceView>((settle) => {
-            resolve = settle
+            resolve = settle;
           }),
-      )
-      await openMenu()
-      await fireEvent.click(screen.getByRole('menuitem', { name: ADD }))
+      );
+      await openMenu();
+      await fireEvent.click(screen.getByRole("menuitem", { name: ADD }));
       // Raising the flow closes the menu; the occupant's pick starts the adoption.
-      expect(screen.queryByRole('menu')).toBeNull()
-      await fireEvent.click(screen.getByRole('button', { name: 'probe pick' }))
-      expect(runtime.workspaces.calls.filter(call => call.method === 'create')).toEqual([
-        { method: 'create', args: [{ path: '/tmp/project' }] },
-      ])
+      expect(screen.queryByRole("menu")).toBeNull();
+      await fireEvent.click(screen.getByRole("button", { name: "probe pick" }));
+      expect(runtime.workspaces.calls.filter((call) => call.method === "create")).toEqual([
+        { method: "create", args: [{ path: "/tmp/project" }] },
+      ]);
       // The occupant sees the adoption in flight, and the caller hears nothing yet.
-      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'probe pick' }).disabled).toBe(
+      expect(screen.getByRole<HTMLButtonElement>("button", { name: "probe pick" }).disabled).toBe(
         true,
-      )
-      expect(screen.getByRole('status').textContent).toBe('none')
+      );
+      expect(screen.getByRole("status").textContent).toBe("none");
       await act(async () => {
         resolve({
-          workspaceId: 'w-project' as WorkspaceId,
-          title: 'project',
-          path: '/tmp/project',
+          workspaceId: "w-project" as WorkspaceId,
+          title: "project",
+          path: "/tmp/project",
           sessionIds: [],
-          createdAt: '0',
-          updatedAt: '0',
-        })
-      })
-      expect(screen.getByRole('status').textContent).toBe('w-project')
-      expect(screen.queryByRole('button', { name: 'probe pick' })).toBeNull()
+          createdAt: "0",
+          updatedAt: "0",
+        });
+      });
+      expect(screen.getByRole("status").textContent).toBe("w-project");
+      expect(screen.queryByRole("button", { name: "probe pick" })).toBeNull();
     } finally {
-      await runtime.dispose()
+      await runtime.dispose();
     }
-  })
-  it('offers Add workspace only while a directory flow occupies the Factory hole', async () => {
-    const runtime = await bench()
+  });
+  it("offers Add workspace only while a directory flow occupies the Factory hole", async () => {
+    const runtime = await bench();
     try {
-      await openMenu()
-      expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual(['Alpha'])
+      await openMenu();
+      expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Alpha"]);
       // A picker package activating later fills the hole; the open menu follows.
-      const flow = await runtime.mount(probeFlowPlugin)
-      expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
-        'Alpha',
+      const flow = await runtime.mount(probeFlowPlugin);
+      expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+        "Alpha",
         ADD,
-      ])
-      await flow.dispose()
-      expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual(['Alpha'])
+      ]);
+      await flow.dispose();
+      expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Alpha"]);
     } finally {
-      await runtime.dispose()
+      await runtime.dispose();
     }
-  })
-})
+  });
+});

@@ -7,15 +7,15 @@
  * SDK completion notification to retain the delegating parent.
  */
 
-import { execFile } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { promisify } from 'node:util'
-import { describe, expect, it } from 'vitest'
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { describe, expect, it } from "vite-plus/test";
 
-const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url))
-const jsonrpcBundle = fileURLToPath(new URL('../lib/index.js', import.meta.url))
-const execFileAsync = promisify(execFile)
+const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
+const jsonrpcBundle = fileURLToPath(new URL("../lib/index.js", import.meta.url));
+const execFileAsync = promisify(execFile);
 
 const builtRuntimeProbe = String.raw`
 import { mkdtemp, rm } from "node:fs/promises";
@@ -87,28 +87,34 @@ try {
   await ctx.fiber.dispose();
   await rm(storageRoot, { recursive: true, force: true });
 }
-`
+`;
 
-describe.skipIf(!existsSync(jsonrpcBundle))('dsh-sdk-jsonrpc-server BUILT scope carrier', () => {
-  it('preserves parent-scoped completion after child disposal', async () => {
-    const { stdout, stderr } = await execFileAsync(process.execPath, ['--input-type=module', '-e', builtRuntimeProbe], {
-      cwd: repoRoot,
-      timeout: 15_000,
-    })
+describe.skipIf(!existsSync(jsonrpcBundle))("dsh-sdk-jsonrpc-server BUILT scope carrier", () => {
+  it("preserves parent-scoped completion after child disposal", async () => {
+    const { stdout, stderr } = await execFileAsync(
+      process.execPath,
+      ["--input-type=module", "-e", builtRuntimeProbe],
+      {
+        cwd: repoRoot,
+        timeout: 15_000,
+      },
+    );
 
-    expect(stderr).not.toContain('listener threw')
+    expect(stderr).not.toContain("listener threw");
     // A result without output omits lastAssistantMessage from the wire; it
     // never sends `[]`.
-    expect(JSON.parse(stdout) as unknown).toEqual([{
-      method: 'subagent.finished',
-      params: {
-        provider: 'built-local',
-        agentId: 'built-child',
-        parentSessionId: 'built-parent',
-        childSessionId: 'built-child',
-        status: 'error',
-        stopReason: 'error',
+    expect(JSON.parse(stdout) as unknown).toEqual([
+      {
+        method: "subagent.finished",
+        params: {
+          provider: "built-local",
+          agentId: "built-child",
+          parentSessionId: "built-parent",
+          childSessionId: "built-child",
+          status: "error",
+          stopReason: "error",
+        },
       },
-    }])
-  })
-})
+    ]);
+  });
+});

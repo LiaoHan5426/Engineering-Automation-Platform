@@ -1,10 +1,10 @@
 /** Compile request-only inputs against the actual LLM and durable write interfaces. */
-import { resolve } from 'node:path'
-import ts from 'typescript'
-import { expect, it } from 'vitest'
+import { resolve } from "node:path";
+import ts from "typescript";
+import { expect, it } from "vite-plus/test";
 
-const root = resolve(import.meta.dirname, '..')
-const probePath = resolve(import.meta.dirname, '__request_input_probe.ts')
+const root = resolve(import.meta.dirname, "..");
+const probePath = resolve(import.meta.dirname, "__request_input_probe.ts");
 
 const probe = `
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -68,45 +68,62 @@ const narrowed = [{ role: 'user', content: [{ type: 'text', text: 'fixed' }] }] 
 // @ts-expect-error -- projections may replace content and cannot preserve narrower content types.
 const narrowedProjection: typeof narrowed = projectImagesForTextModel(narrowed)
 void [request, files, images, offloaded, durableProjection, existing]
-`
+`;
 
-it('accepts mixed requests and rejects lightweight inputs at durable message writes', { timeout: 60_000 }, () => {
-  const parsed = ts.getParsedCommandLineOfConfigFile(resolve(root, 'tsconfig.host.json'), {}, {
-    ...ts.sys,
-    onUnRecoverableConfigFileDiagnostic(diagnostic) {
-      throw new Error(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
-    },
-  })
-  expect(parsed).toBeDefined()
-  const options: ts.CompilerOptions = {
-    ...parsed!.options,
-    composite: false,
-    incremental: false,
-    noEmit: true,
-    declaration: false,
-    declarationMap: false,
-    noUnusedLocals: false,
-    noUnusedParameters: false,
-  }
-  const base = ts.createCompilerHost(options, true)
-  const host: ts.CompilerHost = {
-    ...base,
-    fileExists: path => resolve(path) === probePath || base.fileExists(path),
-    readFile: path => resolve(path) === probePath ? probe : base.readFile(path),
-    getSourceFile(path, languageVersion, onError, shouldCreateNewSourceFile) {
-      return resolve(path) === probePath
-        ? ts.createSourceFile(path, probe, languageVersion, true)
-        : base.getSourceFile(path, languageVersion, onError, shouldCreateNewSourceFile)
-    },
-  }
-  const program = ts.createProgram([probePath], options, host)
-  for (const path of ['packages/llm/llm/src/types.ts', 'packages/core/session/src/index.ts', 'packages/session/session-title-llm/src/index.ts']) {
-    expect(program.getSourceFile(resolve(root, path)), path).toBeDefined()
-  }
-  const source = program.getSourceFile(probePath)!
-  const diagnostics = [...program.getSyntacticDiagnostics(source), ...program.getSemanticDiagnostics(source)]
-  expect(diagnostics.map((diagnostic) => {
-    const line = source.getLineAndCharacterOfPosition(diagnostic.start ?? 0).line + 1
-    return `${line}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`
-  })).toEqual([])
-})
+it(
+  "accepts mixed requests and rejects lightweight inputs at durable message writes",
+  { timeout: 60_000 },
+  () => {
+    const parsed = ts.getParsedCommandLineOfConfigFile(
+      resolve(root, "tsconfig.host.json"),
+      {},
+      {
+        ...ts.sys,
+        onUnRecoverableConfigFileDiagnostic(diagnostic) {
+          throw new Error(ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
+        },
+      },
+    );
+    expect(parsed).toBeDefined();
+    const options: ts.CompilerOptions = {
+      ...parsed!.options,
+      composite: false,
+      incremental: false,
+      noEmit: true,
+      declaration: false,
+      declarationMap: false,
+      noUnusedLocals: false,
+      noUnusedParameters: false,
+    };
+    const base = ts.createCompilerHost(options, true);
+    const host: ts.CompilerHost = {
+      ...base,
+      fileExists: (path) => resolve(path) === probePath || base.fileExists(path),
+      readFile: (path) => (resolve(path) === probePath ? probe : base.readFile(path)),
+      getSourceFile(path, languageVersion, onError, shouldCreateNewSourceFile) {
+        return resolve(path) === probePath
+          ? ts.createSourceFile(path, probe, languageVersion, true)
+          : base.getSourceFile(path, languageVersion, onError, shouldCreateNewSourceFile);
+      },
+    };
+    const program = ts.createProgram([probePath], options, host);
+    for (const path of [
+      "packages/llm/llm/src/types.ts",
+      "packages/core/session/src/index.ts",
+      "packages/session/session-title-llm/src/index.ts",
+    ]) {
+      expect(program.getSourceFile(resolve(root, path)), path).toBeDefined();
+    }
+    const source = program.getSourceFile(probePath)!;
+    const diagnostics = [
+      ...program.getSyntacticDiagnostics(source),
+      ...program.getSemanticDiagnostics(source),
+    ];
+    expect(
+      diagnostics.map((diagnostic) => {
+        const line = source.getLineAndCharacterOfPosition(diagnostic.start ?? 0).line + 1;
+        return `${line}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`;
+      }),
+    ).toEqual([]);
+  },
+);

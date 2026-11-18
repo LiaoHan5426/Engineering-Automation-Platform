@@ -6,34 +6,35 @@
  * mapping rather than the policy.
  */
 
-import { Context } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { LiveshareShares } from '../src/host/share-remote.ts'
+import { Context } from "@deepseek-ai/cordis";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { LiveshareShares } from "../src/host/share-remote.ts";
 
-let ctx: Context | undefined
+let ctx: Context | undefined;
 
 afterEach(async () => {
-  await ctx?.fiber.dispose()
-  ctx = undefined
-})
+  await ctx?.fiber.dispose();
+  ctx = undefined;
+});
 
-describe('owner share Remote', () => {
-  it('delegates an addition to the operations implementation', async () => {
-    const addSessions = vi.fn(async () => ({ shareId: 'share-one', sessionIds: ['session-two'] }))
-    ctx = new Context()
-    const remote = new LiveshareShares(ctx, { addSessions } as never)
+describe("owner share Remote", () => {
+  it("delegates an addition to the operations implementation", async () => {
+    const addSessions = vi.fn(async () => ({ shareId: "share-one", sessionIds: ["session-two"] }));
+    ctx = new Context();
+    const remote = new LiveshareShares(ctx, { addSessions } as never);
 
-    await expect(remote.addSessions({ shareId: 'share-one', sessionIds: ['session-two'] }))
-      .resolves.toEqual({ shareId: 'share-one', sessionIds: ['session-two'] })
-    expect(addSessions).toHaveBeenCalledWith({ shareId: 'share-one', sessionIds: ['session-two'] })
-  })
+    await expect(
+      remote.addSessions({ shareId: "share-one", sessionIds: ["session-two"] }),
+    ).resolves.toEqual({ shareId: "share-one", sessionIds: ["session-two"] });
+    expect(addSessions).toHaveBeenCalledWith({ shareId: "share-one", sessionIds: ["session-two"] });
+  });
 
-  it('reads one share’s Relay audit trail through the operations implementation', async () => {
-    const audit = vi.fn(async () => ({ events: [] }))
-    ctx = new Context()
-    const remote = new LiveshareShares(ctx, { audit } as never)
+  it("reads one share’s Relay audit trail through the operations implementation", async () => {
+    const audit = vi.fn(async () => ({ events: [] }));
+    ctx = new Context();
+    const remote = new LiveshareShares(ctx, { audit } as never);
 
-    await expect(remote.audit({ shareId: 'share-one' })).resolves.toEqual({ events: [] })
-    expect(audit).toHaveBeenCalledWith({ shareId: 'share-one' })
-  })
-})
+    await expect(remote.audit({ shareId: "share-one" })).resolves.toEqual({ events: [] });
+    expect(audit).toHaveBeenCalledWith({ shareId: "share-one" });
+  });
+});

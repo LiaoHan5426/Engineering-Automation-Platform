@@ -3,26 +3,36 @@
  * `lib/worker.cjs`, and the Worker bundle alone parses bodies outside any `node_modules`. Skips until a build produces
  * both artifacts.
  */
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { execa } from 'execa'
-import { describe, expect, it } from 'vitest'
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execa } from "execa";
+import { describe, expect, it } from "vite-plus/test";
 
-const packageRoot = fileURLToPath(new URL('..', import.meta.url))
-const built = ['lib/index.js', 'lib/worker.cjs'].every(path => existsSync(join(packageRoot, path)))
+const packageRoot = fileURLToPath(new URL("..", import.meta.url));
+const built = ["lib/index.js", "lib/worker.cjs"].every((path) =>
+  existsSync(join(packageRoot, path)),
+);
 
 async function node(script: string): Promise<unknown> {
-  const { exitCode, stdout, stderr } = await execa(process.execPath, ['--input-type=module', '-e', script], {
-    cwd: packageRoot, env: { NODE_PATH: undefined, NODE_OPTIONS: undefined },
-    stdin: 'ignore', timeout: 30_000, killSignal: 'SIGKILL', reject: false,
-  })
-  expect(exitCode, `stderr:\n${stderr}`).toBe(0)
-  return JSON.parse(stdout.trim())
+  const { exitCode, stdout, stderr } = await execa(
+    process.execPath,
+    ["--input-type=module", "-e", script],
+    {
+      cwd: packageRoot,
+      env: { NODE_PATH: undefined, NODE_OPTIONS: undefined },
+      stdin: "ignore",
+      timeout: 30_000,
+      killSignal: "SIGKILL",
+      reject: false,
+    },
+  );
+  expect(exitCode, `stderr:\n${stderr}`).toBe(0);
+  return JSON.parse(stdout.trim());
 }
 
-describe.skipIf(!built)('built index parsing (plain node)', () => {
-  it('searches a valid index and reports an invalid one through the bundled Worker', async () => {
+describe.skipIf(!built)("built index parsing (plain node)", () => {
+  it("searches a valid index and reports an invalid one through the bundled Worker", async () => {
     const result = await node(`
       import { Context, Service } from '@deepseek-ai/cordis'
       import PluginMarket from './lib/index.js'
@@ -48,15 +58,15 @@ describe.skipIf(!built)('built index parsing (plain node)', () => {
       } finally {
         await ctx.fiber.dispose()
       }
-    `)
+    `);
     expect(result).toEqual({
-      entries: ['p'],
-      code: 'plugin-market/invalid-index',
-      details: { url: 'https://m.example/invalid.json', path: '$.format', reason: 'must be 1' },
-    })
-  })
+      entries: ["p"],
+      code: "plugin-market/invalid-index",
+      details: { url: "https://m.example/invalid.json", path: "$.format", reason: "must be 1" },
+    });
+  });
 
-  it('runs the Worker bundle without workspace packages and refuses a malformed request', async () => {
+  it("runs the Worker bundle without workspace packages and refuses a malformed request", async () => {
     const result = await node(`
       import { copyFile, mkdtemp, rm } from 'node:fs/promises'
       import { tmpdir } from 'node:os'
@@ -80,7 +90,10 @@ describe.skipIf(!built)('built index parsing (plain node)', () => {
       } finally {
         await rm(root, { recursive: true, force: true })
       }
-    `)
-    expect(result).toEqual({ icon: 'https://m.example/dsh/p.svg', malformed: { error: 'index parser request is malformed' } })
-  })
-})
+    `);
+    expect(result).toEqual({
+      icon: "https://m.example/dsh/p.svg",
+      malformed: { error: "index parser request is malformed" },
+    });
+  });
+});

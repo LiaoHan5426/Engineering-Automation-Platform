@@ -9,65 +9,66 @@
  * than left looking activated.
  */
 
-import { Context } from '@deepseek-ai/cordis'
-import { describe, expect, it } from 'vitest'
-import { activateSession } from '../src/host/share-host.ts'
+import { Context } from "@deepseek-ai/cordis";
+import { describe, expect, it } from "vite-plus/test";
+import { activateSession } from "../src/host/share-host.ts";
 
-const session = 'session-child'
+const session = "session-child";
 
 /** A host context that provides the `agent` lookup, recording every identity asked of it. */
 function host(resolve?: (sessionId: string) => unknown): { ctx: Context; asked: string[] } {
-  const ctx = new Context()
-  const asked: string[] = []
-  ctx.provide('typert', {
+  const ctx = new Context();
+  const asked: string[] = [];
+  ctx.provide("typert", {
     lookups: {
-      get: (key: string) => key === 'agent' && resolve !== undefined
-        ? {
-          resolve: (sessionId: string) => {
-            asked.push(sessionId)
-            return resolve(sessionId)
-          },
-        }
-        : undefined,
+      get: (key: string) =>
+        key === "agent" && resolve !== undefined
+          ? {
+              resolve: (sessionId: string) => {
+                asked.push(sessionId);
+                return resolve(sessionId);
+              },
+            }
+          : undefined,
     },
-  })
-  return { ctx, asked }
+  });
+  return { ctx, asked };
 }
 
-describe('session activation through the agent lookup', () => {
-  it('resolves the Session through the lookup and waits for the answer', async () => {
-    let settled = false
+describe("session activation through the agent lookup", () => {
+  it("resolves the Session through the lookup and waits for the answer", async () => {
+    let settled = false;
     const { ctx, asked } = host(async () => {
-      await Promise.resolve()
-      settled = true
-      return { id: session }
-    })
+      await Promise.resolve();
+      settled = true;
+      return { id: session };
+    });
 
-    await activateSession(ctx, session)
+    await activateSession(ctx, session);
 
-    expect(asked).toEqual([session])
-    expect(settled).toBe(true)
-    await ctx.fiber.dispose()
-  })
+    expect(asked).toEqual([session]);
+    expect(settled).toBe(true);
+    await ctx.fiber.dispose();
+  });
 
-  it('refuses a deployment that installs no agent lookup', async () => {
-    const { ctx } = host()
+  it("refuses a deployment that installs no agent lookup", async () => {
+    const { ctx } = host();
 
-    await expect(activateSession(ctx, session)).rejects.toThrow(/no agent lookup is registered/u)
-    await ctx.fiber.dispose()
-  })
+    await expect(activateSession(ctx, session)).rejects.toThrow(/no agent lookup is registered/u);
+    await ctx.fiber.dispose();
+  });
 
-  it('refuses an answer that activates no Agent', async () => {
-    const { ctx } = host(() => undefined)
+  it("refuses an answer that activates no Agent", async () => {
+    const { ctx } = host(() => undefined);
 
-    await expect(activateSession(ctx, session)).rejects.toThrow(/answered with nothing/u)
-    await ctx.fiber.dispose()
-  })
+    await expect(activateSession(ctx, session)).rejects.toThrow(/answered with nothing/u);
+    await ctx.fiber.dispose();
+  });
 
-  it('reports the resolver’s own failure instead of an acknowledgement', async () => {
-    const { ctx } = host(() => Promise.reject(new Error('session not found')))
+  it("reports the resolver’s own failure instead of an acknowledgement", async () => {
+    const { ctx } = host(() => Promise.reject(new Error("session not found")));
 
-    await expect(activateSession(ctx, session)).rejects.toThrow(/session not found/u)
-    await ctx.fiber.dispose()
-  })
-})
+    await expect(activateSession(ctx, session)).rejects.toThrow(/session not found/u);
+    await ctx.fiber.dispose();
+  });
+});

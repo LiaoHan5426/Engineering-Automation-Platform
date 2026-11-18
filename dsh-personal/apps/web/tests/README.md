@@ -12,6 +12,8 @@ pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install --with-deps 
 
 On Linux, `--with-deps` installs dependencies through the system package manager. The persistent CI VM must provide these dependencies through image maintenance; CI installs only the browser binaries, as required by the [failover runbook](../../../.agents/notes/implemented/process/2026-07-26-ci-failover-runbook.md).
 
+[Access confirmation](access-confirmation.e2e.ts), [Vue host smoke](vue-smoke/vue-host.e2e.ts), and [DevTools frontend](devtools-frontend.e2e.ts) accept `DSH_PLAYWRIGHT_EXECUTABLE_PATH` as an explicit path to a locally installed Chromium-compatible executable, such as `C:/Program Files/Google/Chrome/Application/chrome.exe` on Windows. When unset, they use Playwright’s default Chromium. This override applies only to these three scenarios; other browser tests do not share a global executable-path setting.
+
 Ordinary scenarios begin with no registered Workspace or Session and a durable marker recording a removed default Workspace, so explicit folder-selection scenarios retain control of their cwd. `launchWebScaffold({ firstUse: true })` leaves initialization eligible for startup scenarios.
 
 Same-day message goldens use the shared `WEB_FIXTURE_TIME`: seeded transcripts pass it as `createdAt` and pin the browser calendar with `pinBrowserClock`; scenarios that submit live messages also use `pinHostClock` and restore it after teardown. These clocks advance with real elapsed time while keeping native timers intact, so midnight does not change a scenario's date labels.

@@ -1,168 +1,179 @@
-import type { SidebarRightTabInfo } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
-import type { PaneId } from '@deepseek-ai/dsh-client-ui-dockkit'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SidebarRightTabInfo } from "@deepseek-ai/dsh-client-ui-sidebar-right/client";
+import type { PaneId } from "@deepseek-ai/dsh-client-ui-dockkit";
+import type { SessionId } from "@deepseek-ai/dsh-session/types";
 // @vitest-environment jsdom
 /** PDF controls and stale-completion guards with real tab view state and controlled document loads. */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { h as vueH, computed, shallowRef, defineComponent, nextTick } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { h as vueH, computed, shallowRef, defineComponent, nextTick } from "vue";
 import {
   act as actNative,
   cleanup,
   render as renderNative,
-} from '../../../test-support/client-runtime/src/vue-test.ts'
-import { fireEvent as domEvent, screen } from '@testing-library/dom'
+} from "../../../test-support/client-runtime/src/vue-test.ts";
+import { fireEvent as domEvent, screen } from "@testing-library/dom";
 const act = async (run: Parameters<typeof actNative>[0]) => {
-  await actNative(run)
+  await actNative(run);
   for (let i = 0; i < 8; i++) {
-    await Promise.resolve()
-    await nextTick()
+    await Promise.resolve();
+    await nextTick();
   }
-}
+};
 const render = async (...args: Parameters<typeof renderNative>) => {
-  const view = renderNative(...args)
-  await nextTick()
-  return view
-}
+  const view = renderNative(...args);
+  await nextTick();
+  return view;
+};
 const fireEvent = {
   async click(...args: Parameters<typeof domEvent.click>) {
-    await nextTick()
-    const result = domEvent.click(...args)
-    await nextTick()
-    return result
+    await nextTick();
+    const result = domEvent.click(...args);
+    await nextTick();
+    return result;
   },
   async mouseDown(...args: Parameters<typeof domEvent.mouseDown>) {
-    await nextTick()
-    const result = domEvent.mouseDown(...args)
-    await nextTick()
-    return result
+    await nextTick();
+    const result = domEvent.mouseDown(...args);
+    await nextTick();
+    return result;
   },
   async keyDown(...args: Parameters<typeof domEvent.keyDown>) {
-    await nextTick()
-    const result = domEvent.keyDown(...args)
-    await nextTick()
-    return result
+    await nextTick();
+    const result = domEvent.keyDown(...args);
+    await nextTick();
+    return result;
   },
   async wheel(...args: Parameters<typeof domEvent.wheel>) {
-    await nextTick()
-    const result = domEvent.wheel(...args)
-    await nextTick()
-    return result
+    await nextTick();
+    const result = domEvent.wheel(...args);
+    await nextTick();
+    return result;
   },
-}
-import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
-import type { PdfDocument } from '../src/client/pdf/document.ts'
-import type { renderPdfPage } from '../src/client/pdf/document.ts'
-import type { openPdf } from '../src/client/pdf/runtime.ts'
-import type { PageViewport, PDFPageProxy } from 'pdfjs-dist'
+};
+import { bindSnapshotSelector, makeTranslate } from "@deepseek-ai/dsh-client-test-runtime";
+import type { TabId } from "@deepseek-ai/dsh-client-ui-dockkit";
+import type { PdfDocument } from "../src/client/pdf/document.ts";
+import type { renderPdfPage } from "../src/client/pdf/document.ts";
+import type { openPdf } from "../src/client/pdf/runtime.ts";
+import type { PageViewport, PDFPageProxy } from "pdfjs-dist";
 const engine = vi.hoisted(() => ({
   open: vi.fn<typeof openPdf>(),
   render: vi.fn<typeof renderPdfPage>(),
-}))
-const overlay = vi.hoisted(() => ({ create: vi.fn(), render: vi.fn(), cancel: vi.fn() }))
-vi.mock('../src/client/pdf/text.ts', () => ({
+}));
+const overlay = vi.hoisted(() => ({ create: vi.fn(), render: vi.fn(), cancel: vi.fn() }));
+vi.mock("../src/client/pdf/text.ts", () => ({
   pdfTextRenderer: (host: HTMLDivElement) => {
-    overlay.create(host)
-    return overlay.render
+    overlay.create(host);
+    return overlay.render;
   },
-}))
-vi.mock('../src/client/pdf/runtime.ts', () => ({ openPdf: engine.open }))
-vi.mock('../src/client/pdf/document.ts', () => ({ renderPdfPage: engine.render }))
-import { PdfBody } from '../src/client/pdf/pdf.tsx'
-import { createPdfStore } from '../src/client/pdf/store.ts'
-import { en } from '../src/client/pdf/locales.ts'
-import { LoadingIndicator } from '../src/client/LoadingIndicator.tsx'
-import { PdfWorkerFailure } from '../src/client/pdf/errors.ts'
-import { ZoomViewport, zoomSurfaceClass } from '../src/client/zoom/ZoomViewport.tsx'
+}));
+vi.mock("../src/client/pdf/runtime.ts", () => ({ openPdf: engine.open }));
+vi.mock("../src/client/pdf/document.ts", () => ({ renderPdfPage: engine.render }));
+import { PdfBody } from "../src/client/pdf/pdf.tsx";
+import { createPdfStore } from "../src/client/pdf/store.ts";
+import { en } from "../src/client/pdf/locales.ts";
+import { LoadingIndicator } from "../src/client/LoadingIndicator.tsx";
+import { PdfWorkerFailure } from "../src/client/pdf/errors.ts";
+import { ZoomViewport, zoomSurfaceClass } from "../src/client/zoom/ZoomViewport.tsx";
 const loads: Array<{
-  deferred: ReturnType<typeof Promise.withResolvers<PdfDocument>>
-  dispose: ReturnType<typeof vi.fn>
-}> = []
+  deferred: ReturnType<typeof Promise.withResolvers<PdfDocument>>;
+  dispose: ReturnType<typeof vi.fn>;
+}> = [];
 beforeEach(() => {
   // Keep the 100px fixture pages at actual size inside the document gutters.
-  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(124)
-  const context: Pick<CanvasRenderingContext2D, 'drawImage'> = { drawImage: () => {} }
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(124);
+  const context: Pick<CanvasRenderingContext2D, "drawImage"> = { drawImage: () => {} };
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
     context as CanvasRenderingContext2D,
-  )
-  loads.length = 0
+  );
+  loads.length = 0;
   engine.open.mockReset().mockImplementation(() => {
-    const deferred = Promise.withResolvers<PdfDocument>()
-    const dispose = vi.fn(async () => {})
-    loads.push({ deferred, dispose })
-    return { document: deferred.promise, dispose }
-  })
+    const deferred = Promise.withResolvers<PdfDocument>();
+    const dispose = vi.fn(async () => {});
+    loads.push({ deferred, dispose });
+    return { document: deferred.promise, dispose };
+  });
   engine.render.mockReset().mockImplementation(async (_document, _page, canvas, _signal, ratio) => {
-    canvas.width = canvas.height = 100 * ratio
-    return { width: 100, height: 100 }
-  })
-  overlay.create.mockReset()
-  overlay.render.mockReset()
-  overlay.cancel.mockReset()
-})
+    canvas.width = canvas.height = 100 * ratio;
+    return { width: 100, height: 100 };
+  });
+  overlay.create.mockReset();
+  overlay.render.mockReset();
+  overlay.cancel.mockReset();
+});
 afterEach(() => {
-  cleanup()
-  vi.useRealTimers()
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
-})
+  cleanup();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 class IntersectionObserverStub {
-  static instances: IntersectionObserverStub[] = []
-  readonly observed = new Set<Element>()
-  disconnected = false
+  static instances: IntersectionObserverStub[] = [];
+  readonly observed = new Set<Element>();
+  disconnected = false;
   constructor(private readonly callback: IntersectionObserverCallback) {
-    IntersectionObserverStub.instances.push(this)
+    IntersectionObserverStub.instances.push(this);
   }
   observe(element: Element): void {
-    if (!(element instanceof Element)) throw new TypeError('IntersectionObserver requires an Element')
-    this.observed.add(element)
+    if (!(element instanceof Element))
+      throw new TypeError("IntersectionObserver requires an Element");
+    this.observed.add(element);
   }
   unobserve(element: Element): void {
-    this.observed.delete(element)
+    this.observed.delete(element);
   }
   disconnect(): void {
-    this.disconnected = true
-    this.observed.clear()
+    this.disconnected = true;
+    this.observed.clear();
   }
   takeRecords(): IntersectionObserverEntry[] {
-    return []
+    return [];
   }
   intersect(element: Element, isIntersecting: boolean): void {
     this.callback(
       [{ target: element, isIntersecting } as IntersectionObserverEntry],
       this as unknown as IntersectionObserver,
-    )
+    );
   }
 }
 function unexpectedFrameworkRead(): never {
-  throw new Error('preview fixture accessed an unused framework capability')
+  throw new Error("preview fixture accessed an unused framework capability");
 }
 function makeTabInfo(id: TabId, signal: AbortSignal): SidebarRightTabInfo {
   return {
     sidebar: { expanded: true, fullscreen: false },
-    panel: { id: 'preview-pane' as PaneId, isFloating: false },
+    panel: { id: "preview-pane" as PaneId, isFloating: false },
     tab: {
-      id, kind: 'document', contentId: 'preview-document', title: 'Preview', visible: true,
-      navigation: { address: 'preview-document', params: undefined, revision: 0 }, signal,
-      actions: { bindCommands: () => () => {}, openResource: vi.fn(), openTab: vi.fn(), close: vi.fn() },
+      id,
+      kind: "document",
+      contentId: "preview-document",
+      title: "Preview",
+      visible: true,
+      navigation: { address: "preview-document", params: undefined, revision: 0 },
+      signal,
+      actions: {
+        bindCommands: () => () => {},
+        openResource: vi.fn(),
+        openTab: vi.fn(),
+        close: vi.fn(),
+      },
     },
-  }
+  };
 }
 function harness() {
-  const instance = createPdfStore().create()
-  const controller = new AbortController()
-  const committed = shallowRef(true)
-  const tabId = 'pdf-tab' as TabId
-  const useStore = bindSnapshotSelector(instance)
-  const scrollportRef = vi.fn()
+  const instance = createPdfStore().create();
+  const controller = new AbortController();
+  const committed = shallowRef(true);
+  const tabId = "pdf-tab" as TabId;
+  const useStore = bindSnapshotSelector(instance);
+  const scrollportRef = vi.fn();
   const View = defineComponent(
-    (viewProps: { data?: string; kind?: 'bytes' | 'text' }) => {
-      const bytes = computed(() => new TextEncoder().encode(viewProps.data ?? 'one'))
+    (viewProps: { data?: string; kind?: "bytes" | "text" }) => {
+      const bytes = computed(() => new TextEncoder().encode(viewProps.data ?? "one"));
       const tabInfo = computed(() => {
-        if (!committed.value) throw new Error('tab is no longer committed')
-        return makeTabInfo(tabId, controller.signal)
-      })
-      const retainTab = vi.fn()
+        if (!committed.value) throw new Error("tab is no longer committed");
+        return makeTabInfo(tabId, controller.signal);
+      });
+      const retainTab = vi.fn();
       return () =>
         vueH(PdfBody, {
           useSession: unexpectedFrameworkRead,
@@ -192,15 +203,15 @@ function harness() {
           useWorkspaces: unexpectedFrameworkRead,
           useWorkspaceAccess: unexpectedFrameworkRead,
           useSessionStatus: unexpectedFrameworkRead,
-          sessionId: 'pdf-session' as SessionId,
+          sessionId: "pdf-session" as SessionId,
           addResource: vi.fn(),
           setResources: vi.fn(),
           useResource: unexpectedFrameworkRead,
-          resourceAddress: 'dsh-resource://file/session/s/report.pdf',
+          resourceAddress: "dsh-resource://file/session/s/report.pdf",
           content:
-            viewProps.kind === 'text'
-              ? { kind: 'text', text: '', pages: [], eof: true }
-              : { kind: 'bytes', data: bytes.value },
+            viewProps.kind === "text"
+              ? { kind: "text", text: "", pages: [], eof: true }
+              : { kind: "bytes", data: bytes.value },
           wrap: false,
           useTabInfo: () => tabInfo,
           useStore,
@@ -211,133 +222,133 @@ function harness() {
           scrollportRef,
           ZoomViewport,
           zoomSurfaceClass,
-        } satisfies InstanceType<typeof PdfBody>['$props'])
+        } satisfies InstanceType<typeof PdfBody>["$props"]);
     },
-    { props: ['data', 'kind'] },
-  )
-  return { instance, controller, committed, tabId, scrollportRef, View }
+    { props: ["data", "kind"] },
+  );
+  return { instance, controller, committed, tabId, scrollportRef, View };
 }
-const documentOf = (numPages = 3): PdfDocument => ({ numPages, getPage: vi.fn() })
-describe('PDF body', () => {
-  it('disposes a PDF after its committed tab is removed and preferences publish', async () => {
-    const h = harness()
-    h.instance.actions.page(h.tabId, 2)
-    const view = await render(vueH(h.View, null))
+const documentOf = (numPages = 3): PdfDocument => ({ numPages, getPage: vi.fn() });
+describe("PDF body", () => {
+  it("disposes a PDF after its committed tab is removed and preferences publish", async () => {
+    const h = harness();
+    h.instance.actions.page(h.tabId, 2);
+    const view = await render(vueH(h.View, null));
     await act(() => {
-      h.committed.value = false
-      h.instance.actions.forget(h.tabId)
-      view.unmount()
-    })
-    expect(loads[0]!.dispose).toHaveBeenCalledOnce()
-  })
-  it('reports non-byte contents without starting PDF.js', async () => {
-    const h = harness()
-    await render(vueH(h.View, { kind: 'text' }))
-    expect(screen.getByRole('alert').textContent).toBe(en.unsupported)
-    expect(engine.open).not.toHaveBeenCalled()
-  })
-  it('does not start a load for a tab record that has already ended', async () => {
-    const h = harness()
-    h.controller.abort()
-    await render(vueH(h.View, null))
-    expect(engine.open).not.toHaveBeenCalled()
-  })
-  it('shows loading, adds zoom controls, and renders a continuous page sequence', async () => {
-    const h = harness()
-    const view = await render(vueH(h.View, null))
-    expect(screen.getByRole('status').getAttribute('aria-label')).toBe('Rendering document...')
-    expect(screen.getByRole('status').hasAttribute('data-document-loading')).toBe(true)
-    expect(screen.getByRole('status').querySelector('[data-state="ongoing"]')).not.toBeNull()
+      h.committed.value = false;
+      h.instance.actions.forget(h.tabId);
+      view.unmount();
+    });
+    expect(loads[0]!.dispose).toHaveBeenCalledOnce();
+  });
+  it("reports non-byte contents without starting PDF.js", async () => {
+    const h = harness();
+    await render(vueH(h.View, { kind: "text" }));
+    expect(screen.getByRole("alert").textContent).toBe(en.unsupported);
+    expect(engine.open).not.toHaveBeenCalled();
+  });
+  it("does not start a load for a tab record that has already ended", async () => {
+    const h = harness();
+    h.controller.abort();
+    await render(vueH(h.View, null));
+    expect(engine.open).not.toHaveBeenCalled();
+  });
+  it("shows loading, adds zoom controls, and renders a continuous page sequence", async () => {
+    const h = harness();
+    const view = await render(vueH(h.View, null));
+    expect(screen.getByRole("status").getAttribute("aria-label")).toBe("Rendering document...");
+    expect(screen.getByRole("status").hasAttribute("data-document-loading")).toBe(true);
+    expect(screen.getByRole("status").querySelector('[data-state="ongoing"]')).not.toBeNull();
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf())
-    })
-    await act(async () => {})
-    expect(screen.getByRole('toolbar', { name: 'Zoom controls' })).toBeTruthy()
+      loads[0]!.deferred.resolve(documentOf());
+    });
+    await act(async () => {});
+    expect(screen.getByRole("toolbar", { name: "Zoom controls" })).toBeTruthy();
     expect(
-      [...view.container.querySelectorAll('[data-pdf-page]')].map(page =>
-        page.getAttribute('data-pdf-page'),
+      [...view.container.querySelectorAll("[data-pdf-page]")].map((page) =>
+        page.getAttribute("data-pdf-page"),
       ),
-    ).toEqual(['1', '2', '3'])
-    expect(screen.getAllByRole('img').map(image => image.getAttribute('aria-label'))).toEqual([
-      'PDF page 1',
-      'PDF page 2',
-      'PDF page 3',
-    ])
-    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2, 3])
-  })
-  it('offers retained PDF zoom presets', async () => {
-    const h = harness()
-    const view = await render(vueH(h.View, null))
+    ).toEqual(["1", "2", "3"]);
+    expect(screen.getAllByRole("img").map((image) => image.getAttribute("aria-label"))).toEqual([
+      "PDF page 1",
+      "PDF page 2",
+      "PDF page 3",
+    ]);
+    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2, 3]);
+  });
+  it("offers retained PDF zoom presets", async () => {
+    const h = harness();
+    const view = await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(1))
-    })
+      loads[0]!.deferred.resolve(documentOf(1));
+    });
     expect(h.scrollportRef).toHaveBeenLastCalledWith(
-      view.container.querySelector('[data-document-zoom-scrollport]'),
-    )
-    expect(screen.getByRole('toolbar', { name: 'Zoom controls' })).toBeTruthy()
-    const menu = screen.getByRole('button', { name: 'Choose zoom' })
-    expect(await fireEvent.mouseDown(menu)).toBe(false)
-    await fireEvent.click(menu)
-    await fireEvent.click(screen.getByRole('menuitem', { name: '100%' }))
-    await fireEvent.click(menu)
-    await fireEvent.click(screen.getByRole('menuitem', { name: '150%' }))
+      view.container.querySelector("[data-document-zoom-scrollport]"),
+    );
+    expect(screen.getByRole("toolbar", { name: "Zoom controls" })).toBeTruthy();
+    const menu = screen.getByRole("button", { name: "Choose zoom" });
+    expect(await fireEvent.mouseDown(menu)).toBe(false);
+    await fireEvent.click(menu);
+    await fireEvent.click(screen.getByRole("menuitem", { name: "100%" }));
+    await fireEvent.click(menu);
+    await fireEvent.click(screen.getByRole("menuitem", { name: "150%" }));
     expect(h.instance.getSnapshot().byTab[h.tabId]).toEqual({
       page: 1,
-      zoom: { kind: 'fixed', scale: 1.5 },
-    })
+      zoom: { kind: "fixed", scale: 1.5 },
+    });
     expect(
       (
-        view.container.querySelector('[data-document-zoom-frame]') as HTMLElement
-      ).style.getPropertyValue('--document-zoom'),
-    ).toBe('1.5')
-    const out = screen.getByRole('button', { name: 'Zoom out' })
-    expect(await fireEvent.mouseDown(out)).toBe(false)
-    await fireEvent.click(out)
-    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: 'fixed', scale: 1.25 })
-    const into = screen.getByRole('button', { name: 'Zoom in' })
-    expect(await fireEvent.mouseDown(into)).toBe(false)
-    await fireEvent.click(into)
-    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: 'fixed', scale: 1.5 })
+        view.container.querySelector("[data-document-zoom-frame]") as HTMLElement
+      ).style.getPropertyValue("--document-zoom"),
+    ).toBe("1.5");
+    const out = screen.getByRole("button", { name: "Zoom out" });
+    expect(await fireEvent.mouseDown(out)).toBe(false);
+    await fireEvent.click(out);
+    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: "fixed", scale: 1.25 });
+    const into = screen.getByRole("button", { name: "Zoom in" });
+    expect(await fireEvent.mouseDown(into)).toBe(false);
+    await fireEvent.click(into);
+    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: "fixed", scale: 1.5 });
     await act(() => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 1.657 })
-    })
-    await fireEvent.click(out)
-    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: 'fixed', scale: 1.5 })
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 1.657 });
+    });
+    await fireEvent.click(out);
+    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: "fixed", scale: 1.5 });
     await act(() => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 1.657 })
-    })
-    await fireEvent.click(into)
-    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: 'fixed', scale: 1.75 })
-    await fireEvent.click(menu)
-    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
-    expect(screen.queryByRole('menu')).toBeNull()
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 1.657 });
+    });
+    await fireEvent.click(into);
+    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: "fixed", scale: 1.75 });
+    await fireEvent.click(menu);
+    await fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
     await act(() => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 4 })
-    })
-    expect(screen.getByRole('button', { name: 'Zoom in' }).hasAttribute('disabled')).toBe(true)
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 4 });
+    });
+    expect(screen.getByRole("button", { name: "Zoom in" }).hasAttribute("disabled")).toBe(true);
     await act(() => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 0.25 })
-    })
-    expect(screen.getByRole('button', { name: 'Zoom out' }).hasAttribute('disabled')).toBe(true)
-    await view.rerender(vueH(h.View, null))
-    expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('25%')
-    await fireEvent.click(menu)
-    await fireEvent.click(screen.getByRole('menuitem', { name: 'Fit width' }))
-    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: 'fit-width' })
-  })
-  it('zooms a trackpad gesture around its pointer and leaves ordinary scrolling alone', async () => {
-    const h = harness()
-    const view = await render(vueH(h.View, null))
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 0.25 });
+    });
+    expect(screen.getByRole("button", { name: "Zoom out" }).hasAttribute("disabled")).toBe(true);
+    await view.rerender(vueH(h.View, null));
+    expect(screen.getByRole("button", { name: "Choose zoom" }).textContent).toContain("25%");
+    await fireEvent.click(menu);
+    await fireEvent.click(screen.getByRole("menuitem", { name: "Fit width" }));
+    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({ kind: "fit-width" });
+  });
+  it("zooms a trackpad gesture around its pointer and leaves ordinary scrolling alone", async () => {
+    const h = harness();
+    const view = await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(1))
-    })
+      loads[0]!.deferred.resolve(documentOf(1));
+    });
     const scrollport = view.container.querySelector(
-      '[data-document-zoom-scrollport]',
-    ) as HTMLDivElement
+      "[data-document-zoom-scrollport]",
+    ) as HTMLDivElement;
     Object.defineProperties(scrollport, {
       clientWidth: { configurable: true, value: 300 },
       clientHeight: { configurable: true, value: 400 },
-    })
+    });
     scrollport.getBoundingClientRect = () => ({
       x: 10,
       y: 20,
@@ -348,65 +359,65 @@ describe('PDF body', () => {
       width: 300,
       height: 400,
       toJSON: () => ({}),
-    })
-    scrollport.scrollLeft = 40
-    scrollport.scrollTop = 80
-    await fireEvent.wheel(scrollport, { deltaY: 20, clientX: 60, clientY: 70 })
-    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toBeUndefined()
-    vi.useFakeTimers()
-    const event = new WheelEvent('wheel', {
+    });
+    scrollport.scrollLeft = 40;
+    scrollport.scrollTop = 80;
+    await fireEvent.wheel(scrollport, { deltaY: 20, clientX: 60, clientY: 70 });
+    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toBeUndefined();
+    vi.useFakeTimers();
+    const event = new WheelEvent("wheel", {
       bubbles: true,
       cancelable: true,
       ctrlKey: true,
       deltaY: -10,
       clientX: 60,
       clientY: 70,
-    })
-    const controls = view.container.querySelector('[data-document-zoom-controls]') as HTMLElement
-    const rendersBeforeGesture = engine.render.mock.calls.length
-    expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false)
-    expect(scrollport.dispatchEvent(event)).toBe(false)
-    await act(async () => {})
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
-    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toBeUndefined()
-    expect(engine.render).toHaveBeenCalledTimes(rendersBeforeGesture)
-    expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('111%')
+    });
+    const controls = view.container.querySelector("[data-document-zoom-controls]") as HTMLElement;
+    const rendersBeforeGesture = engine.render.mock.calls.length;
+    expect(controls.hasAttribute("data-document-zoom-visible")).toBe(false);
+    expect(scrollport.dispatchEvent(event)).toBe(false);
+    await act(async () => {});
+    expect(controls.getAttribute("data-document-zoom-visible")).toBe("true");
+    expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toBeUndefined();
+    expect(engine.render).toHaveBeenCalledTimes(rendersBeforeGesture);
+    expect(screen.getByRole("button", { name: "Choose zoom" }).textContent).toContain("111%");
     expect(
       (
-        view.container.querySelector('[data-document-zoom-frame]') as HTMLElement
-      ).style.getPropertyValue('--document-zoom'),
-    ).toBe(String(Math.exp(0.1)))
-    expect(scrollport.scrollLeft).toBeCloseTo((40 + 50) * Math.exp(0.1) - 50)
-    expect(scrollport.scrollTop).toBeCloseTo((80 + 50) * Math.exp(0.1) - 50)
+        view.container.querySelector("[data-document-zoom-frame]") as HTMLElement
+      ).style.getPropertyValue("--document-zoom"),
+    ).toBe(String(Math.exp(0.1)));
+    expect(scrollport.scrollLeft).toBeCloseTo((40 + 50) * Math.exp(0.1) - 50);
+    expect(scrollport.scrollTop).toBeCloseTo((80 + 50) * Math.exp(0.1) - 50);
     await act(() => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 1.5 })
-    })
-    expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('111%')
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 1.5 });
+    });
+    expect(screen.getByRole("button", { name: "Choose zoom" }).textContent).toContain("111%");
     expect(
       (
-        view.container.querySelector('[data-document-zoom-frame]') as HTMLElement
-      ).style.getPropertyValue('--document-zoom'),
-    ).toBe(String(Math.exp(0.1)))
+        view.container.querySelector("[data-document-zoom-frame]") as HTMLElement
+      ).style.getPropertyValue("--document-zoom"),
+    ).toBe(String(Math.exp(0.1)));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(120)
-    })
-    const zoom = h.instance.getSnapshot().byTab[h.tabId]?.zoom
-    expect(zoom?.kind).toBe('fixed')
-    if (zoom?.kind !== 'fixed') throw new Error('pinch did not commit a fixed zoom')
-    expect(zoom.scale).toBeCloseTo(Math.exp(0.1))
-    const committed = zoom.scale
-    expect(engine.render).toHaveBeenCalledTimes(rendersBeforeGesture + 1)
-    expect(engine.render.mock.calls.at(-1)![4]).toBeCloseTo(window.devicePixelRatio * committed)
+      await vi.advanceTimersByTimeAsync(120);
+    });
+    const zoom = h.instance.getSnapshot().byTab[h.tabId]?.zoom;
+    expect(zoom?.kind).toBe("fixed");
+    if (zoom?.kind !== "fixed") throw new Error("pinch did not commit a fixed zoom");
+    expect(zoom.scale).toBeCloseTo(Math.exp(0.1));
+    const committed = zoom.scale;
+    expect(engine.render).toHaveBeenCalledTimes(rendersBeforeGesture + 1);
+    expect(engine.render.mock.calls.at(-1)![4]).toBeCloseTo(window.devicePixelRatio * committed);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(419)
-    })
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+      await vi.advanceTimersByTimeAsync(419);
+    });
+    expect(controls.getAttribute("data-document-zoom-visible")).toBe("true");
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1)
-    })
-    expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false)
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(controls.hasAttribute("data-document-zoom-visible")).toBe(false);
     scrollport.dispatchEvent(
-      new WheelEvent('wheel', {
+      new WheelEvent("wheel", {
         bubbles: true,
         cancelable: true,
         ctrlKey: true,
@@ -415,340 +426,340 @@ describe('PDF body', () => {
         clientX: 60,
         clientY: 70,
       }),
-    )
-    await act(async () => {})
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+    );
+    await act(async () => {});
+    expect(controls.getAttribute("data-document-zoom-visible")).toBe("true");
     expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({
-      kind: 'fixed',
+      kind: "fixed",
       scale: committed,
-    })
-    view.unmount()
+    });
+    view.unmount();
     expect(h.instance.getSnapshot().byTab[h.tabId]?.zoom).toEqual({
-      kind: 'fixed',
+      kind: "fixed",
       scale: committed,
-    })
-  })
-  it('does not restore a pending gesture after its tab closes', async () => {
-    vi.useFakeTimers()
-    const h = harness()
-    const view = await render(vueH(h.View, null))
+    });
+  });
+  it("does not restore a pending gesture after its tab closes", async () => {
+    vi.useFakeTimers();
+    const h = harness();
+    const view = await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(1))
-    })
+      loads[0]!.deferred.resolve(documentOf(1));
+    });
     const scrollport = view.container.querySelector(
-      '[data-document-zoom-scrollport]',
-    ) as HTMLDivElement
+      "[data-document-zoom-scrollport]",
+    ) as HTMLDivElement;
     scrollport.dispatchEvent(
-      new WheelEvent('wheel', {
+      new WheelEvent("wheel", {
         bubbles: true,
         cancelable: true,
         ctrlKey: true,
         deltaMode: WheelEvent.DOM_DELTA_PAGE,
         deltaY: -1,
       }),
-    )
+    );
     await act(() => {
-      h.controller.abort()
-    })
+      h.controller.abort();
+    });
     scrollport.dispatchEvent(
-      new WheelEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -1 }),
-    )
+      new WheelEvent("wheel", { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -1 }),
+    );
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(120)
-    })
-    expect(h.instance.getSnapshot().byTab[h.tabId]).toBeUndefined()
-    view.unmount()
-    expect(h.instance.getSnapshot().byTab[h.tabId]).toBeUndefined()
-  })
-  it('redraws only nearby pages and refreshes a retained page when it returns at the new zoom', async () => {
-    IntersectionObserverStub.instances = []
-    vi.stubGlobal('IntersectionObserver', IntersectionObserverStub)
-    const h = harness()
-    const view = await render(vueH(h.View, null))
+      await vi.advanceTimersByTimeAsync(120);
+    });
+    expect(h.instance.getSnapshot().byTab[h.tabId]).toBeUndefined();
+    view.unmount();
+    expect(h.instance.getSnapshot().byTab[h.tabId]).toBeUndefined();
+  });
+  it("redraws only nearby pages and refreshes a retained page when it returns at the new zoom", async () => {
+    IntersectionObserverStub.instances = [];
+    vi.stubGlobal("IntersectionObserver", IntersectionObserverStub);
+    const h = harness();
+    const view = await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(3))
-    })
-    const first = view.container.querySelector('[data-pdf-page="1"]') as HTMLElement
-    const second = view.container.querySelector('[data-pdf-page="2"]') as HTMLElement
-    const firstCanvas = first.querySelector('canvas')!
-    const secondCanvas = second.querySelector('canvas')!
-    const firstObserver = IntersectionObserverStub.instances.find(instance =>
+      loads[0]!.deferred.resolve(documentOf(3));
+    });
+    const first = view.container.querySelector('[data-pdf-page="1"]') as HTMLElement;
+    const second = view.container.querySelector('[data-pdf-page="2"]') as HTMLElement;
+    const firstCanvas = first.querySelector("canvas")!;
+    const secondCanvas = second.querySelector("canvas")!;
+    const firstObserver = IntersectionObserverStub.instances.find((instance) =>
       instance.observed.has(firstCanvas),
-    )!
-    const placeholderObserver = IntersectionObserverStub.instances.find(instance =>
+    )!;
+    const placeholderObserver = IntersectionObserverStub.instances.find((instance) =>
       instance.observed.has(second),
-    )!
+    )!;
     await act(async () => {
-      placeholderObserver.intersect(second, true)
-    })
-    const secondObserver = IntersectionObserverStub.instances.find(instance =>
+      placeholderObserver.intersect(second, true);
+    });
+    const secondObserver = IntersectionObserverStub.instances.find((instance) =>
       instance.observed.has(secondCanvas),
-    )!
+    )!;
     await act(() => {
-      secondObserver.intersect(secondCanvas, false)
-    })
+      secondObserver.intersect(secondCanvas, false);
+    });
     await act(async () => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 2 })
-    })
-    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2, 1])
-    expect(first.querySelector('canvas')!.width).toBe(200 * window.devicePixelRatio)
-    expect(second.querySelector('canvas')!.width).toBe(100 * window.devicePixelRatio)
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 2 });
+    });
+    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2, 1]);
+    expect(first.querySelector("canvas")!.width).toBe(200 * window.devicePixelRatio);
+    expect(second.querySelector("canvas")!.width).toBe(100 * window.devicePixelRatio);
     await act(async () => {
-      firstObserver.intersect(firstCanvas, false)
-      secondObserver.intersect(secondCanvas, true)
-    })
-    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2, 1, 2])
-    expect(second.querySelector('canvas')!.width).toBe(200 * window.devicePixelRatio)
+      firstObserver.intersect(firstCanvas, false);
+      secondObserver.intersect(secondCanvas, true);
+    });
+    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2, 1, 2]);
+    expect(second.querySelector("canvas")!.width).toBe(200 * window.devicePixelRatio);
     await act(async () => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 1 })
-    })
-    expect(second.querySelector('canvas')!.width).toBe(100 * window.devicePixelRatio)
-  })
-  it('retains the displayed page while cancelling and joining superseded zoom renders', async () => {
-    const h = harness()
-    const view = await render(vueH(h.View, null))
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 1 });
+    });
+    expect(second.querySelector("canvas")!.width).toBe(100 * window.devicePixelRatio);
+  });
+  it("retains the displayed page while cancelling and joining superseded zoom renders", async () => {
+    const h = harness();
+    const view = await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(1))
-    })
-    const canvas = screen.getByRole('img') as HTMLCanvasElement
+      loads[0]!.deferred.resolve(documentOf(1));
+    });
+    const canvas = screen.getByRole("img") as HTMLCanvasElement;
     const obsolete = Promise.withResolvers<{
-      width: number
-      height: number
-    }>()
+      width: number;
+      height: number;
+    }>();
     const latest = Promise.withResolvers<{
-      width: number
-      height: number
-    }>()
+      width: number;
+      height: number;
+    }>();
     engine.render
       .mockImplementationOnce((_document, _page, buffer) => {
-        buffer.width = buffer.height = 200
-        return obsolete.promise
+        buffer.width = buffer.height = 200;
+        return obsolete.promise;
       })
       .mockImplementationOnce((_document, _page, buffer) => {
-        buffer.width = buffer.height = 300
-        return latest.promise
-      })
+        buffer.width = buffer.height = 300;
+        return latest.promise;
+      });
     await act(async () => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 2 })
-    })
-    expect(canvas.width).toBe(100)
-    expect(screen.getByRole('img')).toBe(canvas)
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 2 });
+    });
+    expect(canvas.width).toBe(100);
+    expect(screen.getByRole("img")).toBe(canvas);
     await act(async () => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 3 })
-    })
-    expect(engine.render.mock.calls[1]![3].aborted).toBe(true)
-    expect(engine.render).toHaveBeenCalledTimes(2)
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 3 });
+    });
+    expect(engine.render.mock.calls[1]![3].aborted).toBe(true);
+    expect(engine.render).toHaveBeenCalledTimes(2);
     await act(async () => {
-      obsolete.resolve({ width: 100, height: 100 })
-    })
-    expect(engine.render).toHaveBeenCalledTimes(3)
-    expect(canvas.width).toBe(100)
+      obsolete.resolve({ width: 100, height: 100 });
+    });
+    expect(engine.render).toHaveBeenCalledTimes(3);
+    expect(canvas.width).toBe(100);
     await act(async () => {
-      latest.resolve({ width: 100, height: 100 })
-    })
-    expect(canvas.width).toBe(300)
-    expect(canvas.style.getPropertyValue('--pdf-page-width')).toBe('100px')
-    expect(screen.queryByRole('alert')).toBeNull()
-    view.unmount()
-  })
-  it('keeps the replacement document when the previous load settles late', async () => {
-    const h = harness()
-    const mounted = await render(vueH(h.View, { data: 'old' }))
-    await mounted.rerender(vueH(h.View, { data: 'new' }))
-    expect(loads[0]!.dispose).toHaveBeenCalledOnce()
-    const latest = documentOf(2)
+      latest.resolve({ width: 100, height: 100 });
+    });
+    expect(canvas.width).toBe(300);
+    expect(canvas.style.getPropertyValue("--pdf-page-width")).toBe("100px");
+    expect(screen.queryByRole("alert")).toBeNull();
+    view.unmount();
+  });
+  it("keeps the replacement document when the previous load settles late", async () => {
+    const h = harness();
+    const mounted = await render(vueH(h.View, { data: "old" }));
+    await mounted.rerender(vueH(h.View, { data: "new" }));
+    expect(loads[0]!.dispose).toHaveBeenCalledOnce();
+    const latest = documentOf(2);
     await act(async () => {
-      loads[1]!.deferred.resolve(latest)
-    })
+      loads[1]!.deferred.resolve(latest);
+    });
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(99))
-    })
-    expect(screen.getAllByRole('img')).toHaveLength(2)
-    expect(engine.render.mock.calls.every(([document]) => document === latest)).toBe(true)
-  })
-  it('mounts selectable text with the page and cancels it when the body unmounts', async () => {
-    const pdfPage = { pageNumber: 1 } as PDFPageProxy
-    const viewport = { width: 100, height: 100, scale: 1 } as PageViewport
-    overlay.render.mockReturnValue({ promise: Promise.resolve(), cancel: overlay.cancel })
+      loads[0]!.deferred.resolve(documentOf(99));
+    });
+    expect(screen.getAllByRole("img")).toHaveLength(2);
+    expect(engine.render.mock.calls.every(([document]) => document === latest)).toBe(true);
+  });
+  it("mounts selectable text with the page and cancels it when the body unmounts", async () => {
+    const pdfPage = { pageNumber: 1 } as PDFPageProxy;
+    const viewport = { width: 100, height: 100, scale: 1 } as PageViewport;
+    overlay.render.mockReturnValue({ promise: Promise.resolve(), cancel: overlay.cancel });
     engine.render.mockImplementation(
       async (_document, _number, _canvas, _signal, _ratio, renderText) => {
-        await renderText?.(pdfPage, viewport).promise
-        return { width: viewport.width, height: viewport.height }
+        await renderText?.(pdfPage, viewport).promise;
+        return { width: viewport.width, height: viewport.height };
       },
-    )
-    const h = harness()
-    const view = await render(vueH(h.View, null))
+    );
+    const h = harness();
+    const view = await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(1))
-    })
+      loads[0]!.deferred.resolve(documentOf(1));
+    });
     expect(overlay.create).toHaveBeenCalledExactlyOnceWith(
-      view.container.querySelector('[data-pdf-text]'),
-    )
-    expect(overlay.render).toHaveBeenCalledExactlyOnceWith(pdfPage, viewport)
-    expect(screen.getByRole('img', { name: 'PDF page 1' })).toBeDefined()
-    expect(overlay.cancel).not.toHaveBeenCalled()
+      view.container.querySelector("[data-pdf-text]"),
+    );
+    expect(overlay.render).toHaveBeenCalledExactlyOnceWith(pdfPage, viewport);
+    expect(screen.getByRole("img", { name: "PDF page 1" })).toBeDefined();
+    expect(overlay.cancel).not.toHaveBeenCalled();
     await act(async () => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 2 })
-    })
-    expect(overlay.render).toHaveBeenCalledOnce()
-    expect(overlay.cancel).not.toHaveBeenCalled()
-    view.unmount()
-    expect(overlay.cancel).toHaveBeenCalledOnce()
-  })
-  it('shows localized load errors and retries without replacing the file resource', async () => {
-    const h = harness()
-    await render(vueH(h.View, null))
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 2 });
+    });
+    expect(overlay.render).toHaveBeenCalledOnce();
+    expect(overlay.cancel).not.toHaveBeenCalled();
+    view.unmount();
+    expect(overlay.cancel).toHaveBeenCalledOnce();
+  });
+  it("shows localized load errors and retries without replacing the file resource", async () => {
+    const h = harness();
+    await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.reject(new Error('invalid PDF'))
-    })
-    expect(screen.getByRole('alert').textContent).toContain('Cannot display PDF: invalid PDF')
-    await fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+      loads[0]!.deferred.reject(new Error("invalid PDF"));
+    });
+    expect(screen.getByRole("alert").textContent).toContain("Cannot display PDF: invalid PDF");
+    await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     await act(async () => {
-      loads[1]!.deferred.resolve(documentOf(1))
-    })
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getByRole('img', { name: 'PDF page 1' })).toBeTruthy()
+      loads[1]!.deferred.resolve(documentOf(1));
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("img", { name: "PDF page 1" })).toBeTruthy();
     expect(engine.open.mock.calls.map(([data]) => new TextDecoder().decode(data))).toEqual([
-      'one',
-      'one',
-    ])
-  })
-  it('reports password protection in the renderer locale', async () => {
-    const h = harness()
-    await render(vueH(h.View, null))
-    const password = new Error('encrypted')
-    password.name = 'PasswordException'
+      "one",
+      "one",
+    ]);
+  });
+  it("reports password protection in the renderer locale", async () => {
+    const h = harness();
+    await render(vueH(h.View, null));
+    const password = new Error("encrypted");
+    password.name = "PasswordException";
     await act(async () => {
-      loads[0]!.deferred.reject(password)
-    })
-    expect(screen.getByRole('alert').textContent).toContain(en.password)
-  })
-  it('renders later pages only when they approach the viewport and records the reached page', async () => {
-    IntersectionObserverStub.instances = []
-    vi.stubGlobal('IntersectionObserver', IntersectionObserverStub)
-    const h = harness()
-    const view = await render(vueH(h.View, null))
+      loads[0]!.deferred.reject(password);
+    });
+    expect(screen.getByRole("alert").textContent).toContain(en.password);
+  });
+  it("renders later pages only when they approach the viewport and records the reached page", async () => {
+    IntersectionObserverStub.instances = [];
+    vi.stubGlobal("IntersectionObserver", IntersectionObserverStub);
+    const h = harness();
+    const view = await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(3))
-    })
-    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1])
-    const second = view.container.querySelector('[data-pdf-page="2"]') as HTMLElement
-    const observer = IntersectionObserverStub.instances.find(instance =>
+      loads[0]!.deferred.resolve(documentOf(3));
+    });
+    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1]);
+    const second = view.container.querySelector('[data-pdf-page="2"]') as HTMLElement;
+    const observer = IntersectionObserverStub.instances.find((instance) =>
       instance.observed.has(second),
-    )!
+    )!;
     await act(() => {
-      observer.intersect(second, false)
-    })
-    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1])
+      observer.intersect(second, false);
+    });
+    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1]);
     await act(async () => {
-      observer.intersect(second, true)
-    })
-    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2])
-    expect(h.instance.getSnapshot().byTab[h.tabId]?.page).toBe(2)
-    expect(screen.getByRole('img', { name: 'PDF page 2' })).toBeTruthy()
-    view.unmount()
-    expect(IntersectionObserverStub.instances.every(instance => instance.disconnected)).toBe(
+      observer.intersect(second, true);
+    });
+    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2]);
+    expect(h.instance.getSnapshot().byTab[h.tabId]?.page).toBe(2);
+    expect(screen.getByRole("img", { name: "PDF page 2" })).toBeTruthy();
+    view.unmount();
+    expect(IntersectionObserverStub.instances.every((instance) => instance.disconnected)).toBe(
       true,
-    )
+    );
     await act(() => {
-      observer.intersect(second, true)
-    })
-    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2])
-  })
-  it('ignores successful and failed page renders after their body unmounts', async () => {
+      observer.intersect(second, true);
+    });
+    expect(engine.render.mock.calls.map(([, page]) => page)).toEqual([1, 2]);
+  });
+  it("ignores successful and failed page renders after their body unmounts", async () => {
     const success = Promise.withResolvers<{
-      width: number
-      height: number
-    }>()
+      width: number;
+      height: number;
+    }>();
     const failure = Promise.withResolvers<{
-      width: number
-      height: number
-    }>()
-    engine.render.mockReturnValueOnce(success.promise).mockReturnValueOnce(failure.promise)
-    const h = harness()
-    const view = await render(vueH(h.View, null))
+      width: number;
+      height: number;
+    }>();
+    engine.render.mockReturnValueOnce(success.promise).mockReturnValueOnce(failure.promise);
+    const h = harness();
+    const view = await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(2))
-    })
-    const signals = engine.render.mock.calls.map(([, , , signal]) => signal)
-    expect(signals).toHaveLength(2)
-    view.unmount()
-    expect(signals.every(signal => signal.aborted)).toBe(true)
+      loads[0]!.deferred.resolve(documentOf(2));
+    });
+    const signals = engine.render.mock.calls.map(([, , , signal]) => signal);
+    expect(signals).toHaveLength(2);
+    view.unmount();
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
     await act(async () => {
-      success.resolve({ width: 100, height: 100 })
-      failure.reject(new Error('late render failure'))
-      await Promise.allSettled([success.promise, failure.promise])
-    })
-    expect(view.container.childElementCount).toBe(0)
-  })
-  it('renders a structured Worker failure through its own locale', async () => {
-    const h = harness()
-    await render(vueH(h.View, null))
+      success.resolve({ width: 100, height: 100 });
+      failure.reject(new Error("late render failure"));
+      await Promise.allSettled([success.promise, failure.promise]);
+    });
+    expect(view.container.childElementCount).toBe(0);
+  });
+  it("renders a structured Worker failure through its own locale", async () => {
+    const h = harness();
+    await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf())
-    })
+      loads[0]!.deferred.resolve(documentOf());
+    });
     await act(() => {
-      engine.open.mock.calls[0]![2](new PdfWorkerFailure(new MessageEvent('messageerror')))
-    })
-    expect(screen.getByRole('alert').textContent).toContain(en.workerFailed)
-    expect(screen.getByRole('alert').textContent).not.toContain('message could not be decoded')
-  })
-  it('ignores a previous document rejection and failure callback after its content is replaced', async () => {
-    const h = harness()
-    const mounted = await render(vueH(h.View, { data: 'old' }))
-    await mounted.rerender(vueH(h.View, { data: 'new' }))
+      engine.open.mock.calls[0]![2](new PdfWorkerFailure(new MessageEvent("messageerror")));
+    });
+    expect(screen.getByRole("alert").textContent).toContain(en.workerFailed);
+    expect(screen.getByRole("alert").textContent).not.toContain("message could not be decoded");
+  });
+  it("ignores a previous document rejection and failure callback after its content is replaced", async () => {
+    const h = harness();
+    const mounted = await render(vueH(h.View, { data: "old" }));
+    await mounted.rerender(vueH(h.View, { data: "new" }));
     await act(async () => {
-      loads[1]!.deferred.resolve(documentOf(2))
-    })
+      loads[1]!.deferred.resolve(documentOf(2));
+    });
     await act(async () => {
-      loads[0]!.deferred.reject(new Error('late parsing error'))
-      engine.open.mock.calls[0]![2](new PdfWorkerFailure(new ErrorEvent('error')))
-    })
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getAllByRole('img')).toHaveLength(2)
-  })
-  it('shows a foreign render rejection and retries that page', async () => {
-    engine.render.mockRejectedValueOnce('foreign rendering failure')
-    const h = harness()
-    await render(vueH(h.View, null))
+      loads[0]!.deferred.reject(new Error("late parsing error"));
+      engine.open.mock.calls[0]![2](new PdfWorkerFailure(new ErrorEvent("error")));
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByRole("img")).toHaveLength(2);
+  });
+  it("shows a foreign render rejection and retries that page", async () => {
+    engine.render.mockRejectedValueOnce("foreign rendering failure");
+    const h = harness();
+    await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(1))
-    })
-    expect(screen.getByRole('alert').textContent).toContain(
-      'Cannot display PDF: foreign rendering failure',
-    )
-    await fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    await act(async () => {})
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getByRole('img', { name: 'PDF page 1' })).toBeTruthy()
-  })
-  it('keeps the previous bitmap when canvas allocation fails and retries the zoom', async () => {
-    const h = harness()
-    await render(vueH(h.View, null))
+      loads[0]!.deferred.resolve(documentOf(1));
+    });
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Cannot display PDF: foreign rendering failure",
+    );
+    await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await act(async () => {});
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("img", { name: "PDF page 1" })).toBeTruthy();
+  });
+  it("keeps the previous bitmap when canvas allocation fails and retries the zoom", async () => {
+    const h = harness();
+    await render(vueH(h.View, null));
     await act(async () => {
-      loads[0]!.deferred.resolve(documentOf(1))
-    })
-    const canvas = screen.getByRole('img') as HTMLCanvasElement
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValueOnce(null)
+      loads[0]!.deferred.resolve(documentOf(1));
+    });
+    const canvas = screen.getByRole("img") as HTMLCanvasElement;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValueOnce(null);
     await act(async () => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 2 })
-    })
-    expect(canvas.width).toBe(100)
-    expect(screen.getByRole('img')).toBe(canvas)
-    expect(screen.getByRole('alert').textContent).toContain('PDF canvas has no 2D context')
-    await fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    await act(async () => {})
-    expect(canvas.width).toBe(200)
-    expect(screen.queryByRole('alert')).toBeNull()
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValueOnce(null)
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 2 });
+    });
+    expect(canvas.width).toBe(100);
+    expect(screen.getByRole("img")).toBe(canvas);
+    expect(screen.getByRole("alert").textContent).toContain("PDF canvas has no 2D context");
+    await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await act(async () => {});
+    expect(canvas.width).toBe(200);
+    expect(screen.queryByRole("alert")).toBeNull();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValueOnce(null);
     await act(async () => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 3 })
-    })
-    expect(screen.getByRole('alert')).toBeTruthy()
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 3 });
+    });
+    expect(screen.getByRole("alert")).toBeTruthy();
     await act(async () => {
-      h.instance.actions.zoom(h.tabId, { kind: 'fixed', scale: 2 })
-    })
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(canvas.width).toBe(200)
-  })
-})
+      h.instance.actions.zoom(h.tabId, { kind: "fixed", scale: 2 });
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(canvas.width).toBe(200);
+  });
+});

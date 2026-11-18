@@ -224,10 +224,10 @@ wine_node() {
 
 cd "$scratch/tree"
 tsc_js='node_modules/typescript/bin/tsc'
-tsdown_js='node_modules/tsdown/dist/run.mjs'
+pack_js='node_modules/vite-plus/bin/vp'
 vitepress_js='node_modules/vitepress/bin/vitepress.js'
 [ -f "$vitepress_js" ] || vitepress_js='website/node_modules/vitepress/bin/vitepress.js'
-for entry in "$tsc_js" "$tsdown_js" "$vitepress_js"; do
+for entry in "$tsc_js" "$pack_js" "$vitepress_js"; do
   [ -f "$entry" ] || { echo "wine-windows-gates: expected entrypoint missing after hoisted install: $entry" >&2; exit 1; }
 done
 # VitePress links vue into the site's node_modules at build time; Wine cannot
@@ -253,11 +253,11 @@ build_gate() {
   wine_node "$scratch/logs/host-typert.log" --import tsx/esm scripts/generate-typert.ts || return $?
   wine_node "$scratch/logs/host-references.log" --import tsx/esm scripts/compile-referenced-projects.ts host || return $?
   wine_node "$scratch/logs/host-tsc.log" --max-old-space-size=8192 "$tsc_js" -p tsconfig.host.json --pretty false || return $?
-  wine_node "$scratch/logs/host-tsdown.log" "$tsdown_js" --env.DSH_BUILD_FACE host || return $?
-  (cd apps/desktop && wine_node "$scratch/logs/desktop-tsdown.log" "../../$tsdown_js") || return $?
+  DSH_BUILD_FACE=host wine_node "$scratch/logs/host-pack.log" "$pack_js" pack || return $?
+  (cd apps/desktop && wine_node "$scratch/logs/desktop-pack.log" "../../$pack_js" pack) || return $?
   wine_node "$scratch/logs/client-references.log" --import tsx/esm scripts/compile-referenced-projects.ts client || return $?
   wine_node "$scratch/logs/client-tsc.log" --max-old-space-size=8192 "$tsc_js" -p tsconfig.client.json --pretty false || return $?
-  wine_node "$scratch/logs/client-tsdown.log" "$tsdown_js" --env.DSH_BUILD_FACE client
+  DSH_BUILD_FACE=client wine_node "$scratch/logs/client-pack.log" "$pack_js" pack
 }
 site_gate() {
   cd website
@@ -283,14 +283,14 @@ report() {
     for log in "$@"; do tail -n 200 "$log" >&2 || true; done
   fi
 }
-report 'build (Typert, Host tsc/tsdown, desktop tsdown, Client tsc/tsdown)' "$build_status" \
+report 'build (Typert, Host tsc/pack, desktop pack, Client tsc/pack)' "$build_status" \
   "$scratch/logs/host-typert.log" \
   "$scratch/logs/host-tsc.log" \
-  "$scratch/logs/host-tsdown.log" \
-  "$scratch/logs/desktop-tsdown.log" \
+  "$scratch/logs/host-pack.log" \
+  "$scratch/logs/desktop-pack.log" \
   "$scratch/logs/client-references.log" \
   "$scratch/logs/client-tsc.log" \
-  "$scratch/logs/client-tsdown.log"
+  "$scratch/logs/client-pack.log"
 report 'production site (vitepress build)' "$site_status" "$scratch/logs/site.log"
 if (( build_status != 0 )); then exit "$build_status"; fi
 exit "$site_status"

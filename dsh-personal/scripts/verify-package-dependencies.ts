@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, globSync, readFileSync, writeFileSync } from 'node:fs'
 import { availableParallelism } from 'node:os'
 import { dirname, extname, join, normalize, relative, resolve, sep } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { loadPackConfig } from './pack-config.ts'
 import { Worker } from 'node:worker_threads'
 import ts from 'typescript'
 import { WorkspaceTypertGenerator } from '../packages/typert/generator/src/workspace.ts'
@@ -477,16 +477,16 @@ function hostSourceEntries(root: string, pkg: WorkspacePackageManifest): string[
   return [...entries].sort()
 }
 
-/** tsdown build faces the repository build runs; each package config contributes its configs under both. */
+/** pack build faces the repository build runs; each package config contributes its configs under both. */
 const BUILD_FACES = ['host', 'client'] as const
 
-/** One tsdown configuration as far as Host entry discovery reads it. */
+/** One pack configuration as far as Host entry discovery reads it. */
 interface BuildEntryConfig {
   readonly entry?: unknown
   readonly platform?: unknown
 }
 
-/** Flatten a tsdown entry declaration to its paths: a string, a list, or an output-name map. */
+/** Flatten a pack entry declaration to its paths: a string, a list, or an output-name map. */
 function buildEntryPaths(entry: unknown, configPath: string): string[] {
   if (entry === undefined || entry === '') return []
   if (typeof entry === 'string') return [entry]
@@ -499,12 +499,12 @@ function buildEntryPaths(entry: unknown, configPath: string): string[] {
   )
     return Object.values(entry) as string[]
   throw new Error(
-    `${configPath}: tsdown entry ${JSON.stringify(entry)} is not a path, a path list, or an output-name map`,
+    `${configPath}: pack entry ${JSON.stringify(entry)} is not a path, a path list, or an output-name map`,
   )
 }
 
 /**
- * Read the Host-side source entries a package-local `tsdown.config.ts` builds, such as Worker-thread and child-process
+ * Read the Host-side source entries a package-local `vite.config.ts` builds, such as Worker-thread and child-process
  * entries that no package export names. The config is evaluated under every repository build face; configs for the
  * browser platform and entries under `src/client/` (Client faces, including the Node Client half) are not Host
  * entries. A package without a local config builds only the workspace default `index` and `startup` entries, which
@@ -518,22 +518,19 @@ export async function readHostBuildEntries(
   root: string,
   pkg: WorkspacePackageManifest,
 ): Promise<string[]> {
-  const configPath = resolve(root, pkg.dir, 'tsdown.config.ts')
+  const configPath = resolve(root, pkg.dir, 'vite.config.ts')
   if (!existsSync(configPath)) return []
   const display = normalizePath(relative(root, configPath))
-  const loaded = (await import(pathToFileURL(configPath).href)) as { default?: unknown }
-  const exported = loaded.default
-  if (exported === undefined || exported === null)
-    throw new Error(`${display}: tsdown config has no default export`)
   const configs: BuildEntryConfig[] = []
-  for (const face of BUILD_FACES) {
-    const value: unknown =
-      typeof exported === 'function'
-        ? await (exported as (inline: { env: Record<string, string> }) => unknown)({
-          env: { DSH_BUILD_FACE: face },
-        })
-        : exported
-    configs.push(...((Array.isArray(value) ? value : [value]) as BuildEntryConfig[]))
+  const previousFace = process.env.DSH_BUILD_FACE
+  try {
+    for (const face of BUILD_FACES) {
+      process.env.DSH_BUILD_FACE = face
+      configs.push(...await loadPackConfig(configPath))
+    }
+  } finally {
+    if (previousFace === undefined) delete process.env.DSH_BUILD_FACE
+    else process.env.DSH_BUILD_FACE = previousFace
   }
   const packageDir = resolve(root, pkg.dir)
   const clientDir = join(packageDir, 'src', 'client') + sep
@@ -542,7 +539,7 @@ export async function readHostBuildEntries(
     if (config.platform === 'browser') continue
     for (const path of buildEntryPaths(config.entry, display)) {
       if (!/^(?:\.\/)?(?:lib\/types|src)\//.test(path)) {
-        throw new Error(`${display}: tsdown entry ${path} cannot map to a source entry`)
+        throw new Error(`${display}: pack entry ${path} cannot map to a source entry`)
       }
       const source = path.replace(/^(?:\.\/)?(?:lib\/types|src)\//, './src/')
       const matched = /[*{]/.test(source)
@@ -553,7 +550,7 @@ export async function readHostBuildEntries(
           match => match !== undefined,
         )
       if (matched.length === 0 && !/[*{]/.test(source)) {
-        throw new Error(`${display}: tsdown entry ${path} has no source module`)
+        throw new Error(`${display}: pack entry ${path} has no source module`)
       }
       for (const match of matched) if (!match.startsWith(clientDir)) entries.add(match)
     }
@@ -623,7 +620,7 @@ function readHostRuntimeUses(
  * @param policy - Reviewed Host exports, required services, and development-only relationships.
  * @param generatedHostSource - Host module already emitted in memory by a batched Typert pass.
  * @returns Source-derived dependency facts without writing build artifacts; Host roles include the build entries
- * {@link readHostBuildEntries} reads from the package's tsdown config.
+ * {@link readHostBuildEntries} reads from the package's pack config.
  */
 export async function readPackageDependencyFacts(
   root: string,

@@ -10,11 +10,11 @@ import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { build, type Rolldown, type TsdownBundle, type UserConfig } from 'tsdown'
+import { build, type Rolldown, type TsdownBundle, type UserConfig } from 'vite-plus/pack'
 import type { DshClientModuleManifest } from '@deepseek-ai/dsh-package-manifest'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { packageAssetRevision } from '../packages/client/modules/src/assets.ts'
-import { clientBundle } from '../packages/client/tsdown.client.ts'
+import { clientBundle } from '../packages/client/pack.client.ts'
 
 interface EmittedAsset {
   type: 'asset'
@@ -118,7 +118,7 @@ async function assetPackage(
   return root
 }
 
-/** Client-face configs of one package, as its tsdown.config.ts would return them. */
+/** Client-face configs of one package, as its vite.config.ts would return them. */
 function clientFaceConfigs(packageDir: string, dualClient = false): UserConfig[] {
   return clientBundle(packageDir, ['lib/types/index.js'], { dualClient })({ env: { DSH_BUILD_FACE: 'client' } })
 }
@@ -303,10 +303,10 @@ describe('client bundle package asset imports', () => {
 
     let builds: TsdownBundle[] = []
     try {
-      builds = await build({
+      builds = (await build({
         ...config, cwd: root, config: false, tsconfig: false,
         write: false, clean: false, exports: false, report: false, logLevel: 'silent',
-      })
+      })).bundles
       const output = builds.flatMap(bundle => bundle.chunks).find(chunk => chunk.type === 'chunk' && chunk.fileName === 'client.js')
       const code = output?.type === 'chunk' ? output.code : ''
       // The minifier may print either string quote.
@@ -491,10 +491,10 @@ describe('client bundle Vue SFCs', () => {
     if (config === undefined) throw new Error('browser config missing')
     let builds: TsdownBundle[] = []
     try {
-      builds = await build({
+      builds = (await build({
         ...config, cwd: root, config: false, tsconfig: false,
         write: false, clean: false, exports: false, report: false, logLevel: 'silent',
-      })
+      })).bundles
       const chunks = builds.flatMap(bundle => bundle.chunks)
       const output = chunks.find(chunk => chunk.type === 'chunk' && chunk.fileName === 'client.js')
       if (output?.type !== 'chunk') throw new Error('Vue client chunk missing')

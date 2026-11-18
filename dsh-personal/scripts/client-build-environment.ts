@@ -162,7 +162,7 @@ interface ClientArtifactDigest {
 export interface ClientBuildRecord {
   /** Record schema version. */
   readonly formatVersion: number
-  /** Exact public environment embedded by Vite and tsdown. */
+  /** Exact public environment embedded by Vite and pack. */
   readonly environment: ClientBuildEnvironment
   /** Digest that binds the environment to the current artifacts. */
   readonly artifacts: ClientArtifactDigest
@@ -266,7 +266,7 @@ export function assertClientBuildEnvironment(
  * property reads and enumeration deliberately observe the empty object.
  *
  * @param environment - environment inherited by the build process.
- * @returns deterministic Vite/tsdown `define` expressions.
+ * @returns deterministic Vite/pack `define` expressions.
  */
 export function clientBuildEnvironmentDefines(
   environment: NodeJS.ProcessEnv,
@@ -278,7 +278,7 @@ export function clientBuildEnvironmentDefines(
  * Create Node-face substitutions that fix each public client build value into the artifact.
  * `process.env` itself stays untouched, so Host code keeps reading its other variables at runtime.
  * @param environment - environment inherited by the build process.
- * @returns one deterministic tsdown `define` expression per public value the build sets.
+ * @returns one deterministic pack `define` expression per public value the build sets.
  */
 export function clientBuildValueDefines(
   environment: NodeJS.ProcessEnv,

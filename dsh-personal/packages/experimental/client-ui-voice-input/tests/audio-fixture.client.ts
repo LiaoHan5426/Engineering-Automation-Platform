@@ -1,36 +1,36 @@
 /** Controlled browser audio devices with real Recording ownership and conversion. */
-import { vi, type Mock } from 'vitest'
-import { Recording } from '../src/client/audio.ts'
+import { vi, type Mock } from "vite-plus/test";
+import { Recording } from "../src/client/audio.ts";
 
 interface FixtureAudioTrack extends EventTarget {
-  stop: Mock<() => void>
-  label: string
-  getSettings(): MediaTrackSettings
+  stop: Mock<() => void>;
+  label: string;
+  getSettings(): MediaTrackSettings;
 }
 interface FixtureStream {
-  getTracks(): FixtureAudioTrack[]
-  getAudioTracks(): FixtureAudioTrack[]
+  getTracks(): FixtureAudioTrack[];
+  getAudioTracks(): FixtureAudioTrack[];
 }
 interface FixtureRenderedAudio {
-  getChannelData(): Float32Array<ArrayBuffer>
+  getChannelData(): Float32Array<ArrayBuffer>;
 }
 interface FixtureOfflineContext {
-  destination: object
-  createBufferSource(): { buffer: null; connect(): void; start(): void }
-  startRendering: Mock<() => Promise<FixtureRenderedAudio>>
+  destination: object;
+  createBufferSource(): { buffer: null; connect(): void; start(): void };
+  startRendering: Mock<() => Promise<FixtureRenderedAudio>>;
 }
 interface CaptureFixture {
-  recording: Recording
-  getUserMedia: Mock<(constraints: MediaStreamConstraints) => Promise<FixtureStream>>
-  stream: FixtureStream
-  track: EventTarget
-  trackStop: Mock<() => void>
-  close: Mock<() => Promise<void>>
-  disposed: Mock<() => void>
-  decoding: Mock<(data: ArrayBuffer) => Promise<{ duration: number }>>
-  rendering: Mock<() => Promise<FixtureRenderedAudio>>
-  offline: Mock<(channels: number, frames: number, rate: number) => FixtureOfflineContext>
-  failRecorder(): void
+  recording: Recording;
+  getUserMedia: Mock<(constraints: MediaStreamConstraints) => Promise<FixtureStream>>;
+  stream: FixtureStream;
+  track: EventTarget;
+  trackStop: Mock<() => void>;
+  close: Mock<() => Promise<void>>;
+  disposed: Mock<() => void>;
+  decoding: Mock<(data: ArrayBuffer) => Promise<{ duration: number }>>;
+  rendering: Mock<() => Promise<FixtureRenderedAudio>>;
+  offline: Mock<(channels: number, frames: number, rate: number) => FixtureOfflineContext>;
+  failRecorder(): void;
 }
 
 /**
@@ -43,33 +43,33 @@ export function captureFixture(
 ): CaptureFixture {
   const trackStop = vi.fn(),
     close = vi.fn(async () => {}),
-    disposed = vi.fn()
-  const decoding = vi.fn(async (_data: ArrayBuffer) => ({ duration: 2 }))
-  const rendering = vi.fn(async () => ({ getChannelData: () => new Float32Array([0.5, -0.5]) }))
-  let failRecorder: () => void
+    disposed = vi.fn();
+  const decoding = vi.fn(async (_data: ArrayBuffer) => ({ duration: 2 }));
+  const rendering = vi.fn(async () => ({ getChannelData: () => new Float32Array([0.5, -0.5]) }));
+  let failRecorder: () => void;
   class Recorder {
-    state = 'inactive'
-    mimeType = 'audio/webm'
-    ondataavailable?: (event: { data: Blob }) => void
-    onstop?: () => void
-    onerror?: () => void
+    state = "inactive";
+    mimeType = "audio/webm";
+    ondataavailable?: (event: { data: Blob }) => void;
+    onstop?: () => void;
+    onerror?: () => void;
     constructor() {
-      if (options.constructError) throw new Error('recorder unavailable')
+      if (options.constructError) throw new Error("recorder unavailable");
       failRecorder = () => {
-        this.onerror!()
-      }
+        this.onerror!();
+      };
     }
     start() {
-      this.state = 'recording'
+      this.state = "recording";
     }
     stop() {
-      this.state = 'inactive'
+      this.state = "inactive";
       queueMicrotask(() => {
-        this.ondataavailable?.({ data: new Blob() })
-        if (!options.empty) this.ondataavailable?.({ data: new Blob(['final audio']) })
-        if (options.recorderError) this.onerror?.()
-        else this.onstop?.()
-      })
+        this.ondataavailable?.({ data: new Blob() });
+        if (!options.empty) this.ondataavailable?.({ data: new Blob(["final audio"]) });
+        if (options.recorderError) this.onerror?.();
+        else this.onstop?.();
+      });
     }
   }
   const offline = vi.fn(function Offline(_channels: number, _frames: number, _rate: number) {
@@ -77,33 +77,33 @@ export function captureFixture(
       destination: {},
       createBufferSource: () => ({ buffer: null, connect() {}, start() {} }),
       startRendering: rendering,
-    }
-  })
-  const track = new EventTarget()
+    };
+  });
+  const track = new EventTarget();
   const audioTrack = Object.assign(track, {
     stop: trackStop,
-    label: 'Fixture microphone',
-    getSettings: (): MediaTrackSettings => ({ groupId: 'fixture-input' }),
-  })
-  const stream = { getTracks: () => [audioTrack], getAudioTracks: () => [audioTrack] }
-  const getUserMedia = vi.fn(async (_constraints: MediaStreamConstraints) => stream)
-  vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
-  vi.stubGlobal('MediaRecorder', Recorder)
-  vi.stubGlobal('AudioContext', function Audio() {
+    label: "Fixture microphone",
+    getSettings: (): MediaTrackSettings => ({ groupId: "fixture-input" }),
+  });
+  const stream = { getTracks: () => [audioTrack], getAudioTracks: () => [audioTrack] };
+  const getUserMedia = vi.fn(async (_constraints: MediaStreamConstraints) => stream);
+  vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+  vi.stubGlobal("MediaRecorder", Recorder);
+  vi.stubGlobal("AudioContext", function Audio() {
     return {
-      state: 'running',
+      state: "running",
       close,
       decodeAudioData: decoding,
       createMediaStreamSource: () => ({ connect: vi.fn() }),
       createAnalyser: () => ({
         fftSize: 256,
         getFloatTimeDomainData: (buffer: Float32Array) => {
-          buffer.fill(0.25)
+          buffer.fill(0.25);
         },
       }),
-    }
-  })
-  vi.stubGlobal('OfflineAudioContext', offline)
+    };
+  });
+  vi.stubGlobal("OfflineAudioContext", offline);
   return {
     recording: new Recording(disposed),
     getUserMedia,
@@ -116,7 +116,7 @@ export function captureFixture(
     rendering,
     offline,
     failRecorder: () => {
-      failRecorder()
+      failRecorder();
     },
-  }
+  };
 }

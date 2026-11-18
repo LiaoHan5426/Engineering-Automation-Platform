@@ -12,6 +12,8 @@ pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install --with-deps 
 
 在 Linux 上，`--with-deps` 会通过系统包管理器安装依赖。持久化 CI VM 必须通过镜像维护提供这些依赖，CI 只安装浏览器程序，遵循[故障切换手册](../../../.agents/notes/implemented/process/2026-07-26-ci-failover-runbook.zh.md)的要求。
 
+[访问确认](access-confirmation.e2e.ts)、[Vue host 冒烟测试](vue-smoke/vue-host.e2e.ts)和 [DevTools 前端](devtools-frontend.e2e.ts)支持通过 `DSH_PLAYWRIGHT_EXECUTABLE_PATH` 显式指定本机安装的 Chromium 兼容浏览器可执行文件，例如 Windows 上的 `C:/Program Files/Google/Chrome/Application/chrome.exe`。未设置时，它们使用 Playwright 默认的 Chromium。此覆盖选项仅适用于这三个场景；其他浏览器测试没有统一的可执行文件路径设置。
+
 普通场景以没有已登记 Workspace 或 Session、但持久化标记记录默认 Workspace 已被删除的状态启动，使显式文件夹选择场景自行决定 cwd。`launchWebScaffold({ firstUse: true })` 保留初始化资格，供启动场景使用。
 
 当天消息的 golden 使用共享的 `WEB_FIXTURE_TIME`：预置会话将它传为 `createdAt`，并通过 `pinBrowserClock` 固定浏览器日期；提交实时消息的场景还使用 `pinHostClock`，在清理后恢复。固定后的时钟随真实耗时前进，保留原生定时器，因此跨午夜不会改变场景的日期标签。

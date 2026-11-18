@@ -1,56 +1,58 @@
-import { execFile } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { describe, expect, it } from "vite-plus/test";
 
 /**
  * Built-artifact smoke for the first generated Remote: plain Node boots the
  * Host and Browser bundle handoffs, then crosses the shared `/api` HTTP route.
  */
 
-const packageDir = fileURLToPath(new URL('..', import.meta.url))
-const root = resolve(packageDir, '../../..')
-const artifact = (path: string): string => join(root, path)
-const artifactUrl = (path: string): string => pathToFileURL(artifact(path)).href
+const packageDir = fileURLToPath(new URL("..", import.meta.url));
+const root = resolve(packageDir, "../../..");
+const artifact = (path: string): string => join(root, path);
+const artifactUrl = (path: string): string => pathToFileURL(artifact(path)).href;
 
 const requiredArtifacts = [
-  'packages/client/connection/lib/client.browser.js',
-  'packages/client/connection/lib/index.js',
-  'packages/host/authentication-token/lib/index.js',
-  'packages/api/remotes/lib/client.js',
-  'packages/core/agent/lib/index.js',
-  'packages/core/session/lib/index.js',
-  'packages/util/brand/lib/index.js',
-  'packages/goal/goal/lib/index.js',
-  'packages/goal/goal/lib/typert.host.js',
-  'packages/api/gateway/lib/client.browser.js',
-  'packages/api/gateway/lib/index.js',
-  'packages/api/remote-access/lib/index.js',
-  'packages/typert/registry/lib/client.browser.js',
-  'packages/typert/registry/lib/index.js',
-  'packages/session/session-projection/lib/index.js',
-].every(path => existsSync(artifact(path)))
+  "packages/client/connection/lib/client.browser.js",
+  "packages/client/connection/lib/index.js",
+  "packages/host/authentication-token/lib/index.js",
+  "packages/api/remotes/lib/client.js",
+  "packages/core/agent/lib/index.js",
+  "packages/core/session/lib/index.js",
+  "packages/util/brand/lib/index.js",
+  "packages/goal/goal/lib/index.js",
+  "packages/goal/goal/lib/typert.host.js",
+  "packages/api/gateway/lib/client.browser.js",
+  "packages/api/gateway/lib/index.js",
+  "packages/api/remote-access/lib/index.js",
+  "packages/typert/registry/lib/client.browser.js",
+  "packages/typert/registry/lib/index.js",
+  "packages/session/session-projection/lib/index.js",
+].every((path) => existsSync(artifact(path)));
 
-describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
-  it('runs root and Agent-scoped calls through generated bundles and real HTTP', async () => {
-    const urls = Object.fromEntries(Object.entries({
-      agent: 'packages/core/agent/lib/index.js',
-      brand: 'packages/util/brand/lib/index.js',
-      apiGatewayClient: 'packages/api/gateway/lib/client.browser.js',
-      apiGatewayHost: 'packages/api/gateway/lib/index.js',
-      connectionClient: 'packages/client/connection/lib/client.browser.js',
-      connectionHost: 'packages/client/connection/lib/index.js',
-      tokenProvider: 'packages/host/authentication-token/lib/index.js',
-      goal: 'packages/goal/goal/lib/index.js',
-      goalTypert: 'packages/goal/goal/lib/typert.host.js',
-      remoteAccess: 'packages/api/remote-access/lib/index.js',
-      registryClient: 'packages/typert/registry/lib/client.browser.js',
-      registryHost: 'packages/typert/registry/lib/index.js',
-      remotesClient: 'packages/api/remotes/lib/client.js',
-      session: 'packages/core/session/lib/index.js',
-      sessionProjections: 'packages/session/session-projection/lib/index.js',
-    }).map(([key, path]) => [key, artifactUrl(path)]))
+describe.skipIf(!requiredArtifacts)("Goal Remote built LIB chain", () => {
+  it("runs root and Agent-scoped calls through generated bundles and real HTTP", async () => {
+    const urls = Object.fromEntries(
+      Object.entries({
+        agent: "packages/core/agent/lib/index.js",
+        brand: "packages/util/brand/lib/index.js",
+        apiGatewayClient: "packages/api/gateway/lib/client.browser.js",
+        apiGatewayHost: "packages/api/gateway/lib/index.js",
+        connectionClient: "packages/client/connection/lib/client.browser.js",
+        connectionHost: "packages/client/connection/lib/index.js",
+        tokenProvider: "packages/host/authentication-token/lib/index.js",
+        goal: "packages/goal/goal/lib/index.js",
+        goalTypert: "packages/goal/goal/lib/typert.host.js",
+        remoteAccess: "packages/api/remote-access/lib/index.js",
+        registryClient: "packages/typert/registry/lib/client.browser.js",
+        registryHost: "packages/typert/registry/lib/index.js",
+        remotesClient: "packages/api/remotes/lib/client.js",
+        session: "packages/core/session/lib/index.js",
+        sessionProjections: "packages/session/session-projection/lib/index.js",
+      }).map(([key, path]) => [key, artifactUrl(path)]),
+    );
     const script = `
       import { createServer } from 'node:http'
       import * as cordis from '@deepseek-ai/cordis'
@@ -236,60 +238,65 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
         else Object.defineProperty(globalThis, 'document', previousDocument)
         globalThis.fetch = previousFetch
       }
-    `
+    `;
 
-    const result = await runPlainNode(script)
-    expect(result.killed, `stderr:\n${result.stderr}`).toBe(false)
-    expect(result.signal, `stderr:\n${result.stderr}`).toBeNull()
-    expect(result.exitCode, `stderr:\n${result.stderr}`).toBe(0)
-    const output = JSON.parse(result.stdout.trim().split('\n').at(-1) ?? '{}') as {
-      unauthorizedStatus: number
-      invalidResult: { ok: boolean; error?: { code: string } }
-      rootResult: { ref: { id: string; revision: number } }
-      rootEdit: { objective: string; revision: number }
-      scopedResult: { ref: { id: string; revision: number } }
-      rootGoal: string
-      scopedGoal: string
-      rootEvents: number
-      scopedEvents: number
-    }
+    const result = await runPlainNode(script);
+    expect(result.killed, `stderr:\n${result.stderr}`).toBe(false);
+    expect(result.signal, `stderr:\n${result.stderr}`).toBeNull();
+    expect(result.exitCode, `stderr:\n${result.stderr}`).toBe(0);
+    const output = JSON.parse(result.stdout.trim().split("\n").at(-1) ?? "{}") as {
+      unauthorizedStatus: number;
+      invalidResult: { ok: boolean; error?: { code: string } };
+      rootResult: { ref: { id: string; revision: number } };
+      rootEdit: { objective: string; revision: number };
+      scopedResult: { ref: { id: string; revision: number } };
+      rootGoal: string;
+      scopedGoal: string;
+      rootEvents: number;
+      scopedEvents: number;
+    };
     expect(output).toMatchObject({
       unauthorizedStatus: 401,
-      invalidResult: { ok: false, error: { code: 'gateway/input-invalid' } },
+      invalidResult: { ok: false, error: { code: "gateway/input-invalid" } },
       rootResult: { ref: { revision: 1 } },
-      rootEdit: { objective: 'edited root goal', revision: 2 },
+      rootEdit: { objective: "edited root goal", revision: 2 },
       scopedResult: { ref: { revision: 1 } },
-      rootGoal: 'edited root goal',
-      scopedGoal: 'scoped goal',
+      rootGoal: "edited root goal",
+      scopedGoal: "scoped goal",
       rootEvents: 2,
       scopedEvents: 1,
-    })
-    expect(output.rootResult.ref.id).toMatch(/^goal-/)
-    expect(output.scopedResult.ref.id).toMatch(/^goal-/)
-  }, 60_000)
-})
+    });
+    expect(output.rootResult.ref.id).toMatch(/^goal-/);
+    expect(output.scopedResult.ref.id).toMatch(/^goal-/);
+  }, 60_000);
+});
 
 /** Execute one ESM script without tsx or a TypeScript loader. */
 function runPlainNode(script: string): Promise<{
-  readonly exitCode: number | null
-  readonly killed: boolean
-  readonly signal: string | null
-  readonly stdout: string
-  readonly stderr: string
+  readonly exitCode: number | null;
+  readonly killed: boolean;
+  readonly signal: string | null;
+  readonly stdout: string;
+  readonly stderr: string;
 }> {
   return new Promise((resolveRun) => {
-    execFile(process.execPath, ['--input-type=module', '-e', script], {
-      cwd: packageDir,
-      encoding: 'utf8',
-      timeout: 55_000,
-    }, (error, stdout, stderr) => {
-      resolveRun({
-        exitCode: error === null ? 0 : typeof error.code === 'number' ? error.code : null,
-        killed: error?.killed === true,
-        signal: error?.signal ?? null,
-        stdout,
-        stderr,
-      })
-    })
-  })
+    execFile(
+      process.execPath,
+      ["--input-type=module", "-e", script],
+      {
+        cwd: packageDir,
+        encoding: "utf8",
+        timeout: 55_000,
+      },
+      (error, stdout, stderr) => {
+        resolveRun({
+          exitCode: error === null ? 0 : typeof error.code === "number" ? error.code : null,
+          killed: error?.killed === true,
+          signal: error?.signal ?? null,
+          stdout,
+          stderr,
+        });
+      },
+    );
+  });
 }

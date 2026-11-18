@@ -1,156 +1,262 @@
 // @vitest-environment jsdom
-import { h } from 'vue'
-import { fireEvent, screen } from '@testing-library/dom'
-import { renderVue as render, cleanupVue as cleanup, flushVue as act } from './vue-render.ts'
-import { afterEach, expect, it, vi } from 'vitest'
-import { DraggableImage } from '../src/DraggableImage.tsx'
-import type { PreparedFileDrag } from '../src/file-drag-actions.ts'
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
-async function fixture(src = '/image.png') {
-  const prepared = { start: vi.fn(() => true), release: vi.fn() }
-  const actions = { prepare: vi.fn<() => Promise<PreparedFileDrag>>(async () => prepared), reportFailure: vi.fn() }
-  const open = vi.fn()
-  const view = await act(async () => render(h('button', { 'onClick': open }, [h(DraggableImage, { 'fileDrag': actions, 'src': src, 'name': 'original.png', 'alt': 'source' }, undefined)])))
-  const image = screen.getByRole('img')
-  return { prepared, actions, open, view, image }
+import { h } from "vue";
+import { fireEvent, screen } from "@testing-library/dom";
+import { renderVue as render, cleanupVue as cleanup, flushVue as act } from "./vue-render.ts";
+import { afterEach, expect, it, vi } from "vite-plus/test";
+import { DraggableImage } from "../src/DraggableImage.tsx";
+import type { PreparedFileDrag } from "../src/file-drag-actions.ts";
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+async function fixture(src = "/image.png") {
+  const prepared = { start: vi.fn(() => true), release: vi.fn() };
+  const actions = {
+    prepare: vi.fn<() => Promise<PreparedFileDrag>>(async () => prepared),
+    reportFailure: vi.fn(),
+  };
+  const open = vi.fn();
+  const view = await act(async () =>
+    render(
+      h("button", { onClick: open }, [
+        h(
+          DraggableImage,
+          { fileDrag: actions, src: src, name: "original.png", alt: "source" },
+          undefined,
+        ),
+      ]),
+    ),
+  );
+  const image = screen.getByRole("img");
+  return { prepared, actions, open, view, image };
 }
-it('prepares only on intent, releases on leave and reprepares for another drag', async () => {
-  const f = await fixture()
-  expect(f.actions.prepare).not.toHaveBeenCalled()
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  expect(f.actions.prepare).toHaveBeenCalledOnce()
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  expect(f.actions.prepare).toHaveBeenCalledOnce()
-  const data = {}
-  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: data }))
-  expect(f.prepared.start).toHaveBeenCalledExactlyOnceWith(data, f.image)
-  await act(async () => fireEvent.pointerLeave(f.image))
-  expect(f.prepared.release).toHaveBeenCalledOnce()
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  expect(f.actions.prepare).toHaveBeenCalledTimes(2)
-  await act(async () => fireEvent.dragEnd(f.image))
-  expect(f.prepared.release).toHaveBeenCalledTimes(2)
-})
-it('silently cancels pending preparation and releases a late result after unmount', async () => {
-  const f = await fixture()
-  const pending = Promise.withResolvers<PreparedFileDrag>()
-  f.actions.prepare.mockReturnValue(pending.promise)
-  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))
-  expect(f.actions.reportFailure).not.toHaveBeenCalled()
-  f.view.unmount()
-  await act(async () => { pending.resolve(f.prepared); await pending.promise })
-  expect(f.prepared.release).toHaveBeenCalledOnce()
-  expect(f.prepared.start).not.toHaveBeenCalled()
-})
-it('retains preparation when the pressed pointer leaves a small source before dragstart', async () => {
-  vi.stubGlobal('PointerEvent', MouseEvent)
-  const f = await fixture()
-  await act(async () => { await act(async () => fireEvent.pointerDown(f.image, { button: 0, buttons: 1 })) })
-  await act(async () => fireEvent.pointerLeave(f.image, { buttons: 1 }))
-  expect(f.prepared.release).not.toHaveBeenCalled()
-  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))
-  expect(f.prepared.start).toHaveBeenCalledOnce()
-  await act(async () => fireEvent.pointerUp(window))
-  expect(f.prepared.release).toHaveBeenCalledOnce()
-})
-it('releases an abandoned preparation when the window loses focus', async () => {
-  const f = await fixture()
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  await act(async () => fireEvent.blur(window))
-  expect(f.prepared.release).toHaveBeenCalledOnce()
-})
-it('keeps preparation after clicking without leaving so the next drag starts immediately', async () => {
-  vi.stubGlobal('PointerEvent', MouseEvent)
-  const f = await fixture()
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  await act(async () => fireEvent.pointerDown(f.image, { button: 0, buttons: 1 }))
-  await act(async () => fireEvent.pointerUp(f.image))
-  expect(f.prepared.release).not.toHaveBeenCalled()
-  await act(async () => fireEvent.pointerDown(f.image, { button: 0, buttons: 1 }))
-  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))
-  expect(f.actions.prepare).toHaveBeenCalledOnce()
-  expect(f.prepared.start).toHaveBeenCalledOnce()
-})
-it('retains a pending local preparation after release inside the image for a later drag', async () => {
-  vi.stubGlobal('PointerEvent', MouseEvent)
-  const f = await fixture()
-  const pending = Promise.withResolvers<PreparedFileDrag>()
-  f.actions.prepare.mockReturnValue(pending.promise)
-  await act(async () => { f.view.rerender(h(DraggableImage, { 'fileDrag': f.actions, 'src': '/image.png', 'name': 'image.png', 'resourceAddress': 'dsh-resource://file/session/s/image.png', 'alt': 'source' }, undefined)) })
-  const image = screen.getByRole('img')
-  await act(async () => fireEvent.pointerEnter(image))
-  expect(f.actions.prepare).not.toHaveBeenCalled()
-  await act(async () => fireEvent.pointerDown(image, { button: 0, buttons: 1 }))
-  expect(await act(async () => fireEvent.dragStart(image, { dataTransfer: {} }))).toBe(false)
-  await act(async () => fireEvent.pointerUp(image))
-  await act(async () => { pending.resolve(f.prepared); await pending.promise })
-  expect(f.prepared.release).not.toHaveBeenCalled()
-  await act(async () => fireEvent.pointerDown(image, { button: 0, buttons: 1 }))
-  await act(async () => fireEvent.dragStart(image, { dataTransfer: {} }))
-  expect(f.prepared.start).toHaveBeenCalledOnce()
-})
-it('reports a settled preparation failure only on the next drag and retries', async () => {
-  const f = await fixture()
-  f.actions.prepare.mockRejectedValueOnce(new Error('unreadable'))
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  expect(f.actions.reportFailure).not.toHaveBeenCalled()
-  await act(async () => { expect(await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))).toBe(false) })
-  expect(f.actions.reportFailure).toHaveBeenCalledOnce()
-  expect(f.actions.prepare).toHaveBeenCalledTimes(2)
-})
-it('keeps unreadable cross-origin image dragging native', async () => {
-  const f = await fixture('https://other.test/image.png')
-  f.actions.prepare.mockRejectedValueOnce(new Error('CORS'))
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  expect(await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))).toBe(true)
-  expect(f.actions.reportFailure).not.toHaveBeenCalled()
-})
-it('cancels HTML dragging when the prepared native operation takes over', async () => {
-  const f = await fixture()
-  f.prepared.start.mockReturnValue(false)
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  expect(await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))).toBe(false)
-  await act(async () => fireEvent.click(f.image, { detail: 1 }))
-  expect(f.open).not.toHaveBeenCalled()
-  await act(async () => fireEvent.click(f.image, { detail: 0 }))
-  expect(f.open).toHaveBeenCalledOnce()
-  await act(async () => fireEvent.click(f.image, { detail: 1 }))
-  expect(f.open).toHaveBeenCalledTimes(2)
-})
-it('preserves keyboard activation after drag end', async () => {
-  const f = await fixture()
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))
-  await act(async () => fireEvent.dragEnd(f.image))
-  await act(async () => fireEvent.click(f.image, { detail: 0 }))
-  expect(f.open).toHaveBeenCalledOnce()
-})
-it('does not prepare panned, right-button, or empty images', async () => {
-  vi.stubGlobal('PointerEvent', MouseEvent)
-  const f = await fixture('')
-  await act(async () => { await act(async () => fireEvent.pointerEnter(f.image)) })
-  expect(await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))).toBe(true)
-  await act(async () => { f.view.rerender(h(DraggableImage, { 'fileDrag': f.actions, 'src': '/image.png', 'name': 'image.png', 'alt': 'source' }, undefined)) })
-  const image = screen.getByRole('img')
-  await act(async () => fireEvent.pointerDown(image, { button: 2 }))
-  expect(f.actions.prepare).not.toHaveBeenCalled()
-  Object.defineProperty(image, 'draggable', { value: false, configurable: true })
-  await act(async () => fireEvent.pointerEnter(image))
-  expect(f.actions.prepare).not.toHaveBeenCalled()
-  Object.defineProperty(image, 'draggable', { value: true, configurable: true })
-  await act(async () => { await act(async () => fireEvent.pointerDown(image, { button: 0 })) })
-  expect(f.actions.prepare).toHaveBeenCalledOnce()
-})
-it('keeps already-cancelled gestures inert and forwards loaded original bytes', async () => {
-  vi.stubGlobal('PointerEvent', MouseEvent)
-  const f = await fixture()
-  const file = new File(['data'], 'loaded.png', { type: 'image/png' })
-  await act(async () => { f.view.rerender(h('div', { 'onDragstartCapture': (event: DragEvent) => { event.preventDefault() } }, [h(DraggableImage, { 'fileDrag': f.actions, 'src': 'blob:original', 'name': file.name, 'original': file, 'resourceAddress': 'dsh-resource://file/session/s/a.png' }, undefined)])) })
-  const image = screen.getByRole('img')
-  expect(await act(async () => fireEvent.dragStart(image, { dataTransfer: {} }))).toBe(false)
-  expect(f.prepared.start).not.toHaveBeenCalled()
-  await act(async () => { await act(async () => fireEvent.pointerEnter(image)) })
-  expect(f.actions.prepare).not.toHaveBeenCalled()
-  await act(async () => { await act(async () => fireEvent.pointerDown(image, { button: 0 })) })
-  expect(f.actions.prepare).toHaveBeenCalledWith(expect.objectContaining({ kind: 'blob', blob: file, resourceAddress: 'dsh-resource://file/session/s/a.png' }), expect.any(AbortSignal))
-})
+it("prepares only on intent, releases on leave and reprepares for another drag", async () => {
+  const f = await fixture();
+  expect(f.actions.prepare).not.toHaveBeenCalled();
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  expect(f.actions.prepare).toHaveBeenCalledOnce();
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  expect(f.actions.prepare).toHaveBeenCalledOnce();
+  const data = {};
+  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: data }));
+  expect(f.prepared.start).toHaveBeenCalledExactlyOnceWith(data, f.image);
+  await act(async () => fireEvent.pointerLeave(f.image));
+  expect(f.prepared.release).toHaveBeenCalledOnce();
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  expect(f.actions.prepare).toHaveBeenCalledTimes(2);
+  await act(async () => fireEvent.dragEnd(f.image));
+  expect(f.prepared.release).toHaveBeenCalledTimes(2);
+});
+it("silently cancels pending preparation and releases a late result after unmount", async () => {
+  const f = await fixture();
+  const pending = Promise.withResolvers<PreparedFileDrag>();
+  f.actions.prepare.mockReturnValue(pending.promise);
+  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }));
+  expect(f.actions.reportFailure).not.toHaveBeenCalled();
+  f.view.unmount();
+  await act(async () => {
+    pending.resolve(f.prepared);
+    await pending.promise;
+  });
+  expect(f.prepared.release).toHaveBeenCalledOnce();
+  expect(f.prepared.start).not.toHaveBeenCalled();
+});
+it("retains preparation when the pressed pointer leaves a small source before dragstart", async () => {
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  const f = await fixture();
+  await act(async () => {
+    await act(async () => fireEvent.pointerDown(f.image, { button: 0, buttons: 1 }));
+  });
+  await act(async () => fireEvent.pointerLeave(f.image, { buttons: 1 }));
+  expect(f.prepared.release).not.toHaveBeenCalled();
+  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }));
+  expect(f.prepared.start).toHaveBeenCalledOnce();
+  await act(async () => fireEvent.pointerUp(window));
+  expect(f.prepared.release).toHaveBeenCalledOnce();
+});
+it("releases an abandoned preparation when the window loses focus", async () => {
+  const f = await fixture();
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  await act(async () => fireEvent.blur(window));
+  expect(f.prepared.release).toHaveBeenCalledOnce();
+});
+it("keeps preparation after clicking without leaving so the next drag starts immediately", async () => {
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  const f = await fixture();
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  await act(async () => fireEvent.pointerDown(f.image, { button: 0, buttons: 1 }));
+  await act(async () => fireEvent.pointerUp(f.image));
+  expect(f.prepared.release).not.toHaveBeenCalled();
+  await act(async () => fireEvent.pointerDown(f.image, { button: 0, buttons: 1 }));
+  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }));
+  expect(f.actions.prepare).toHaveBeenCalledOnce();
+  expect(f.prepared.start).toHaveBeenCalledOnce();
+});
+it("retains a pending local preparation after release inside the image for a later drag", async () => {
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  const f = await fixture();
+  const pending = Promise.withResolvers<PreparedFileDrag>();
+  f.actions.prepare.mockReturnValue(pending.promise);
+  await act(async () => {
+    f.view.rerender(
+      h(
+        DraggableImage,
+        {
+          fileDrag: f.actions,
+          src: "/image.png",
+          name: "image.png",
+          resourceAddress: "dsh-resource://file/session/s/image.png",
+          alt: "source",
+        },
+        undefined,
+      ),
+    );
+  });
+  const image = screen.getByRole("img");
+  await act(async () => fireEvent.pointerEnter(image));
+  expect(f.actions.prepare).not.toHaveBeenCalled();
+  await act(async () => fireEvent.pointerDown(image, { button: 0, buttons: 1 }));
+  expect(await act(async () => fireEvent.dragStart(image, { dataTransfer: {} }))).toBe(false);
+  await act(async () => fireEvent.pointerUp(image));
+  await act(async () => {
+    pending.resolve(f.prepared);
+    await pending.promise;
+  });
+  expect(f.prepared.release).not.toHaveBeenCalled();
+  await act(async () => fireEvent.pointerDown(image, { button: 0, buttons: 1 }));
+  await act(async () => fireEvent.dragStart(image, { dataTransfer: {} }));
+  expect(f.prepared.start).toHaveBeenCalledOnce();
+});
+it("reports a settled preparation failure only on the next drag and retries", async () => {
+  const f = await fixture();
+  f.actions.prepare.mockRejectedValueOnce(new Error("unreadable"));
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  expect(f.actions.reportFailure).not.toHaveBeenCalled();
+  await act(async () => {
+    expect(await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))).toBe(false);
+  });
+  expect(f.actions.reportFailure).toHaveBeenCalledOnce();
+  expect(f.actions.prepare).toHaveBeenCalledTimes(2);
+});
+it("keeps unreadable cross-origin image dragging native", async () => {
+  const f = await fixture("https://other.test/image.png");
+  f.actions.prepare.mockRejectedValueOnce(new Error("CORS"));
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  expect(await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))).toBe(true);
+  expect(f.actions.reportFailure).not.toHaveBeenCalled();
+});
+it("cancels HTML dragging when the prepared native operation takes over", async () => {
+  const f = await fixture();
+  f.prepared.start.mockReturnValue(false);
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  expect(await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))).toBe(false);
+  await act(async () => fireEvent.click(f.image, { detail: 1 }));
+  expect(f.open).not.toHaveBeenCalled();
+  await act(async () => fireEvent.click(f.image, { detail: 0 }));
+  expect(f.open).toHaveBeenCalledOnce();
+  await act(async () => fireEvent.click(f.image, { detail: 1 }));
+  expect(f.open).toHaveBeenCalledTimes(2);
+});
+it("preserves keyboard activation after drag end", async () => {
+  const f = await fixture();
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }));
+  await act(async () => fireEvent.dragEnd(f.image));
+  await act(async () => fireEvent.click(f.image, { detail: 0 }));
+  expect(f.open).toHaveBeenCalledOnce();
+});
+it("does not prepare panned, right-button, or empty images", async () => {
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  const f = await fixture("");
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(f.image));
+  });
+  expect(await act(async () => fireEvent.dragStart(f.image, { dataTransfer: {} }))).toBe(true);
+  await act(async () => {
+    f.view.rerender(
+      h(
+        DraggableImage,
+        { fileDrag: f.actions, src: "/image.png", name: "image.png", alt: "source" },
+        undefined,
+      ),
+    );
+  });
+  const image = screen.getByRole("img");
+  await act(async () => fireEvent.pointerDown(image, { button: 2 }));
+  expect(f.actions.prepare).not.toHaveBeenCalled();
+  Object.defineProperty(image, "draggable", { value: false, configurable: true });
+  await act(async () => fireEvent.pointerEnter(image));
+  expect(f.actions.prepare).not.toHaveBeenCalled();
+  Object.defineProperty(image, "draggable", { value: true, configurable: true });
+  await act(async () => {
+    await act(async () => fireEvent.pointerDown(image, { button: 0 }));
+  });
+  expect(f.actions.prepare).toHaveBeenCalledOnce();
+});
+it("keeps already-cancelled gestures inert and forwards loaded original bytes", async () => {
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  const f = await fixture();
+  const file = new File(["data"], "loaded.png", { type: "image/png" });
+  await act(async () => {
+    f.view.rerender(
+      h(
+        "div",
+        {
+          onDragstartCapture: (event: DragEvent) => {
+            event.preventDefault();
+          },
+        },
+        [
+          h(
+            DraggableImage,
+            {
+              fileDrag: f.actions,
+              src: "blob:original",
+              name: file.name,
+              original: file,
+              resourceAddress: "dsh-resource://file/session/s/a.png",
+            },
+            undefined,
+          ),
+        ],
+      ),
+    );
+  });
+  const image = screen.getByRole("img");
+  expect(await act(async () => fireEvent.dragStart(image, { dataTransfer: {} }))).toBe(false);
+  expect(f.prepared.start).not.toHaveBeenCalled();
+  await act(async () => {
+    await act(async () => fireEvent.pointerEnter(image));
+  });
+  expect(f.actions.prepare).not.toHaveBeenCalled();
+  await act(async () => {
+    await act(async () => fireEvent.pointerDown(image, { button: 0 }));
+  });
+  expect(f.actions.prepare).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: "blob",
+      blob: file,
+      resourceAddress: "dsh-resource://file/session/s/a.png",
+    }),
+    expect.any(AbortSignal),
+  );
+});

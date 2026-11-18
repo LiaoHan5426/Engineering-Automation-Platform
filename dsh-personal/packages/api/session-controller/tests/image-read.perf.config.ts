@@ -1,6 +1,6 @@
 /** Compile the diagnostic's private controller adapter; workspace services remain built package imports. */
 
-import { defineConfig } from 'tsdown'
+import { defineConfig } from 'vite-plus/pack'
 
 export default defineConfig({
   entry: { 'image-read.perf': 'image-read.perf.ts' },

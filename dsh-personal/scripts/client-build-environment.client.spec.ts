@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import yaml from 'js-yaml'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   assertClientBuildEnvironment,
   clientBuildEnvironmentDefines,
@@ -18,7 +18,7 @@ import {
   resolveClientBuildEnvironment,
   writeClientBuildRecord,
 } from './client-build-environment.ts'
-import { clientBundle } from '../packages/client/tsdown.client.ts'
+import { clientBundle } from '../packages/client/pack.client.ts'
 
 const root = resolve(import.meta.dirname, '..')
 const PROBE_NAME = 'DSH_CLIENT_BUILD_TEST'
@@ -269,7 +269,7 @@ describe('client build environment', () => {
     expect(clientBuildValueDefines(environment)).toEqual(values)
   })
 
-  it('feeds the same build-process value to dynamic tsdown bundles, their Node faces, and the Vite shell', async () => {
+  it('feeds the same build-process value to dynamic pack bundles, their Node faces, and the Vite shell', async () => {
     process.env[PROBE_NAME] = 'shared-value'
 
     const configs = clientBundle(join(import.meta.dirname, '../packages/client/ui-sidebar'), [

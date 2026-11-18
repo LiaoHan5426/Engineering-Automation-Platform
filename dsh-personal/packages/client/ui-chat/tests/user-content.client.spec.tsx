@@ -1,104 +1,104 @@
-import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
-import { defineComponent, getCurrentInstance, shallowRef, type App } from 'vue'
-import { h, Fragment } from 'vue'
-import { contextMenuHook } from '@deepseek-ai/dsh-client-test-runtime'
+import type { GlobalStandardProps } from "@deepseek-ai/dsh-client-ui-slots";
+import { defineComponent, getCurrentInstance, shallowRef, type App } from "vue";
+import { h, Fragment } from "vue";
+import { contextMenuHook } from "@deepseek-ai/dsh-client-test-runtime";
 // @vitest-environment jsdom
-import type { VNodeChild } from 'vue'
-import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import type { VNodeChild } from "vue";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
 import {
   act,
   cleanup,
   type RenderResult,
-} from '../../../test-support/client-runtime/src/vue-test.ts'
-import { fireEvent, within } from '@testing-library/dom'
+} from "../../../test-support/client-runtime/src/vue-test.ts";
+import { fireEvent, within } from "@testing-library/dom";
 import type {
   AttachmentId,
   FileAttachmentRef,
   ImageAttachmentRef,
-} from '@deepseek-ai/dsh-attachment/types'
-import { brandString } from '@deepseek-ai/dsh-brand'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+} from "@deepseek-ai/dsh-attachment/types";
+import { brandString } from "@deepseek-ai/dsh-brand";
+import type { SessionId } from "@deepseek-ai/dsh-session/types";
+import { SlotTestRuntime } from "@deepseek-ai/dsh-client-test-runtime";
+import { LocaleRuntime } from "@deepseek-ai/dsh-client-locale/client";
+import { en as commonEn } from "@deepseek-ai/dsh-client-locale/src/locales/en.ts";
+import { zh as commonZh } from "@deepseek-ai/dsh-client-locale/src/locales/zh.ts";
 import type {
   PropsRenderFactories,
   PropsRenderSlots,
   PropsRuntime,
   SessionProviderComponent,
-} from '@deepseek-ai/dsh-client-ui-slots'
+} from "@deepseek-ai/dsh-client-ui-slots";
 import type {
   UserContentAttachment,
   UserContentData,
   UserContentInput,
   MessageImagesProps,
-} from '../src/client/contract/slots.ts'
-import { UserContent } from '../src/client/chat/UserContent.tsx'
-import { en, NS, zh } from '../src/client/locale.ts'
-import type { UserTextInjected } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { UserTextRegistry } from '../../ui-conversation/src/client/conversation/user-text-registry.ts'
+} from "../src/client/contract/slots.ts";
+import { UserContent } from "../src/client/chat/UserContent.tsx";
+import { en, NS, zh } from "../src/client/locale.ts";
+import type { UserTextInjected } from "@deepseek-ai/dsh-client-ui-conversation/client";
+import { UserTextRegistry } from "../../ui-conversation/src/client/conversation/user-text-registry.ts";
 import {
   UserText,
   PlainUserText,
   SessionReference,
-} from '../../ui-conversation/src/client/user-text/UserText.tsx'
-import { sessionReferenceRule } from '../../ui-conversation/src/client/user-text/session-reference-rule.ts'
+} from "../../ui-conversation/src/client/user-text/UserText.tsx";
+import { sessionReferenceRule } from "../../ui-conversation/src/client/user-text/session-reference-rule.ts";
 import {
   collapseWhitespaceRule,
   trimWhitespaceRule,
-} from '../../ui-conversation/src/client/user-text/whitespace-rules.ts'
+} from "../../ui-conversation/src/client/user-text/whitespace-rules.ts";
 import {
   fileReferenceRule,
   folderReferenceRule,
-} from '../../ui-reference/src/client/user-text-rules.ts'
-import { FileReference, FolderReference } from '../../ui-reference/src/client/FileReference.tsx'
-import { en as referenceEn, zh as referenceZh } from '../../ui-reference/src/client/locales.ts'
-import { skillReferenceRule } from '../../ui-skill/src/client/user-text-rules.ts'
-import { SkillReference } from '../../ui-skill/src/client/SkillReference.tsx'
-afterEach(cleanup)
+} from "../../ui-reference/src/client/user-text-rules.ts";
+import { FileReference, FolderReference } from "../../ui-reference/src/client/FileReference.tsx";
+import { en as referenceEn, zh as referenceZh } from "../../ui-reference/src/client/locales.ts";
+import { skillReferenceRule } from "../../ui-skill/src/client/user-text-rules.ts";
+import { SkillReference } from "../../ui-skill/src/client/SkillReference.tsx";
+afterEach(cleanup);
 const image: ImageAttachmentRef = {
-  attachmentId: brandString<AttachmentId>(`sha256:${'a'.repeat(64)}`),
-  mediaType: 'image/png',
+  attachmentId: brandString<AttachmentId>(`sha256:${"a".repeat(64)}`),
+  mediaType: "image/png",
   bytes: 68,
   width: 640,
   height: 320,
-  name: 'history.png',
-}
+  name: "history.png",
+};
 const file: FileAttachmentRef = {
-  attachmentId: brandString<AttachmentId>(`sha256:${'b'.repeat(64)}`),
-  name: 'notes.txt',
+  attachmentId: brandString<AttachmentId>(`sha256:${"b".repeat(64)}`),
+  name: "notes.txt",
   bytes: 23,
-}
-const durable: UserContentAttachment = { type: 'image', image: { attachment: image } }
+};
+const durable: UserContentAttachment = { type: "image", image: { attachment: image } };
 const preview: UserContentAttachment = {
-  type: 'image',
-  image: { preview: { url: 'blob:local-preview', name: 'preview.png', width: 4, height: 3 } },
-}
-const filePart: UserContentAttachment = { type: 'file', file }
-const empty: UserContentData = { text: '', attachments: [], extraBlocks: [] }
+  type: "image",
+  image: { preview: { url: "blob:local-preview", name: "preview.png", width: 4, height: 3 } },
+};
+const filePart: UserContentAttachment = { type: "file", file };
+const empty: UserContentData = { text: "", attachments: [], extraBlocks: [] };
 type RenderSeats = GlobalStandardProps &
-  PropsRenderSlots<'conversation.approval.detail'> &
-  PropsRenderFactories & { SessionProvider: SessionProviderComponent }
+  PropsRenderSlots<"conversation.approval.detail"> &
+  PropsRenderFactories & { SessionProvider: SessionProviderComponent };
 async function bench() {
-  const runtime = await SlotTestRuntime.create()
+  const runtime = await SlotTestRuntime.create();
 
-  onTestFinished(() => runtime.dispose())
-  const locale = new LocaleRuntime(runtime.ctx)
-  runtime.ctx.provide('locale', locale)
-  locale.register('common', { en: commonEn, zh: commonZh })
-  locale.register(NS, { en, zh })
-  locale.register('reference', { en: referenceEn, zh: referenceZh })
-  locale.setLocale('en')
-  runtime.slots.installLocale(locale)
-  const imageCalls: PropsRuntime<'conversation.chat.user.images'>[] = []
-  const openFile = vi.fn<(path: string) => void>()
-  const openSkill = vi.fn<(name: string) => void>()
+  onTestFinished(() => runtime.dispose());
+  const locale = new LocaleRuntime(runtime.ctx);
+  runtime.ctx.provide("locale", locale);
+  locale.register("common", { en: commonEn, zh: commonZh });
+  locale.register(NS, { en, zh });
+  locale.register("reference", { en: referenceEn, zh: referenceZh });
+  locale.setLocale("en");
+  runtime.slots.installLocale(locale);
+  const imageCalls: PropsRuntime<"conversation.chat.user.images">[] = [];
+  const openFile = vi.fn<(path: string) => void>();
+  const openSkill = vi.fn<(name: string) => void>();
   await runtime.mount({
-    inject: ['slots'],
+    inject: ["slots"],
     apply: (ctx) => {
-      ctx.slots.provideRoot({ props: { useContextMenu: contextMenuHook() } })
-      const userText = new UserTextRegistry(ctx)
+      ctx.slots.provideRoot({ props: { useContextMenu: contextMenuHook() } });
+      const userText = new UserTextRegistry(ctx);
       for (const rule of [
         sessionReferenceRule,
         fileReferenceRule,
@@ -107,124 +107,124 @@ async function bench() {
         collapseWhitespaceRule,
         trimWhitespaceRule,
       ]) {
-        userText.register(rule)
+        userText.register(rule);
       }
       ctx.slots.registerFactory(
         {
-          name: 'conversation.user.text',
-          scope: 'session',
+          name: "conversation.user.text",
+          scope: "session",
           children: {
-            'conversation.user.text.node': { kind: 'keyed', scope: 'session', inline: true },
+            "conversation.user.text.node": { kind: "keyed", scope: "session", inline: true },
           },
           inject: (): UserTextInjected => ({
             hooks: {
               userTextRevision: {
                 getSnapshot: () => userText.getSnapshot(),
-                subscribe: listener => userText.subscribe(listener),
+                subscribe: (listener) => userText.subscribe(listener),
               },
             },
             createUserTextEvaluator: () => userText.createEvaluator(),
             reportTransformFailure: (error: unknown): never => {
-              throw error
+              throw error;
             },
           }),
         },
         UserText,
-      )
-      ctx.slots.register({ name: 'conversation.user.text.node', key: 'text' }, PlainUserText)
-      ctx.slots.register({ name: 'conversation.user.text.node', key: 'session' }, SessionReference)
+      );
+      ctx.slots.register({ name: "conversation.user.text.node", key: "text" }, PlainUserText);
+      ctx.slots.register({ name: "conversation.user.text.node", key: "session" }, SessionReference);
       ctx.slots.register(
         {
-          name: 'conversation.user.text.node',
-          key: 'file',
-          locale: 'reference',
+          name: "conversation.user.text.node",
+          key: "file",
+          locale: "reference",
           inject: () => ({ openFile, resolveFilePath: (path: string) => path }),
         },
         FileReference,
-      )
-      ctx.slots.register({ name: 'conversation.user.text.node', key: 'folder' }, FolderReference)
+      );
+      ctx.slots.register({ name: "conversation.user.text.node", key: "folder" }, FolderReference);
       ctx.slots.register(
-        { name: 'conversation.user.text.node', key: 'skill', inject: () => ({ openSkill }) },
+        { name: "conversation.user.text.node", key: "skill", inject: () => ({ openSkill }) },
         SkillReference,
-      )
+      );
     },
-  })
+  });
   const mountContent = () =>
     runtime.mount({
-      inject: ['slots'],
+      inject: ["slots"],
       apply: (ctx) => {
         ctx.slots.registerFactory(
           {
-            name: 'conversation.chat.user.content',
-            scope: 'session',
+            name: "conversation.chat.user.content",
+            scope: "session",
             locale: NS,
-            children: { 'conversation.chat.user.images': { kind: 'single', scope: 'session' } },
+            children: { "conversation.chat.user.images": { kind: "single", scope: "session" } },
           },
           UserContent,
-        )
+        );
       },
-    })
-  const owner = await mountContent()
+    });
+  const owner = await mountContent();
   runtime.slots.register(
-    { name: 'conversation.chat.user.images' },
+    { name: "conversation.chat.user.images" },
     defineComponent(
       (props: MessageImagesProps) => {
-        const currentSession = props.useSession(snapshot => snapshot.sessionId)
+        const currentSession = props.useSession((snapshot) => snapshot.sessionId);
         return () => {
-          imageCalls.push(props)
-          const source = props.images[0]
+          imageCalls.push(props);
+          const source = props.images[0];
           if (source === undefined)
-            throw new Error('User content must pass one image to the image Slot')
-          const name = 'attachment' in source ? source.attachment.name : source.preview.name
+            throw new Error("User content must pass one image to the image Slot");
+          const name = "attachment" in source ? source.attachment.name : source.preview.name;
           return h(
-            'span',
+            "span",
             {
-              'data-testid': 'image',
-              'data-session': props.sessionId,
-              'data-current-session': currentSession.value,
+              "data-testid": "image",
+              "data-session": props.sessionId,
+              "data-current-session": currentSession.value,
             },
             [name],
-          )
-        }
+          );
+        };
       },
       {
-        props: ['images', 'sessionId', 'useSession', 'compact', 'align', 'loadImage'],
+        props: ["images", "sessionId", "useSession", "compact", "align", "loadImage"],
         inheritAttrs: false,
       },
     ),
-  )
-  await runtime.sessions.add({ id: 'user-content' })
-  const session = runtime.sessions.retainFor(runtime.ctx, brandString<SessionId>('user-content'))
+  );
+  await runtime.sessions.add({ id: "user-content" });
+  const session = runtime.sessions.retainFor(runtime.ctx, brandString<SessionId>("user-content"));
   const captured: {
-    seats?: RenderSeats
-    app?: App | undefined
-    setContent?: (content: VNodeChild) => void
-  } = {}
+    seats?: RenderSeats;
+    app?: App | undefined;
+    setContent?: (content: VNodeChild) => void;
+  } = {};
   await runtime.root.declare(
     {
-      'conversation.approval.detail': { kind: 'single', scope: 'session' },
+      "conversation.approval.detail": { kind: "single", scope: "session" },
     },
     defineComponent(
       (props: RenderSeats) => {
-        const content = shallowRef<VNodeChild>(null)
+        const content = shallowRef<VNodeChild>(null);
         const setContent = (next: VNodeChild) => {
-          content.value = next
-        }
-        captured.seats = props
-        captured.app = getCurrentInstance()?.appContext.app
-        captured.setContent = setContent
-        return () => content.value
+          content.value = next;
+        };
+        captured.seats = props;
+        captured.app = getCurrentInstance()?.appContext.app;
+        captured.setContent = setContent;
+        return () => content.value;
       },
-      { props: ['renderFactorySlot', 'SessionProvider'], inheritAttrs: false },
+      { props: ["renderFactorySlot", "SessionProvider"], inheritAttrs: false },
     ),
-  )
-  const view = runtime.renderRoot()
-  const { seats, setContent } = captured
+  );
+  const view = runtime.renderRoot();
+  const { seats, setContent } = captured;
   if (seats === undefined || setContent === undefined)
-    throw new Error('User content fixture root did not render')
-  const { SessionProvider } = seats
+    throw new Error("User content fixture root did not render");
+  const { SessionProvider } = seats;
   const factory = (input: UserContentInput) =>
-    seats.renderFactorySlot('conversation.chat.user.content', input)
+    seats.renderFactorySlot("conversation.chat.user.content", input);
   const render = async (content: VNodeChild, scoped = true): Promise<RenderResult> => {
     const update = async (next: VNodeChild): Promise<void> => {
       await act(() => {
@@ -232,14 +232,14 @@ async function bench() {
           scoped
             ? h(SessionProvider, { session: session, children: null }, { default: () => [next] })
             : next,
-        )
-      })
-    }
-    await update(content)
-    await runtime.flush()
-    return { ...view, rerender: update }
-  }
-  const loadImage = vi.fn<UserContentInput['loadImage']>(async () => 'blob:loaded')
+        );
+      });
+    };
+    await update(content);
+    await runtime.flush();
+    return { ...view, rerender: update };
+  };
+  const loadImage = vi.fn<UserContentInput["loadImage"]>(async () => "blob:loaded");
   return {
     app: captured.app!,
     runtime,
@@ -253,209 +253,209 @@ async function bench() {
     SessionProvider,
     openFile,
     openSkill,
-  }
+  };
 }
-describe('user Content Factory', () => {
-  it('renders prepared text directly without a row, admission markers, time, or copy controls', async () => {
-    const b = await bench()
-    const text = '**literal user text**\nsecond line'
+describe("user Content Factory", () => {
+  it("renders prepared text directly without a row, admission markers, time, or copy controls", async () => {
+    const b = await bench();
+    const text = "**literal user text**\nsecond line";
     const view = await b.render(
       b.factory({ content: { ...empty, text }, facts: {}, loadImage: b.loadImage }),
-    )
-    const textNode = view.getByText('**literal user text** second line')
-    expect(textNode.textContent).toBe(text)
-    const root = view.container.querySelector('[data-slot="root"]')
-    expect(textNode.closest('div')?.parentElement).toBe(root?.firstElementChild)
-    expect(root?.children).toHaveLength(1)
+    );
+    const textNode = view.getByText("**literal user text** second line");
+    expect(textNode.textContent).toBe(text);
+    const root = view.container.querySelector('[data-slot="root"]');
+    expect(textNode.closest("div")?.parentElement).toBe(root?.firstElementChild);
+    expect(root?.children).toHaveLength(1);
     expect(
       view.container.querySelector(
         'strong, time, [role="status"], [data-pending-steering], [data-submission-echo]',
       ),
-    ).toBeNull()
-    expect(view.queryAllByRole('button')).toHaveLength(0)
-    expect(view.container.querySelector('[data-message-attachments]')).toBeNull()
-    expect(b.runtime.factoryOf('conversation.chat.user.content')).toMatchObject({
+    ).toBeNull();
+    expect(view.queryAllByRole("button")).toHaveLength(0);
+    expect(view.container.querySelector("[data-message-attachments]")).toBeNull();
+    expect(b.runtime.factoryOf("conversation.chat.user.content")).toMatchObject({
       component: UserContent,
-      scope: 'session',
-      locale: 'chat',
-    })
-  })
-  it('keeps mixed files, durable images, and local previews in their prepared order through its user-image Slot', async () => {
-    const b = await bench()
+      scope: "session",
+      locale: "chat",
+    });
+  });
+  it("keeps mixed files, durable images, and local previews in their prepared order through its user-image Slot", async () => {
+    const b = await bench();
     const content: UserContentData = {
       ...empty,
-      text: 'Prepared text',
+      text: "Prepared text",
       attachments: [
         filePart,
         durable,
-        { type: 'file', file: { ...file, name: 'last.md' } },
+        { type: "file", file: { ...file, name: "last.md" } },
         preview,
       ],
-    }
-    const view = await b.render(b.factory({ content, facts: {}, loadImage: b.loadImage }))
-    const attachments = view.container.querySelector('[data-message-attachments]')
-    expect([...(attachments?.children ?? [])].map(child => child.textContent)).toEqual([
-      'notes.txtTXT 23B',
-      'history.png',
-      'last.mdMD 23B',
-      'preview.png',
-    ])
-    expect(view.getByTitle('notes.txt')).toBeTruthy()
-    expect(view.getByText('Prepared text')).toBeTruthy()
-    const durableCall = b.imageCalls.find(call => call.images[0] === durable.image)
-    const previewCall = b.imageCalls.find(call => call.images[0] === preview.image)
-    expect(durableCall?.images).toEqual([durable.image])
-    expect(previewCall?.images).toEqual([preview.image])
+    };
+    const view = await b.render(b.factory({ content, facts: {}, loadImage: b.loadImage }));
+    const attachments = view.container.querySelector("[data-message-attachments]");
+    expect([...(attachments?.children ?? [])].map((child) => child.textContent)).toEqual([
+      "notes.txtTXT 23B",
+      "history.png",
+      "last.mdMD 23B",
+      "preview.png",
+    ]);
+    expect(view.getByTitle("notes.txt")).toBeTruthy();
+    expect(view.getByText("Prepared text")).toBeTruthy();
+    const durableCall = b.imageCalls.find((call) => call.images[0] === durable.image);
+    const previewCall = b.imageCalls.find((call) => call.images[0] === preview.image);
+    expect(durableCall?.images).toEqual([durable.image]);
+    expect(previewCall?.images).toEqual([preview.image]);
     for (const call of [durableCall, previewCall]) {
-      expect(call).toMatchObject({ align: 'end', compact: true, loadImage: b.loadImage })
+      expect(call).toMatchObject({ align: "end", compact: true, loadImage: b.loadImage });
     }
-    expect(b.loadImage).not.toHaveBeenCalled()
-  })
+    expect(b.loadImage).not.toHaveBeenCalled();
+  });
   it.each([
-    { label: 'one durable image', attachments: [durable], compact: false },
-    { label: 'one preview', attachments: [preview], compact: false },
-    { label: 'one file and one image', attachments: [filePart, durable], compact: true },
-    { label: 'one preview and one file', attachments: [preview, filePart], compact: true },
-  ])('uses all attachments to choose compact images: $label', async ({ attachments, compact }) => {
-    const b = await bench()
+    { label: "one durable image", attachments: [durable], compact: false },
+    { label: "one preview", attachments: [preview], compact: false },
+    { label: "one file and one image", attachments: [filePart, durable], compact: true },
+    { label: "one preview and one file", attachments: [preview, filePart], compact: true },
+  ])("uses all attachments to choose compact images: $label", async ({ attachments, compact }) => {
+    const b = await bench();
     const view = await b.render(
       b.factory({ content: { ...empty, attachments }, facts: {}, loadImage: b.loadImage }),
-    )
-    expect(view.getAllByTestId('image')).toHaveLength(1)
-    expect(b.imageCalls[0]).toMatchObject({ compact, align: 'end', loadImage: b.loadImage })
-    expect(view.queryAllByRole('button')).toHaveLength(0)
+    );
+    expect(view.getAllByTestId("image")).toHaveLength(1);
+    expect(b.imageCalls[0]).toMatchObject({ compact, align: "end", loadImage: b.loadImage });
+    expect(view.queryAllByRole("button")).toHaveLength(0);
     expect(
       view.container.querySelector('[data-slot="root"]')?.firstElementChild?.children,
-    ).toHaveLength(1)
-  })
-  it('reuses one prepared value in unrelated parents while nested images inherit each Session', async () => {
-    const b = await bench()
-    await b.runtime.sessions.add({ id: 'other-user-content' })
+    ).toHaveLength(1);
+  });
+  it("reuses one prepared value in unrelated parents while nested images inherit each Session", async () => {
+    const b = await bench();
+    await b.runtime.sessions.add({ id: "other-user-content" });
     const other = b.runtime.sessions.retainFor(
       b.runtime.ctx,
-      brandString<SessionId>('other-user-content'),
-    )
+      brandString<SessionId>("other-user-content"),
+    );
     const content: UserContentData = Object.freeze({
-      text: 'Already prepared',
+      text: "Already prepared",
       attachments: Object.freeze([preview]),
       extraBlocks: Object.freeze([]),
-    })
-    const input: UserContentInput = { content, facts: {}, loadImage: b.loadImage }
-    const { SessionProvider } = b
+    });
+    const input: UserContentInput = { content, facts: {}, loadImage: b.loadImage };
+    const { SessionProvider } = b;
     const view = await b.render(
       h(Fragment, null, [
-        h('section', { 'data-testid': 'first' }, [b.factory(input)]),
-        h('aside', { 'data-testid': 'second' }, [
+        h("section", { "data-testid": "first" }, [b.factory(input)]),
+        h("aside", { "data-testid": "second" }, [
           h(SessionProvider, { session: other }, { default: () => [b.factory(input)] }),
         ]),
       ]),
-    )
+    );
     for (const [parent, sessionId] of [
-      ['first', 'user-content'],
-      ['second', 'other-user-content'],
+      ["first", "user-content"],
+      ["second", "other-user-content"],
     ] as const) {
-      const section = within(view.getByTestId(parent))
-      expect(section.getByText('Already prepared')).toBeTruthy()
-      expect(section.getByTestId('image').getAttribute('data-session')).toBe(sessionId)
-      expect(section.getByTestId('image').getAttribute('data-current-session')).toBe(sessionId)
+      const section = within(view.getByTestId(parent));
+      expect(section.getByText("Already prepared")).toBeTruthy();
+      expect(section.getByTestId("image").getAttribute("data-session")).toBe(sessionId);
+      expect(section.getByTestId("image").getAttribute("data-current-session")).toBe(sessionId);
     }
-    expect(b.imageCalls.every(call => call.images[0] === preview.image)).toBe(true)
-  })
-  it('binds live Chat locale labels for reference summaries and opaque extra blocks', async () => {
-    const b = await bench()
-    const block = { type: 'future-block', value: 'x'.repeat(20001) }
+    expect(b.imageCalls.every((call) => call.images[0] === preview.image)).toBe(true);
+  });
+  it("binds live Chat locale labels for reference summaries and opaque extra blocks", async () => {
+    const b = await bench();
+    const block = { type: "future-block", value: "x".repeat(20001) };
     const content: UserContentData = {
       ...empty,
       extraBlocks: [block],
-      referenceLabels: ['Alpha', 'Beta'],
-    }
-    const view = await b.render(b.factory({ content, facts: {}, loadImage: b.loadImage }))
-    expect(view.getByText('Referenced session · Alpha, Beta')).toBeTruthy()
-    await act(() => fireEvent.click(view.getByRole('button', { name: '▸Extra content block' })))
-    expect(view.container.querySelector('pre')?.textContent).toContain('"type": "future-block"')
-    expect(view.container.querySelector('pre')?.textContent).toContain(
+      referenceLabels: ["Alpha", "Beta"],
+    };
+    const view = await b.render(b.factory({ content, facts: {}, loadImage: b.loadImage }));
+    expect(view.getByText("Referenced session · Alpha, Beta")).toBeTruthy();
+    await act(() => fireEvent.click(view.getByRole("button", { name: "▸Extra content block" })));
+    expect(view.container.querySelector("pre")?.textContent).toContain('"type": "future-block"');
+    expect(view.container.querySelector("pre")?.textContent).toContain(
       `… truncated, ${JSON.stringify(block, null, 2).length} characters total`,
-    )
+    );
     await act(() => {
-      b.locale.setLocale('zh')
-    })
-    expect(view.getByText('引用会话 · Alpha、Beta')).toBeTruthy()
-    expect(view.getByRole('button', { name: '▾附加内容块' })).toBeTruthy()
-    expect(view.container.querySelector('pre')?.textContent).toContain(
+      b.locale.setLocale("zh");
+    });
+    expect(view.getByText("引用会话 · Alpha、Beta")).toBeTruthy();
+    expect(view.getByRole("button", { name: "▾附加内容块" })).toBeTruthy();
+    expect(view.container.querySelector("pre")?.textContent).toContain(
       `… 已截断，共 ${JSON.stringify(block, null, 2).length} 字符`,
-    )
-  })
-  it('opens file and skill references through their own injectors only in interactive content', async () => {
-    const b = await bench()
-    const labels = ['Alpha']
+    );
+  });
+  it("opens file and skill references through their own injectors only in interactive content", async () => {
+    const b = await bench();
+    const labels = ["Alpha"];
     const content: UserContentData = {
       ...empty,
       text: 'Read @"src/my file.ts" with /review and @Alpha',
       referenceLabels: labels,
-    }
-    const facts = { sessionLabels: labels, skillNames: ['review'] }
+    };
+    const facts = { sessionLabels: labels, skillNames: ["review"] };
     const view = await b.render(
       b.factory({ content, facts, loadImage: b.loadImage, interactive: true }),
-    )
-    await act(() => fireEvent.click(view.getByRole('button', { name: 'my file.ts' })))
-    await act(() => fireEvent.click(view.getByRole('button', { name: '/review' })))
-    expect(b.openFile).toHaveBeenCalledWith('src/my file.ts')
-    expect(b.openSkill).toHaveBeenCalledWith('review')
-    expect(view.queryByRole('button', { name: 'Alpha' })).toBeNull()
-    await view.rerender(b.factory({ content, facts, loadImage: b.loadImage }))
-    expect(view.queryAllByRole('button')).toHaveLength(0)
-    for (const label of ['my file.ts', '/review', 'Alpha'])
-      await act(() => fireEvent.click(view.getByText(label, { exact: true })))
-    expect(b.openFile).toHaveBeenCalledTimes(1)
-    expect(b.openSkill).toHaveBeenCalledTimes(1)
-    expect(view.container.querySelectorAll('[data-ref-chip]')).toHaveLength(3)
-  })
-  it('keeps an empty prepared value empty', async () => {
-    const b = await bench()
-    const view = await b.render(b.factory({ content: empty, facts: {}, loadImage: b.loadImage }))
-    expect(view.container.textContent).toBe('')
-    const root = view.container.querySelector('[data-slot="root"]')
-    expect(root?.children).toHaveLength(1)
-    expect(root?.firstElementChild?.children).toHaveLength(0)
-    expect(view.container.querySelector('[data-message-attachments]')).toBeNull()
-    expect(view.queryAllByRole('button')).toHaveLength(0)
-    expect(b.imageCalls).toHaveLength(0)
-  })
-  it('removes live content on owner disposal and renders it again after registration', async () => {
-    const b = await bench()
+    );
+    await act(() => fireEvent.click(view.getByRole("button", { name: "my file.ts" })));
+    await act(() => fireEvent.click(view.getByRole("button", { name: "/review" })));
+    expect(b.openFile).toHaveBeenCalledWith("src/my file.ts");
+    expect(b.openSkill).toHaveBeenCalledWith("review");
+    expect(view.queryByRole("button", { name: "Alpha" })).toBeNull();
+    await view.rerender(b.factory({ content, facts, loadImage: b.loadImage }));
+    expect(view.queryAllByRole("button")).toHaveLength(0);
+    for (const label of ["my file.ts", "/review", "Alpha"])
+      await act(() => fireEvent.click(view.getByText(label, { exact: true })));
+    expect(b.openFile).toHaveBeenCalledTimes(1);
+    expect(b.openSkill).toHaveBeenCalledTimes(1);
+    expect(view.container.querySelectorAll("[data-ref-chip]")).toHaveLength(3);
+  });
+  it("keeps an empty prepared value empty", async () => {
+    const b = await bench();
+    const view = await b.render(b.factory({ content: empty, facts: {}, loadImage: b.loadImage }));
+    expect(view.container.textContent).toBe("");
+    const root = view.container.querySelector('[data-slot="root"]');
+    expect(root?.children).toHaveLength(1);
+    expect(root?.firstElementChild?.children).toHaveLength(0);
+    expect(view.container.querySelector("[data-message-attachments]")).toBeNull();
+    expect(view.queryAllByRole("button")).toHaveLength(0);
+    expect(b.imageCalls).toHaveLength(0);
+  });
+  it("removes live content on owner disposal and renders it again after registration", async () => {
+    const b = await bench();
     const view = await b.render(
       b.factory({
-        content: { ...empty, text: 'Reusable content' },
+        content: { ...empty, text: "Reusable content" },
         facts: {},
         loadImage: b.loadImage,
       }),
-    )
-    expect(view.getByText('Reusable content')).toBeTruthy()
-    await b.owner.dispose()
-    expect(view.queryByText('Reusable content')).toBeNull()
-    expect(() => b.runtime.factoryOf('conversation.chat.user.content')).toThrow('no definition')
-    await b.mountContent()
-    expect(view.getByText('Reusable content')).toBeTruthy()
-  })
-  it('requires a Session binding even when the prepared value has no images', async () => {
-    const b = await bench()
-    const errors: unknown[] = []
+    );
+    expect(view.getByText("Reusable content")).toBeTruthy();
+    await b.owner.dispose();
+    expect(view.queryByText("Reusable content")).toBeNull();
+    expect(() => b.runtime.factoryOf("conversation.chat.user.content")).toThrow("no definition");
+    await b.mountContent();
+    expect(view.getByText("Reusable content")).toBeTruthy();
+  });
+  it("requires a Session binding even when the prepared value has no images", async () => {
+    const b = await bench();
+    const errors: unknown[] = [];
     b.app.config.errorHandler = (error) => {
-      errors.push(error)
-    }
+      errors.push(error);
+    };
     const view = await b.render(
       b.factory({
-        content: { ...empty, text: 'Unbound content' },
+        content: { ...empty, text: "Unbound content" },
         facts: {},
         loadImage: b.loadImage,
       }),
       false,
-    )
-    expect(errors).toHaveLength(1)
-    expect(errors[0]).toBeInstanceOf(Error)
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toBeInstanceOf(Error);
     expect((errors[0] as Error).message).toBe(
-      'strict session entry rendered without a scope binding',
-    )
-    expect(view.queryByText('Unbound content')).toBeNull()
-  })
-})
+      "strict session entry rendered without a scope binding",
+    );
+    expect(view.queryByText("Unbound content")).toBeNull();
+  });
+});

@@ -1,15 +1,15 @@
-import type { Rolldown } from 'tsdown'
+import type { Rolldown } from "vite-plus/pack";
 
 /** Bare specifiers one Desktop bundle may leave for the runtime to resolve. */
 export interface BundleImportPolicy {
   /** Package names present at runtime, matched by package name so subpaths pass. */
-  readonly packages: ReadonlySet<string>
+  readonly packages: ReadonlySet<string>;
   /**
    * Whether Node builtins resolve at runtime: true for the Electron main
    * process; false for sandboxed preloads, whose `require` polyfill offers only
    * the modules listed in `packages`.
    */
-  readonly nodeBuiltins: boolean
+  readonly nodeBuiltins: boolean;
 }
 
 /**
@@ -17,7 +17,7 @@ export interface BundleImportPolicy {
  * @param specifier - Bare specifier as rolldown reports it, such as `@scope/name/subpath`.
  * @returns The package name without its subpath.
  */
-export function importPackageName(specifier: string): string
+export function importPackageName(specifier: string): string;
 
 /**
  * Whether a module id rolldown reports is a bare specifier, i.e. an import the
@@ -26,7 +26,7 @@ export function importPackageName(specifier: string): string
  * @param id - Module id from `importedIds` or `dynamicallyImportedIds`.
  * @returns True for a bare specifier.
  */
-export function isBareSpecifier(id: string): boolean
+export function isBareSpecifier(id: string): boolean;
 
 /**
  * Bare imports the packaged application cannot resolve.
@@ -34,7 +34,7 @@ export function isBareSpecifier(id: string): boolean
  * @param policy - What this bundle may leave external.
  * @returns Offending specifiers in import order, each once.
  */
-export function unpackagedImports(imports: readonly string[], policy: BundleImportPolicy): string[]
+export function unpackagedImports(imports: readonly string[], policy: BundleImportPolicy): string[];
 
 /**
  * Rolldown plugin that fails a bundle whose external imports the packaged
@@ -43,4 +43,4 @@ export function unpackagedImports(imports: readonly string[], policy: BundleImpo
  * @param policy - What this bundle may leave external.
  * @returns The plugin.
  */
-export function packagedImportsPlugin(policy: BundleImportPolicy): Rolldown.Plugin
+export function packagedImportsPlugin(policy: BundleImportPolicy): Rolldown.Plugin;

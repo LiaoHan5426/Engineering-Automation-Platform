@@ -1,16 +1,16 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import { execa } from 'execa'
-import { describe, expect, it } from 'vitest'
-import { LOADER_SMOKE_TEST_TIMEOUT_MS, resolveExampleLaunch } from '@deepseek-ai/dsh-loader-smoke'
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { execa } from "execa";
+import { describe, expect, it } from "vite-plus/test";
+import { LOADER_SMOKE_TEST_TIMEOUT_MS, resolveExampleLaunch } from "@deepseek-ai/dsh-loader-smoke";
 
-const dshBinScript = fileURLToPath(new URL('../src/bin.ts', import.meta.url))
-const tsconfigPath = fileURLToPath(new URL('../../../tsconfig.json', import.meta.url))
+const dshBinScript = fileURLToPath(new URL("../src/bin.ts", import.meta.url));
+const tsconfigPath = fileURLToPath(new URL("../../../tsconfig.json", import.meta.url));
 const neverDisposePlugin = pathToFileURL(
-  fileURLToPath(new URL('./fixtures/never-dispose.mjs', import.meta.url)),
-).href
+  fileURLToPath(new URL("./fixtures/never-dispose.mjs", import.meta.url)),
+).href;
 
 const POSIX_HEADLESS_PTY_DRIVER = String.raw`
 import errno, json, os, pty, select, signal, sys, time
@@ -59,73 +59,95 @@ actual_exit = os.waitstatus_to_exitcode(status)
 if actual_exit != 130:
     sys.stderr.write(f"expected exit 130, got {actual_exit}\n")
     sys.exit(125)
-`
+`;
 
 async function runHeadlessPtySmoke(): Promise<string> {
-  const cwd = await mkdtemp(join(tmpdir(), 'dsh-headless-shutdown-'))
+  const cwd = await mkdtemp(join(tmpdir(), "dsh-headless-shutdown-"));
   try {
-    const home = join(cwd, '.dsh')
+    const home = join(cwd, ".dsh");
     // Pre-initialize the headless profile with the never-dispose row in its
     // user patch layer (the same file a long-lived profile boot hot-reloads).
-    const profileDir = join(home, 'profiles', 'headless')
-    await mkdir(profileDir, { recursive: true })
-    await writeFile(join(profileDir, 'package.json'), JSON.stringify({
-      name: 'dsh-profile-headless',
-      private: true,
-      dependencies: {},
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'] } },
-    }, undefined, 2))
-    await writeFile(join(profileDir, 'cordis.patch.yml'), [
-      '- insert:',
-      '    - id: never-dispose',
-      `      name: '${neverDisposePlugin}'`,
-      '',
-    ].join('\n'))
+    const profileDir = join(home, "profiles", "headless");
+    await mkdir(profileDir, { recursive: true });
+    await writeFile(
+      join(profileDir, "package.json"),
+      JSON.stringify(
+        {
+          name: "dsh-profile-headless",
+          private: true,
+          dependencies: {},
+          dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } },
+        },
+        undefined,
+        2,
+      ),
+    );
+    await writeFile(
+      join(profileDir, "cordis.patch.yml"),
+      ["- insert:", "    - id: never-dispose", `      name: '${neverDisposePlugin}'`, ""].join(
+        "\n",
+      ),
+    );
     const launch = resolveExampleLaunch({
       srcBin: dshBinScript,
-      configArgs: ['--profile', 'headless', 'never complete'],
+      configArgs: ["--profile", "headless", "never complete"],
       tsconfigPath,
       env: {
         DSH_HOME: home,
-        DSH_AGENTS_HOME: join(cwd, '.agents'),
-        DEEPSEEK_API_KEY: 'keyless-shutdown-no-call',
-        DSH_TELEMETRY_DISABLED: '1',
-        DSH_TEST_SHUTDOWN_ARM_FILE: join(cwd, 'shutdown-armed'),
+        DSH_AGENTS_HOME: join(cwd, ".agents"),
+        DEEPSEEK_API_KEY: "keyless-shutdown-no-call",
+        DSH_TELEMETRY_DISABLED: "1",
+        DSH_TEST_SHUTDOWN_ARM_FILE: join(cwd, "shutdown-armed"),
       },
-    })
-    const timeoutMs = 15_000
-    const result = await execa('python3', [
-      '-c',
-      POSIX_HEADLESS_PTY_DRIVER,
-      launch.command,
-      JSON.stringify(launch.args),
-      JSON.stringify(launch.env),
-      cwd,
-      String(timeoutMs / 1_000),
-    ], {
-      stdin: 'ignore',
-      timeout: timeoutMs + 5_000,
-      killSignal: 'SIGKILL',
-      reject: false,
-      stripFinalNewline: false,
-    })
+    });
+    const timeoutMs = 15_000;
+    const result = await execa(
+      "python3",
+      [
+        "-c",
+        POSIX_HEADLESS_PTY_DRIVER,
+        launch.command,
+        JSON.stringify(launch.args),
+        JSON.stringify(launch.env),
+        cwd,
+        String(timeoutMs / 1_000),
+      ],
+      {
+        stdin: "ignore",
+        timeout: timeoutMs + 5_000,
+        killSignal: "SIGKILL",
+        reject: false,
+        stripFinalNewline: false,
+      },
+    );
     if (result.timedOut) {
-      throw new Error(`dsh headless PTY driver did not exit. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
+      throw new Error(
+        `dsh headless PTY driver did not exit. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+      );
     }
     if (result.failed) {
-      throw new Error(`dsh headless PTY driver exited ${String(result.exitCode)}. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
+      throw new Error(
+        `dsh headless PTY driver exited ${String(result.exitCode)}. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+      );
     }
-    return result.stdout
+    return result.stdout;
   } finally {
-    await rm(cwd, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true });
   }
 }
 
-describe.skipIf(process.platform === 'win32')('headless process shutdown (real Loader tree in a PTY)', () => {
-  it('lets a second Ctrl+C force exit while the first signal is draining', async () => {
-    const output = await runHeadlessPtySmoke()
-    expect(output).not.toContain('dsh: observing at ')
-    expect(output).toContain('dsh-test: never-dispose ready')
-    expect(output).toContain('dsh-test: never-dispose started')
-  }, LOADER_SMOKE_TEST_TIMEOUT_MS)
-})
+describe.skipIf(process.platform === "win32")(
+  "headless process shutdown (real Loader tree in a PTY)",
+  () => {
+    it(
+      "lets a second Ctrl+C force exit while the first signal is draining",
+      async () => {
+        const output = await runHeadlessPtySmoke();
+        expect(output).not.toContain("dsh: observing at ");
+        expect(output).toContain("dsh-test: never-dispose ready");
+        expect(output).toContain("dsh-test: never-dispose started");
+      },
+      LOADER_SMOKE_TEST_TIMEOUT_MS,
+    );
+  },
+);

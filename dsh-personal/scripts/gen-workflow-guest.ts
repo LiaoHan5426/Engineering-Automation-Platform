@@ -4,7 +4,7 @@ import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { isBuiltin } from 'node:module'
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { Rolldown } from 'tsdown'
+import { Rolldown } from 'vite-plus/pack'
 
 const GUEST_ENTRY = 'packages/workflow/workflow-ptc/src/guest.ts'
 const GUEST_SOURCE = 'packages/workflow/workflow-ptc/src/guest-source.ts'

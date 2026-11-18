@@ -13,7 +13,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   browserBundledExternals,
   browserPackageOfFile,
@@ -71,6 +71,7 @@ function fixture(): string {
 function write(root: string, path: string, text: string): void {
   const target = join(root, path)
   mkdirSync(dirname(target), { recursive: true })
+  if (path.endsWith('vite.config.ts') && path.includes('packages/')) text = text.replace('export default ', 'const pack = ') + '\nexport default { pack: typeof pack === "function" ? await pack({ env: process.env }) : pack }\n'
   writeFileSync(target, text)
 }
 
@@ -94,7 +95,7 @@ function dynamicPlugin(root: string, source: string): void {
   )
   write(
     root,
-    'packages/client/dynamic/tsdown.config.ts',
+    'packages/client/dynamic/vite.config.ts',
     [
       'export default {',
       '  name: "@fixture/dynamic/client",',
@@ -141,9 +142,9 @@ describe('browser dependency discovery', () => {
         write(root, 'packages/client/dynamic/src/client/theme.css', '.fixture { color: red }')
       write(
         root,
-        'packages/client/dynamic/tsdown.config.ts',
+        'packages/client/dynamic/vite.config.ts',
         `
-      import { clientBundle } from ${JSON.stringify(pathToFileURL(resolve(repositoryRoot, 'packages/client/tsdown.client.ts')).href)}
+      import { clientBundle } from ${JSON.stringify(pathToFileURL(resolve(repositoryRoot, 'packages/client/pack.client.ts')).href)}
       export default async (...args) => {
         const configs = await clientBundle(import.meta.dirname, ['src/index.ts'], {
           clientBanner: () => '/* fixture-client-banner */',
@@ -190,7 +191,7 @@ describe('browser dependency discovery', () => {
       write(root, 'packages/client/dynamic/package.json', JSON.stringify(manifest))
       write(
         root,
-        'packages/client/dynamic/tsdown.config.ts',
+        'packages/client/dynamic/vite.config.ts',
         `
       import { readFileSync } from 'node:fs'
       import { createRequire } from 'node:module'
@@ -236,7 +237,7 @@ describe('browser dependency discovery', () => {
     dynamicPlugin(root, 'export const output = 1')
     write(
       root,
-      'packages/client/dynamic/tsdown.config.ts',
+      'packages/client/dynamic/vite.config.ts',
       `
       export default {
         name: '@fixture/dynamic/client', entry: 'src/client/index.ts',
@@ -261,7 +262,7 @@ describe('browser dependency discovery', () => {
     dynamicPlugin(root, 'export const value = 1')
     write(
       root,
-      'packages/client/dynamic/tsdown.config.ts',
+      'packages/client/dynamic/vite.config.ts',
       'export default { name: "@fixture/dynamic", entry: "src/index.ts" }',
     )
     await expect(browserBundledExternals(root)).rejects.toThrow('has no browser build config')

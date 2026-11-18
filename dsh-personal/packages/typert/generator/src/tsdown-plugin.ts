@@ -1,6 +1,6 @@
 /**
  * Optional tsdown (rolldown) plugin face of the typert generator. It lowers
- * standard decorators in TypeScript dependencies before bundling, then emits
+ * standard decorators in JavaScript and TypeScript dependencies before bundling, then emits
  * model-driven face artifacts at the package output root. Packages without a
  * Typert or Remote export are skipped. Workspace mode generates in a Worker
  * Thread started by the pass's first `buildStart`, so bundling continues on the
@@ -30,8 +30,8 @@ interface TypertPlugin {
   writeBundle: (options: { dir?: string }) => Promise<void>
 }
 
-/** A module id whose path (before any `?query`) names a TypeScript source. */
-const TYPESCRIPT_MODULE = /^[^?]*\.[cm]?tsx?(?:\?|$)/
+/** A JavaScript or TypeScript module path, excluding any query suffix. */
+const SCRIPT_MODULE = /^[^?]*\.[cm]?[jt]sx?(?:\?|$)/
 const DECORATOR_SYNTAX = /^\s*@[A-Za-z_$][\w$]*/m
 
 // Full builds and typecheck own TypeScript diagnostics. Benchmark-only emission
@@ -58,18 +58,18 @@ type GenerationOutcome =
   | { readonly ok: false; readonly error: TypertWorkerError }
 
 /**
- * Lower standard TypeScript decorators without reading or writing metadata.
+ * Lower standard decorators in JavaScript and TypeScript without reading or writing metadata.
  * @returns a rolldown-compatible transform without metadata generation or artifact writes.
  */
 export function decoratorPlugin(): Pick<TypertPlugin, 'name' | 'transform'> {
   return {
     name: 'dsh-decorators',
     transform: {
-      // Rolldown evaluates the id filter natively, so non-TypeScript modules
-      // never cross into this JavaScript hook.
-      filter: { id: TYPESCRIPT_MODULE },
+      // Include compiled JavaScript entries as well as source dependencies.
+      // Rolldown excludes non-script resources before invoking this hook.
+      filter: { id: SCRIPT_MODULE },
       handler(code, id) {
-        if (!TYPESCRIPT_MODULE.test(id) || !DECORATOR_SYNTAX.test(code)) return
+        if (!SCRIPT_MODULE.test(id) || !DECORATOR_SYNTAX.test(code)) return
         const file = id.replace(/\?.*$/su, '')
         const result = ts.transpileModule(code, {
           fileName: file,

@@ -6,41 +6,62 @@
  * behavior is each consumer's (`dsh-bash-sandbox`).
  */
 
-import { describe, expect, it } from 'vitest'
-import { HarnessError } from '@deepseek-ai/dsh-error'
-import { SANDBOX_PREPARATION_ERROR_CODES, SANDBOX_UNAVAILABLE, SandboxPreparationError, SandboxUnavailableError } from '@deepseek-ai/dsh-sandbox'
+import { describe, expect, it } from "vite-plus/test";
+import { HarnessError } from "@deepseek-ai/dsh-error";
+import {
+  SANDBOX_PREPARATION_ERROR_CODES,
+  SANDBOX_UNAVAILABLE,
+  SandboxPreparationError,
+  SandboxUnavailableError,
+} from "@deepseek-ai/dsh-sandbox";
 
-describe('SandboxUnavailableError', () => {
-  it('carries the structured { name, code } identity consumers key on', () => {
-    const error = new SandboxUnavailableError('read-only')
-    expect(error.name).toBe('SandboxUnavailableError')
-    expect(error.code).toBe(SANDBOX_UNAVAILABLE)
-    expect(error).toBeInstanceOf(Error)
-  })
+describe("SandboxUnavailableError", () => {
+  it("carries the structured { name, code } identity consumers key on", () => {
+    const error = new SandboxUnavailableError("read-only");
+    expect(error.name).toBe("SandboxUnavailableError");
+    expect(error.code).toBe(SANDBOX_UNAVAILABLE);
+    expect(error).toBeInstanceOf(Error);
+  });
 
-  it('names the refused mode and the operator escape hatches in its message', () => {
-    const error = new SandboxUnavailableError('workspace-write')
-    expect(error.message).toContain('"workspace-write"')
-    expect(error.message).toContain('danger-full-access')
-    expect(error.message).not.toContain('Runner failure')
-  })
+  it("names the refused mode and the operator escape hatches in its message", () => {
+    const error = new SandboxUnavailableError("workspace-write");
+    expect(error.message).toContain('"workspace-write"');
+    expect(error.message).toContain("danger-full-access");
+    expect(error.message).not.toContain("Runner failure");
+  });
 
-  it('carries the runner detail when the failure is discovered at execution time', () => {
+  it("carries the runner detail when the failure is discovered at execution time", () => {
     // The late twin of the confine-time throw: an unprobed sole candidate
     // that fails closed at exec surfaces the SAME error, with the runner's
     // own first stderr line as the cause.
-    const error = new SandboxUnavailableError('read-only', 'landlock-run: landlock is not enforced by this kernel')
-    expect(error.code).toBe(SANDBOX_UNAVAILABLE)
-    expect(error.message).toContain('Runner failure: landlock-run: landlock is not enforced by this kernel')
-  })
-})
+    const error = new SandboxUnavailableError(
+      "read-only",
+      "landlock-run: landlock is not enforced by this kernel",
+    );
+    expect(error.code).toBe(SANDBOX_UNAVAILABLE);
+    expect(error.message).toContain(
+      "Runner failure: landlock-run: landlock is not enforced by this kernel",
+    );
+  });
+});
 
-describe('SandboxPreparationError', () => {
-  it('carries a literal name, a closed code, and the platform failure as cause', () => {
-    const cause = new Error('SetNamedSecurityInfoW failed (Win32 5)')
-    const error = new SandboxPreparationError('cannot grant the workspace', 'SANDBOX_PREPARATION_FAILED', { cause })
-    expect(error).toBeInstanceOf(HarnessError)
-    expect(error).toMatchObject({ name: 'SandboxPreparationError', code: 'SANDBOX_PREPARATION_FAILED', cause })
-    expect(SANDBOX_PREPARATION_ERROR_CODES).toEqual(['SANDBOX_PREPARATION_FAILED', 'SANDBOX_INVALID_TEMP_ROOT'])
-  })
-})
+describe("SandboxPreparationError", () => {
+  it("carries a literal name, a closed code, and the platform failure as cause", () => {
+    const cause = new Error("SetNamedSecurityInfoW failed (Win32 5)");
+    const error = new SandboxPreparationError(
+      "cannot grant the workspace",
+      "SANDBOX_PREPARATION_FAILED",
+      { cause },
+    );
+    expect(error).toBeInstanceOf(HarnessError);
+    expect(error).toMatchObject({
+      name: "SandboxPreparationError",
+      code: "SANDBOX_PREPARATION_FAILED",
+      cause,
+    });
+    expect(SANDBOX_PREPARATION_ERROR_CODES).toEqual([
+      "SANDBOX_PREPARATION_FAILED",
+      "SANDBOX_INVALID_TEMP_ROOT",
+    ]);
+  });
+});

@@ -7,7 +7,7 @@
  * A runner in `America/Toronto` formats `America/New_York`'s sample instant
  * identically, which is how such a case fails on some hosts only.
  */
-import { vi } from 'vitest'
+import { vi } from "vite-plus/test";
 
 /**
  * Candidate fixture zones.
@@ -18,9 +18,15 @@ import { vi } from 'vitest'
  * guaranteed to differ from the runner's zone.
  */
 const CANDIDATE_ZONES: readonly string[] = [
-  'Asia/Shanghai', 'Asia/Taipei', 'America/New_York', 'America/Toronto',
-  'Europe/Berlin', 'Europe/Paris', 'Pacific/Auckland', 'UTC',
-]
+  "Asia/Shanghai",
+  "Asia/Taipei",
+  "America/New_York",
+  "America/Toronto",
+  "Europe/Berlin",
+  "Europe/Paris",
+  "Pacific/Auckland",
+  "UTC",
+];
 
 /**
  * Offset of one zone at one instant, in whole minutes east of UTC.
@@ -29,15 +35,29 @@ const CANDIDATE_ZONES: readonly string[] = [
  * @returns minutes the zone's wall clock is ahead of UTC at that instant.
  */
 export function zoneOffsetMinutes(timeZone: string, instant: string): number {
-  const read = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
-    timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  }).formatToParts(new Date(instant)).map(part => [part.type, part.value]))
+  const read = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(new Date(instant))
+      .map((part) => [part.type, part.value]),
+  );
   const wallClock = Date.UTC(
-    Number(read['year']), Number(read['month']) - 1, Number(read['day']),
-    Number(read['hour']), Number(read['minute']), Number(read['second']),
-  )
-  return (wallClock - Date.parse(instant)) / 60_000
+    Number(read["year"]),
+    Number(read["month"]) - 1,
+    Number(read["day"]),
+    Number(read["hour"]),
+    Number(read["minute"]),
+    Number(read["second"]),
+  );
+  return (wallClock - Date.parse(instant)) / 60_000;
 }
 
 /**
@@ -57,12 +77,14 @@ export function zoneDifferingFrom(
   instant: string,
   deviceZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ): string {
-  const deviceOffset = zoneOffsetMinutes(deviceZone, instant)
-  const chosen = CANDIDATE_ZONES.find(zone => zoneOffsetMinutes(zone, instant) !== deviceOffset)
+  const deviceOffset = zoneOffsetMinutes(deviceZone, instant);
+  const chosen = CANDIDATE_ZONES.find((zone) => zoneOffsetMinutes(zone, instant) !== deviceOffset);
   if (chosen === undefined) {
-    throw new Error(`No fixture zone differs from ${deviceZone} at ${instant}; add one to CANDIDATE_ZONES.`)
+    throw new Error(
+      `No fixture zone differs from ${deviceZone} at ${instant}; add one to CANDIDATE_ZONES.`,
+    );
   }
-  return chosen
+  return chosen;
 }
 
 /**
@@ -72,6 +94,9 @@ export function zoneDifferingFrom(
  * @param timeZone - IANA zone the components must resolve as the system zone.
  */
 export function pinSystemZone(timeZone: string): void {
-  const options = new Intl.DateTimeFormat().resolvedOptions()
-  vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({ ...options, timeZone })
+  const options = new Intl.DateTimeFormat().resolvedOptions();
+  vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockReturnValue({
+    ...options,
+    timeZone,
+  });
 }

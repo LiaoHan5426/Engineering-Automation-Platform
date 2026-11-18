@@ -7,13 +7,13 @@
  * references (the cache axis), and ledger-fed stale bindings are the
  * real-core semantics the fake-host suite cannot vouch for.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { within } from '@testing-library/dom'
-import { flushVue as act, renderVue } from '../../ui-primitives/tests/vue-render.ts'
-import { h as vueH, Fragment } from 'vue'
+import { describe, expect, it, vi } from "vite-plus/test";
+import { within } from "@testing-library/dom";
+import { flushVue as act, renderVue } from "../../ui-primitives/tests/vue-render.ts";
+import { h as vueH, Fragment } from "vue";
 function render(node: Parameters<typeof renderVue>[0]) {
-  const view = renderVue(node)
-  return { ...view, ...within(document.body) }
+  const view = renderVue(node);
+  return { ...view, ...within(document.body) };
 }
 import {
   SlotCore,
@@ -22,27 +22,27 @@ import {
   type SlotRendererHost,
   type SlotScopeAdapter,
   type StandardSourceBinding,
-} from '@deepseek-ai/dsh-client-ui-slots'
-import { createVueSlotRenderer } from '../src/client/vue/slots.ts'
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+} from "@deepseek-ai/dsh-client-ui-slots";
+import { createVueSlotRenderer } from "../src/client/vue/slots.ts";
+declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface SlotMap {
     // No 'root' merge: the aggregate client program already carries runtime's
     // authoritative 'root' declaration (a private merge would TS2717-collide);
     // only this suite's own test keys merge here.
-    'spec.single': {
-      kind: 'single'
-      scope: 'root'
+    "spec.single": {
+      kind: "single";
+      scope: "root";
       owner: {
-        label?: string
-      }
-    }
-    'spec.list': {
-      kind: 'list'
-      scope: 'root'
-    }
+        label?: string;
+      };
+    };
+    "spec.list": {
+      kind: "list";
+      scope: "root";
+    };
   }
 }
-type FrameSlots = PropsRenderSlots<'spec.single' | 'spec.list'>
+type FrameSlots = PropsRenderSlots<"spec.single" | "spec.list">;
 /** Passthrough host over the real core (store/session seats unused here). */
 function hostOver(core: SlotCore): SlotRendererHost {
   const absentBinding: StandardSourceBinding = {
@@ -50,138 +50,138 @@ function hostOver(core: SlotCore): SlotRendererHost {
     hooks: {},
     keyedHooks: {},
     props: {},
-  }
+  };
   const bindingSource = {
     getSnapshot: () => absentBinding,
     subscribe: () => () => {},
-  }
+  };
   const sessionAdapter: SlotScopeAdapter = {
     current: bindingSource,
     bindingSource: () => bindingSource,
-  }
+  };
   return {
     subscribe: (key, fn) => core.subscribe(key, fn),
-    getVersion: key => core.getVersion(key),
-    entriesOf: key => core.entries(key),
-    entriesOfSlot: key => core.entriesOfSlot(key),
+    getVersion: (key) => core.getVersion(key),
+    entriesOf: (key) => core.entries(key),
+    entriesOfSlot: (key) => core.entriesOfSlot(key),
     reportEntryError: (key, entry, error, info) => {
-      core.reportEntryError(key, entry, error, info)
+      core.reportEntryError(key, entry, error, info);
     },
     reportFactoryError: (name, definition, error) => {
-      core.reportFactoryError(name, definition, error)
+      core.reportFactoryError(name, definition, error);
     },
-    specOf: key => core.specDynamic(key),
-    isLive: entry => core.isLive(entry),
+    specOf: (key) => core.specDynamic(key),
+    isLive: (entry) => core.isLive(entry),
     storeOf: () => undefined,
     factoryStoreOf: () => undefined,
     retainFactoryOccurrence: () => () => {},
     subscribeFactory: (name, fn) => core.subscribeFactory(name, fn),
-    getFactoryVersion: name => core.factoryVersion(name),
-    factoryOf: name => core.factory(name),
-    isFactoryLive: definition => core.isFactoryLive(definition),
+    getFactoryVersion: (name) => core.factoryVersion(name),
+    factoryOf: (name) => core.factory(name),
+    isFactoryLive: (definition) => core.isFactoryLive(definition),
     root: bindingSource,
     scopeRevision: { getSnapshot: () => 0, subscribe: () => () => {} },
     scope: () => sessionAdapter,
-  }
+  };
 }
 /** Register the root frame (declaring both child keys) and mount the renderer. */
 function mountFrame(
   core: SlotCore,
-  body: (renderSlot: FrameSlots['renderSlot']) => import('vue').VNodeChild,
+  body: (renderSlot: FrameSlots["renderSlot"]) => import("vue").VNodeChild,
 ) {
   const dispose = core.register(
     {
-      name: 'root',
+      name: "root",
       children: {
-        'spec.single': { kind: 'single', scope: 'root' },
-        'spec.list': { kind: 'list', scope: 'root' },
+        "spec.single": { kind: "single", scope: "root" },
+        "spec.list": { kind: "list", scope: "root" },
       },
     },
     (props: FrameSlots) => vueH(Fragment, null, [body(props.renderSlot)]),
-  )
+  );
   const view = render(
     vueH(Fragment, null, [createVueSlotRenderer().renderRoot(hostOver(core), {})]),
-  )
-  return { view, dispose }
+  );
+  return { view, dispose };
 }
-describe('createVueSlotRenderer over the real SlotCore', () => {
-  it('renders registrations live through real microtask batching: register, dispose back to fallback', async () => {
-    const core = new SlotCore()
-    const { view } = mountFrame(core, renderSlot =>
-      renderSlot('spec.single', {}, { fallback: vueH('i', null, ['none']) }),
-    )
-    expect(view.container.textContent).toBe('none')
-    let dispose = () => {}
+describe("createVueSlotRenderer over the real SlotCore", () => {
+  it("renders registrations live through real microtask batching: register, dispose back to fallback", async () => {
+    const core = new SlotCore();
+    const { view } = mountFrame(core, (renderSlot) =>
+      renderSlot("spec.single", {}, { fallback: vueH("i", null, ["none"]) }),
+    );
+    expect(view.container.textContent).toBe("none");
+    let dispose = () => {};
     // The real core batches subscriber notification per microtask: async act.
     await act(async () => {
-      dispose = core.register({ name: 'spec.single' }, ({ label }: { label?: string }) =>
-        vueH('b', null, [label ?? 'on']),
-      )
-    })
-    expect(view.container.textContent).toBe('on')
+      dispose = core.register({ name: "spec.single" }, ({ label }: { label?: string }) =>
+        vueH("b", null, [label ?? "on"]),
+      );
+    });
+    expect(view.container.textContent).toBe("on");
     await act(async () => {
-      dispose()
-      dispose()
-    }) // disposer is idempotent in the real core
-    expect(view.container.textContent).toBe('none')
-  })
-  it('coalesces same-tick mutations into one notification (native snapshot pairing stays consistent)', async () => {
-    const core = new SlotCore()
-    const notified = vi.fn()
-    core.subscribe('spec.list', notified)
-    const { view } = mountFrame(core, renderSlot => renderSlot('spec.list', {}))
+      dispose();
+      dispose();
+    }); // disposer is idempotent in the real core
+    expect(view.container.textContent).toBe("none");
+  });
+  it("coalesces same-tick mutations into one notification (native snapshot pairing stays consistent)", async () => {
+    const core = new SlotCore();
+    const notified = vi.fn();
+    core.subscribe("spec.list", notified);
+    const { view } = mountFrame(core, (renderSlot) => renderSlot("spec.list", {}));
     await act(async () => {
-      core.register({ name: 'spec.list', id: 'two', order: 2 }, () => vueH('span', null, ['2']))
-      core.register({ name: 'spec.list', id: 'one', order: 1 }, () => vueH('span', null, ['1']))
-    })
-    expect(notified).toHaveBeenCalledTimes(1) // two same-tick mutations, one batch
-    expect(view.container.textContent).toBe('12')
-  })
-  it('passes owner props through and keeps sibling entries() references stable across mutations', async () => {
-    const core = new SlotCore()
+      core.register({ name: "spec.list", id: "two", order: 2 }, () => vueH("span", null, ["2"]));
+      core.register({ name: "spec.list", id: "one", order: 1 }, () => vueH("span", null, ["1"]));
+    });
+    expect(notified).toHaveBeenCalledTimes(1); // two same-tick mutations, one batch
+    expect(view.container.textContent).toBe("12");
+  });
+  it("passes owner props through and keeps sibling entries() references stable across mutations", async () => {
+    const core = new SlotCore();
     core.register(
       {
-        name: 'root',
+        name: "root",
         children: {
-          'spec.single': { kind: 'single', scope: 'root' },
-          'spec.list': { kind: 'list', scope: 'root' },
+          "spec.single": { kind: "single", scope: "root" },
+          "spec.list": { kind: "list", scope: "root" },
         },
       },
       (props: FrameSlots) =>
         vueH(Fragment, null, [
-          props.renderSlot('spec.single', { label: 'owner' }),
-          props.renderSlot('spec.list', {}),
+          props.renderSlot("spec.single", { label: "owner" }),
+          props.renderSlot("spec.list", {}),
         ]),
-    )
-    core.register({ name: 'spec.single' }, ({ label }: { label?: string }) =>
-      vueH('b', null, [label]),
-    )
+    );
+    core.register({ name: "spec.single" }, ({ label }: { label?: string }) =>
+      vueH("b", null, [label]),
+    );
     const view = render(
       vueH(Fragment, null, [createVueSlotRenderer().renderRoot(hostOver(core), {})]),
-    )
-    expect(view.container.textContent).toBe('owner')
+    );
+    expect(view.container.textContent).toBe("owner");
     // A mutation on the sibling key leaves this key's entries() reference
     // untouched (real-core stability the inject/renderSlot caches key on).
-    const before = core.entries('spec.single')
+    const before = core.entries("spec.single");
     await act(async () => {
-      core.register({ name: 'spec.list', id: 'l' }, () => vueH('span', null, ['L']))
-    })
-    expect(core.entries('spec.single')).toBe(before)
-    expect(view.container.textContent).toBe('ownerL')
-  })
-  it('feeds stale bindings from the real ledger: a disposed registration throws off isLive', () => {
-    const core = new SlotCore()
-    let captured: FrameSlots['renderSlot'] | undefined
+      core.register({ name: "spec.list", id: "l" }, () => vueH("span", null, ["L"]));
+    });
+    expect(core.entries("spec.single")).toBe(before);
+    expect(view.container.textContent).toBe("ownerL");
+  });
+  it("feeds stale bindings from the real ledger: a disposed registration throws off isLive", () => {
+    const core = new SlotCore();
+    let captured: FrameSlots["renderSlot"] | undefined;
     const { view, dispose } = mountFrame(core, (renderSlot) => {
-      captured = renderSlot
-      return null
-    })
-    expect(captured!('spec.single', {})).not.toBeUndefined() // live binding renders
+      captured = renderSlot;
+      return null;
+    });
+    expect(captured!("spec.single", {})).not.toBeUndefined(); // live binding renders
     // Unmount before disposing: an empty 'root' makes a LIVE root outlet
     // rethrow boot-order (covered in the fake-host suite); the scenario here
     // is a retained closure outliving both tree and registration.
-    view.unmount()
-    dispose()
-    expect(() => captured!('spec.single', {})).toThrow(StaleAuthorizationError)
-  })
-})
+    view.unmount();
+    dispose();
+    expect(() => captured!("spec.single", {})).toThrow(StaleAuthorizationError);
+  });
+});

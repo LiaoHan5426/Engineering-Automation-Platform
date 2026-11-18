@@ -3,22 +3,22 @@
  * Separate processes preserve worker isolation; only the complete merged
  * inventory can enforce per-file coverage thresholds.
  */
-import { spawn } from 'node:child_process'
-import { globSync, readFileSync, writeFileSync } from 'node:fs'
-import { lstat, mkdir, readdir, readFile, rm, unlink, writeFile } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
-import type { TestUserConfig } from 'vitest/config'
-import { coverageExemptHeavySuites } from './coverage-exempt.ts'
-import { pnpmInvocation } from './pnpm-invocation.ts'
+import { spawn } from "node:child_process";
+import { globSync, readFileSync, writeFileSync } from "node:fs";
+import { lstat, mkdir, readdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { join, relative, sep } from "node:path";
+import type { TestUserConfig } from "vite-plus";
+import { coverageExemptHeavySuites } from "./coverage-exempt.ts";
+import { pnpmInvocation } from "./pnpm-invocation.ts";
 
 /** Environment variable selecting the number of instrumented coverage processes. */
-export const COVERAGE_PARTITIONS_ENV = 'DSH_COVERAGE_PARTITIONS'
+export const COVERAGE_PARTITIONS_ENV = "DSH_COVERAGE_PARTITIONS";
 
 /** Internal marker that suppresses reports and thresholds inside a partition process. */
-export const COVERAGE_PARTITION_MODE_ENV = 'DSH_COVERAGE_PARTITION_MODE'
+export const COVERAGE_PARTITION_MODE_ENV = "DSH_COVERAGE_PARTITION_MODE";
 
 /** Environment variable carrying a lane's per-test, hook, and `expect.poll` budget in milliseconds. */
-export const COVERAGE_TEST_TIMEOUT_ENV = 'DSH_COVERAGE_TEST_TIMEOUT_MS'
+export const COVERAGE_TEST_TIMEOUT_ENV = "DSH_COVERAGE_TEST_TIMEOUT_MS";
 
 /**
  * Reporter that canonicalizes a partition's coverage locations before its blob
@@ -26,68 +26,70 @@ export const COVERAGE_TEST_TIMEOUT_ENV = 'DSH_COVERAGE_TEST_TIMEOUT_MS'
  * POSIX spelling because every child runs with the repository root as its
  * working directory on every platform.
  */
-const CANONICAL_LOCATIONS_REPORTER = './scripts/coverage-canonical-locations.ts'
-const FILE_TIMES_REPORTER = './scripts/coverage-file-times.ts'
+const CANONICAL_LOCATIONS_REPORTER = "./scripts/coverage-canonical-locations.ts";
+const FILE_TIMES_REPORTER = "./scripts/coverage-file-times.ts";
 
 /** One child command owned by the coverage coordinator. */
 export interface CoverageCommand {
   /** Diagnostic identity. */
-  label: string
+  label: string;
   /** Executable launched without a platform shell. */
-  command: string
+  command: string;
   /** Arguments passed to the executable. */
-  args: string[]
+  args: string[];
   /** Environment additions for the child. */
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>;
   /** Working directory for the child. */
-  cwd: string
+  cwd: string;
   /** Blob the partition must produce; absent for the merge command. */
-  blobPath?: string
+  blobPath?: string;
 }
 
 /** Observable child-process completion. */
 export interface CoverageCommandResult {
   /** Numeric process status, or `null` when a signal ended the child. */
-  exitCode: number | null
+  exitCode: number | null;
   /** Terminating signal, or `null` after an ordinary exit. */
-  signalCode: NodeJS.Signals | null
+  signalCode: NodeJS.Signals | null;
   /** Spawn failure recorded independently from process completion. */
-  error?: string
+  error?: string;
   /** Bounded combined stdout/stderr tail repeated when the command fails. */
-  outputTail?: string
+  outputTail?: string;
 }
 
 /** Execute one coordinator command with inherited output. */
-export type CoverageCommandRunner = (command: CoverageCommand) => Promise<CoverageCommandResult>
+export type CoverageCommandRunner = (command: CoverageCommand) => Promise<CoverageCommandResult>;
 
 /** Construction inputs for {@link CoveragePartitionCoordinator}. */
 export interface CoveragePartitionCoordinatorOptions {
   /** Repository root that owns coverage output. */
-  root: string
+  root: string;
   /** Number of concurrent single-worker Vitest processes. */
-  partitions: number
+  partitions: number;
   /** pnpm JavaScript or executable entrypoint from `npm_execpath`. */
-  pnpmEntrypoint: string
+  pnpmEntrypoint: string;
   /** Additional arguments shared by every partition. */
-  vitestArgs?: string[]
+  vitestArgs?: string[];
   /** Child executor, injectable for scheduler tests. */
-  runCommand?: CoverageCommandRunner
+  runCommand?: CoverageCommandRunner;
   /** Instrumented inventory; collected from the workspace when absent or empty. */
-  files?: readonly string[]
+  files?: readonly string[];
   /** Recorded durations paired with `files`; read from persistence when absent. */
-  weights?: ReadonlyMap<string, number>
+  weights?: ReadonlyMap<string, number>;
   /** Project ownership paired with `files`; collected from `vitest list` when absent. */
-  projectOf?: ReadonlyMap<string, string>
+  projectOf?: ReadonlyMap<string, string>;
 }
 
 /** Parse an optional coverage partition count. */
 export function parseCoveragePartitionCount(raw: string | undefined): number | undefined {
-  if (raw === undefined || raw === '') return undefined
-  const parsed = Number.parseInt(raw, 10)
+  if (raw === undefined || raw === "") return undefined;
+  const parsed = Number.parseInt(raw, 10);
   if (!Number.isSafeInteger(parsed) || parsed < 2 || String(parsed) !== raw) {
-    throw new Error(`${COVERAGE_PARTITIONS_ENV} must be an integer greater than 1, got ${JSON.stringify(raw)}.`)
+    throw new Error(
+      `${COVERAGE_PARTITIONS_ENV} must be an integer greater than 1, got ${JSON.stringify(raw)}.`,
+    );
   }
-  return parsed
+  return parsed;
 }
 
 /**
@@ -97,16 +99,21 @@ export function parseCoveragePartitionCount(raw: string | undefined): number | u
  * @throws when the value is set and is not a positive integer.
  */
 export function parseCoverageTestTimeout(raw: string | undefined): number | undefined {
-  if (raw === undefined || raw === '') return undefined
-  const parsed = Number.parseInt(raw, 10)
+  if (raw === undefined || raw === "") return undefined;
+  const parsed = Number.parseInt(raw, 10);
   if (!Number.isSafeInteger(parsed) || parsed < 1 || String(parsed) !== raw) {
-    throw new Error(`${COVERAGE_TEST_TIMEOUT_ENV} must be a positive integer, got ${JSON.stringify(raw)}.`)
+    throw new Error(
+      `${COVERAGE_TEST_TIMEOUT_ENV} must be a positive integer, got ${JSON.stringify(raw)}.`,
+    );
   }
-  return parsed
+  return parsed;
 }
 
 /** The Vitest `test` options one lane budget sets in each inline project. */
-export type CoverageTestTimeoutOptions = Pick<TestUserConfig, 'testTimeout' | 'hookTimeout' | 'expect'>
+export type CoverageTestTimeoutOptions = Pick<
+  TestUserConfig,
+  "testTimeout" | "hookTimeout" | "expect"
+>;
 
 /**
  * Resolve the Vitest test options that apply one lane budget to the per-test,
@@ -126,14 +133,14 @@ export type CoverageTestTimeoutOptions = Pick<TestUserConfig, 'testTimeout' | 'h
  * @returns the options to spread into a project's `test` block, empty when unset.
  */
 export function coverageTestTimeoutOptions(raw: string | undefined): CoverageTestTimeoutOptions {
-  const timeout = parseCoverageTestTimeout(raw)
-  if (timeout === undefined) return {}
-  return { testTimeout: timeout, hookTimeout: timeout, expect: { poll: { timeout } } }
+  const timeout = parseCoverageTestTimeout(raw);
+  if (timeout === undefined) return {};
+  return { testTimeout: timeout, hookTimeout: timeout, expect: { poll: { timeout } } };
 }
 
 /** Remove pnpm's package-script separator before forwarding Vitest arguments. */
 export function forwardedCoverageArgs(args: readonly string[]): string[] {
-  return [...args.slice(args[0] === '--' ? 1 : 0)]
+  return [...args.slice(args[0] === "--" ? 1 : 0)];
 }
 
 /**
@@ -141,7 +148,7 @@ export function forwardedCoverageArgs(args: readonly string[]): string[] {
  * the LPT assignment purely duration-driven once history exists, while a
  * first run (no cache at all) degrades to an even file-count split.
  */
-const UNKNOWN_FILE_WEIGHT = 1
+const UNKNOWN_FILE_WEIGHT = 1;
 
 /**
  * Coordinator-maintained duration history. CI removes `node_modules/.vite`
@@ -149,7 +156,7 @@ const UNKNOWN_FILE_WEIGHT = 1
  * gitignored file at the repository root carries recorded durations across
  * runs on a persistent checkout (self-hosted runners).
  */
-const FILE_TIMES_NAME = '.coverage-times.json'
+const FILE_TIMES_NAME = ".coverage-times.json";
 
 /**
  * The instrumented inventory: every file plus the Vitest project it belongs
@@ -159,9 +166,9 @@ const FILE_TIMES_NAME = '.coverage-times.json'
  * partition list to every project.
  */
 export interface InstrumentedInventory {
-  files: string[]
+  files: string[];
   /** Project name per file; the pool prefix of the `vitest list` line. */
-  projectOf: Map<string, string>
+  projectOf: Map<string, string>;
 }
 
 /**
@@ -172,31 +179,39 @@ export interface InstrumentedInventory {
  * @throws when a record is malformed or a file has multiple project assignments.
  */
 export function parseFileInventory(output: string, root: string): InstrumentedInventory {
-  const entries: unknown = JSON.parse(output)
-  if (!Array.isArray(entries)) throw new Error('coverage inventory must be a JSON array')
-  const files = new Set<string>()
-  const projectOf = new Map<string, string>()
+  const entries: unknown = JSON.parse(output);
+  if (!Array.isArray(entries)) throw new Error("coverage inventory must be a JSON array");
+  const files = new Set<string>();
+  const projectOf = new Map<string, string>();
   for (const value of entries) {
-    const entry: unknown = value
-    if (entry === null || typeof entry !== 'object' || !('file' in entry) || typeof entry.file !== 'string'
-      || !('projectName' in entry) || (entry.projectName !== 'thread-safe' && entry.projectName !== 'process-bound')) {
-      throw new Error('coverage inventory requires a file and its thread-safe or process-bound project')
+    const entry: unknown = value;
+    if (
+      entry === null ||
+      typeof entry !== "object" ||
+      !("file" in entry) ||
+      typeof entry.file !== "string" ||
+      !("projectName" in entry) ||
+      (entry.projectName !== "thread-safe" && entry.projectName !== "process-bound")
+    ) {
+      throw new Error(
+        "coverage inventory requires a file and its thread-safe or process-bound project",
+      );
     }
-    const file = relative(root, entry.file).split(sep).join('/')
-    if (files.has(file)) throw new Error(`coverage inventory lists ${file} more than once`)
-    files.add(file)
-    projectOf.set(file, entry.projectName)
+    const file = relative(root, entry.file).split(sep).join("/");
+    if (files.has(file)) throw new Error(`coverage inventory lists ${file} more than once`);
+    files.add(file);
+    projectOf.set(file, entry.projectName);
   }
   for (const suite of coverageExemptHeavySuites) {
     for (const file of globSync(suite.exclude, { cwd: root })) {
       // globSync returns platform separators on Windows; the parsed inventory
       // and Vitest include patterns both use forward slashes.
-      const normalized = file.split('\\').join('/')
-      files.delete(normalized)
-      projectOf.delete(normalized)
+      const normalized = file.split("\\").join("/");
+      files.delete(normalized);
+      projectOf.delete(normalized);
     }
   }
-  return { files: [...files].sort(), projectOf }
+  return { files: [...files].sort(), projectOf };
 }
 
 /**
@@ -212,24 +227,40 @@ async function collectInstrumentedFiles(
   inventoryPath: string,
   filters: readonly string[] = [],
 ): Promise<InstrumentedInventory> {
-  const invocation = pnpmInvocation(['exec', 'vitest', 'list', '--filesOnly', `--json=${inventoryPath}`, ...filters], { npm_execpath: pnpmEntrypoint })
-  await runListCommand(invocation.command, invocation.args, root)
-  return parseFileInventory(await readFile(inventoryPath, 'utf8'), root)
+  const invocation = pnpmInvocation(
+    ["exec", "vitest", "list", "--filesOnly", `--json=${inventoryPath}`, ...filters],
+    { npm_execpath: pnpmEntrypoint },
+  );
+  await runListCommand(invocation.command, invocation.args, root);
+  return parseFileInventory(await readFile(inventoryPath, "utf8"), root);
 }
 
 /** Wait for `vitest list` to write its JSON file, or throw with exit code and stderr. */
 function runListCommand(command: string, args: string[], root: string): Promise<void> {
   return new Promise((resolveList, rejectList) => {
-    const child = spawn(command, args, { cwd: root, env: process.env, stdio: ['ignore', 'ignore', 'pipe'] })
-    let errorOutput = ''
-    child.stderr.setEncoding('utf8')
-    child.stderr.on('data', (chunk: string) => { errorOutput += chunk })
-    child.once('error', (error: Error) => { rejectList(error) })
-    child.once('close', (code) => {
-      if (code === 0) resolveList()
-      else rejectList(new Error(`vitest list exited with ${String(code ?? 'signal')}${errorOutput === '' ? '' : `: ${errorOutput.trim().slice(0, 300)}`}`))
-    })
-  })
+    const child = spawn(command, args, {
+      cwd: root,
+      env: process.env,
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    let errorOutput = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
+      errorOutput += chunk;
+    });
+    child.once("error", (error: Error) => {
+      rejectList(error);
+    });
+    child.once("close", (code) => {
+      if (code === 0) resolveList();
+      else
+        rejectList(
+          new Error(
+            `vitest list exited with ${String(code ?? "signal")}${errorOutput === "" ? "" : `: ${errorOutput.trim().slice(0, 300)}`}`,
+          ),
+        );
+    });
+  });
 }
 
 /**
@@ -239,46 +270,48 @@ function runListCommand(command: string, args: string[], root: string): Promise<
  * a file appearing several times keeps the average duration.
  */
 export function readFileDurations(root: string): Map<string, number> {
-  const persisted = readPersistedDurations(root)
-  if (persisted.size > 0) return persisted
-  const totals = new Map<string, { sum: number; count: number }>()
-  for (const file of globSync('node_modules/.vite/vitest/*/results.json', { cwd: root })) {
-    let cache: { results?: Array<[string, { duration?: number }]> }
+  const persisted = readPersistedDurations(root);
+  if (persisted.size > 0) return persisted;
+  const totals = new Map<string, { sum: number; count: number }>();
+  for (const file of globSync("node_modules/.vite/vitest/*/results.json", { cwd: root })) {
+    let cache: { results?: Array<[string, { duration?: number }]> };
     try {
-      cache = JSON.parse(readFileSync(join(root, file), 'utf8')) as { results?: Array<[string, { duration?: number }]> }
+      cache = JSON.parse(readFileSync(join(root, file), "utf8")) as {
+        results?: Array<[string, { duration?: number }]>;
+      };
     } catch {
-      continue
+      continue;
     }
     for (const [key, entry] of cache.results ?? []) {
-      const separator = key.indexOf(':')
-      if (separator < 0) continue
-      const path = key.slice(separator + 1)
-      const duration = entry.duration
-      if (typeof duration !== 'number') continue
-      const total = totals.get(path)
-      if (total === undefined) totals.set(path, { sum: duration, count: 1 })
+      const separator = key.indexOf(":");
+      if (separator < 0) continue;
+      const path = key.slice(separator + 1);
+      const duration = entry.duration;
+      if (typeof duration !== "number") continue;
+      const total = totals.get(path);
+      if (total === undefined) totals.set(path, { sum: duration, count: 1 });
       else {
-        total.sum += duration
-        total.count++
+        total.sum += duration;
+        total.count++;
       }
     }
   }
-  return new Map([...totals].map(([path, { sum, count }]) => [path, sum / count]))
+  return new Map([...totals].map(([path, { sum, count }]) => [path, sum / count]));
 }
 
 /** Read the coordinator's persisted duration map; empty when absent or corrupt. */
 function readPersistedDurations(root: string): Map<string, number> {
-  let raw: Record<string, unknown>
+  let raw: Record<string, unknown>;
   try {
-    raw = JSON.parse(readFileSync(join(root, FILE_TIMES_NAME), 'utf8')) as Record<string, unknown>
+    raw = JSON.parse(readFileSync(join(root, FILE_TIMES_NAME), "utf8")) as Record<string, unknown>;
   } catch {
-    return new Map()
+    return new Map();
   }
-  const durations = new Map<string, number>()
+  const durations = new Map<string, number>();
   for (const [file, duration] of Object.entries(raw)) {
-    if (typeof duration === 'number' && Number.isFinite(duration)) durations.set(file, duration)
+    if (typeof duration === "number" && Number.isFinite(duration)) durations.set(file, duration);
   }
-  return durations
+  return durations;
 }
 
 /**
@@ -293,16 +326,20 @@ export function writeFileDurations(
   durations: ReadonlyMap<string, number>,
   currentFiles?: readonly string[],
 ): void {
-  if (durations.size === 0) return
-  const merged = new Map(readPersistedDurations(root))
-  for (const [file, duration] of durations) merged.set(file, duration)
+  if (durations.size === 0) return;
+  const merged = new Map(readPersistedDurations(root));
+  for (const [file, duration] of durations) merged.set(file, duration);
   if (currentFiles !== undefined) {
-    const present = new Set(currentFiles)
+    const present = new Set(currentFiles);
     for (const file of [...merged.keys()]) {
-      if (!present.has(file)) merged.delete(file)
+      if (!present.has(file)) merged.delete(file);
     }
   }
-  writeFileSync(join(root, FILE_TIMES_NAME), `${JSON.stringify(Object.fromEntries(merged), null, 1)}\n`, 'utf8')
+  writeFileSync(
+    join(root, FILE_TIMES_NAME),
+    `${JSON.stringify(Object.fromEntries(merged), null, 1)}\n`,
+    "utf8",
+  );
 }
 
 /**
@@ -311,24 +348,32 @@ export function writeFileDurations(
  * @returns finite, non-negative file costs from readable reports.
  */
 export function collectPartitionDurations(reportFiles: readonly string[]): Map<string, number> {
-  const durations = new Map<string, number>()
+  const durations = new Map<string, number>();
   for (const file of reportFiles) {
-    let report: unknown
+    let report: unknown;
     try {
-      report = JSON.parse(readFileSync(file, 'utf8'))
+      report = JSON.parse(readFileSync(file, "utf8"));
     } catch {
-      continue
+      continue;
     }
-    if (!Array.isArray(report)) continue
+    if (!Array.isArray(report)) continue;
     for (const entry of report) {
-      const record: unknown = entry
-      if (record !== null && typeof record === 'object' && 'file' in record && typeof record.file === 'string'
-        && 'duration' in record && typeof record.duration === 'number' && Number.isFinite(record.duration) && record.duration >= 0) {
-        durations.set(record.file, record.duration)
+      const record: unknown = entry;
+      if (
+        record !== null &&
+        typeof record === "object" &&
+        "file" in record &&
+        typeof record.file === "string" &&
+        "duration" in record &&
+        typeof record.duration === "number" &&
+        Number.isFinite(record.duration) &&
+        record.duration >= 0
+      ) {
+        durations.set(record.file, record.duration);
       }
     }
   }
-  return durations
+  return durations;
 }
 
 /**
@@ -344,24 +389,25 @@ export function assignWeightedPartitions(
   weights: ReadonlyMap<string, number>,
   partitions: number,
 ): string[][] {
-  if (files.length === 0) return Array.from({ length: partitions }, () => [])
+  if (files.length === 0) return Array.from({ length: partitions }, () => []);
   const weighted = files
-    .map(file => ({ file, weight: weights.get(file) ?? UNKNOWN_FILE_WEIGHT }))
-    .sort((a, b) => b.weight - a.weight || a.file.localeCompare(b.file))
-  const buckets = Array.from({ length: partitions }, () => ({ sum: 0, files: [] as string[] }))
+    .map((file) => ({ file, weight: weights.get(file) ?? UNKNOWN_FILE_WEIGHT }))
+    .sort((a, b) => b.weight - a.weight || a.file.localeCompare(b.file));
+  const buckets = Array.from({ length: partitions }, () => ({ sum: 0, files: [] as string[] }));
   // Min-heap of bucket indices ordered by (sum, file count); equal sums pick
   // the leaner bucket so a duration-sparse inventory still balances file count.
-  const heap = buckets.map((_, index) => index)
+  const heap = buckets.map((_, index) => index);
   for (const { file, weight } of weighted) {
-    const top = heap[0]
-    if (top === undefined) throw new Error('coverage partitions: partition heap index is out of bounds.')
-    const bucket = buckets[top]
-    if (bucket === undefined) throw new Error('coverage partitions: partition bucket is missing.')
-    bucket.sum += weight
-    bucket.files.push(file)
-    siftDown(buckets, heap, 0)
+    const top = heap[0];
+    if (top === undefined)
+      throw new Error("coverage partitions: partition heap index is out of bounds.");
+    const bucket = buckets[top];
+    if (bucket === undefined) throw new Error("coverage partitions: partition bucket is missing.");
+    bucket.sum += weight;
+    bucket.files.push(file);
+    siftDown(buckets, heap, 0);
   }
-  return buckets.map(bucket => bucket.files)
+  return buckets.map((bucket) => bucket.files);
 }
 
 /** Restore the min-heap property after the root bucket grew heavier. */
@@ -370,28 +416,36 @@ function siftDown(
   heap: number[],
   index: number,
 ): void {
-  const size = heap.length
+  const size = heap.length;
   for (;;) {
-    const left = 2 * index + 1
-    const right = 2 * index + 2
-    let smallest = index
-    let smallestBucket = bucketAt(buckets, heap, index)
-    const leftBucket = left < size ? bucketAt(buckets, heap, left) : undefined
-    const rightBucket = right < size ? bucketAt(buckets, heap, right) : undefined
-    if (leftBucket !== undefined && smallestBucket !== undefined && bucketLess(leftBucket, smallestBucket)) {
-      smallest = left
-      smallestBucket = leftBucket
+    const left = 2 * index + 1;
+    const right = 2 * index + 2;
+    let smallest = index;
+    let smallestBucket = bucketAt(buckets, heap, index);
+    const leftBucket = left < size ? bucketAt(buckets, heap, left) : undefined;
+    const rightBucket = right < size ? bucketAt(buckets, heap, right) : undefined;
+    if (
+      leftBucket !== undefined &&
+      smallestBucket !== undefined &&
+      bucketLess(leftBucket, smallestBucket)
+    ) {
+      smallest = left;
+      smallestBucket = leftBucket;
     }
-    if (rightBucket !== undefined && smallestBucket !== undefined && bucketLess(rightBucket, smallestBucket)) {
-      smallest = right
+    if (
+      rightBucket !== undefined &&
+      smallestBucket !== undefined &&
+      bucketLess(rightBucket, smallestBucket)
+    ) {
+      smallest = right;
     }
-    if (smallest === index) return
-    const moved = heap[index]
-    const replacement = heap[smallest]
-    if (moved === undefined || replacement === undefined) return
-    heap[index] = replacement
-    heap[smallest] = moved
-    index = smallest
+    if (smallest === index) return;
+    const moved = heap[index];
+    const replacement = heap[smallest];
+    if (moved === undefined || replacement === undefined) return;
+    heap[index] = replacement;
+    heap[smallest] = moved;
+    index = smallest;
   }
 }
 
@@ -401,8 +455,8 @@ function bucketAt(
   heap: number[],
   index: number,
 ): { sum: number; files: string[] } | undefined {
-  const bucketIndex = heap[index]
-  return bucketIndex === undefined ? undefined : buckets[bucketIndex]
+  const bucketIndex = heap[index];
+  return bucketIndex === undefined ? undefined : buckets[bucketIndex];
 }
 
 /** Order buckets by total weight, then by file count, then by nothing (stable). */
@@ -410,14 +464,14 @@ function bucketLess(
   left: { sum: number; files: string[] } | undefined,
   right: { sum: number; files: string[] } | undefined,
 ): boolean {
-  if (left === undefined || right === undefined) return left !== undefined
-  if (left.sum !== right.sum) return left.sum < right.sum
-  return left.files.length < right.files.length
+  if (left === undefined || right === undefined) return left !== undefined;
+  if (left.sum !== right.sum) return left.sum < right.sum;
+  return left.files.length < right.files.length;
 }
 
 /** Sum of a partition's file weights; unknown weights count as one. */
 function partitionWeight(files: readonly string[], weights: ReadonlyMap<string, number>): number {
-  return files.reduce((sum, file) => sum + (weights.get(file) ?? UNKNOWN_FILE_WEIGHT), 0)
+  return files.reduce((sum, file) => sum + (weights.get(file) ?? UNKNOWN_FILE_WEIGHT), 0);
 }
 
 /**
@@ -434,57 +488,71 @@ function partitionConfigSource(
   files: readonly string[],
   projectOf: ReadonlyMap<string, string>,
 ): string {
-  const threadSafe = JSON.stringify(files.filter(file => projectOf.get(file) !== 'process-bound').map(file => file.split('\\').join('/')))
-  const processBound = JSON.stringify(files.filter(file => projectOf.get(file) === 'process-bound').map(file => file.split('\\').join('/')))
+  const threadSafe = JSON.stringify(
+    files
+      .filter((file) => projectOf.get(file) !== "process-bound")
+      .map((file) => file.split("\\").join("/")),
+  );
+  const processBound = JSON.stringify(
+    files
+      .filter((file) => projectOf.get(file) === "process-bound")
+      .map((file) => file.split("\\").join("/")),
+  );
   return [
     "import base from '../../vitest.config.ts'",
     "import { coverageForkPool } from '../../scripts/coverage-fork-diagnostics.ts'",
-    'export default {',
-    '  ...base,',
-    '  test: {',
-    '    ...base.test,',
-    '    projects: (base.test.projects ?? []).map(project => ({',
-    '      ...project,',
-    '      test: {',
-    '        ...project.test,',
-    '        pool: coverageForkPool,',
-    '        include: project.test.name === \'process-bound\' ? ' + processBound + ' : ' + threadSafe + ',',
-    '      },',
-    '    })),',
-    '  },',
-    '}',
-    '',
-  ].join('\n')
+    "export default {",
+    "  ...base,",
+    "  test: {",
+    "    ...base.test,",
+    "    projects: (base.test.projects ?? []).map(project => ({",
+    "      ...project,",
+    "      test: {",
+    "        ...project.test,",
+    "        pool: coverageForkPool,",
+    "        include: project.test.name === 'process-bound' ? " +
+      processBound +
+      " : " +
+      threadSafe +
+      ",",
+    "      },",
+    "    })),",
+    "  },",
+    "}",
+    "",
+  ].join("\n");
 }
 
 /** Run instrumented partitions, validate their blobs, and merge once. */
 export class CoveragePartitionCoordinator {
-  private readonly root: string
-  private readonly partitions: number
-  private readonly pnpmEntrypoint: string
-  private readonly vitestArgs: string[]
-  private readonly runCommand: CoverageCommandRunner
-  private readonly files: readonly string[]
-  private readonly weights: ReadonlyMap<string, number> | undefined
-  private projectOf = new Map<string, string>()
-  private readonly temporaryRoot: string
-  private readonly blobsRoot: string
+  private readonly root: string;
+  private readonly partitions: number;
+  private readonly pnpmEntrypoint: string;
+  private readonly vitestArgs: string[];
+  private readonly runCommand: CoverageCommandRunner;
+  private readonly files: readonly string[];
+  private readonly weights: ReadonlyMap<string, number> | undefined;
+  private projectOf = new Map<string, string>();
+  private readonly temporaryRoot: string;
+  private readonly blobsRoot: string;
 
   /** Create a coordinator from validated process-independent inputs. */
   public constructor(options: CoveragePartitionCoordinatorOptions) {
     if (!Number.isSafeInteger(options.partitions) || options.partitions < 2) {
-      throw new Error(`coverage partitions must be an integer greater than 1, got ${String(options.partitions)}.`)
+      throw new Error(
+        `coverage partitions must be an integer greater than 1, got ${String(options.partitions)}.`,
+      );
     }
-    this.root = options.root
-    this.partitions = options.partitions
-    this.pnpmEntrypoint = options.pnpmEntrypoint
-    this.vitestArgs = options.vitestArgs ?? []
-    this.runCommand = options.runCommand ?? runCoverageCommand
-    this.files = options.files ?? []
-    this.weights = options.weights
-    this.projectOf = new Map(options.projectOf ?? [])
-    this.temporaryRoot = join(this.root, 'coverage', '.partitioned')
-    this.blobsRoot = join(this.temporaryRoot, 'blobs')
+    this.root = options.root;
+    this.partitions = options.partitions;
+    this.pnpmEntrypoint = options.pnpmEntrypoint;
+    this.vitestArgs = options.vitestArgs ?? [];
+    this.runCommand = options.runCommand ?? runCoverageCommand;
+    this.files = options.files ?? [];
+    this.weights = options.weights;
+    this.projectOf = new Map(options.projectOf ?? []);
+    this.temporaryRoot = join(this.root, "coverage", ".partitioned");
+    this.blobsRoot = join(this.temporaryRoot, "blobs");
   }
 
   /**
@@ -493,40 +561,51 @@ export class CoveragePartitionCoordinator {
    * @returns zero only when every partition and the merge command succeed.
    */
   public async run(): Promise<number> {
-    await removeOwnedTree(join(this.root, 'coverage'))
-    await mkdir(this.blobsRoot, { recursive: true })
+    await removeOwnedTree(join(this.root, "coverage"));
+    await mkdir(this.blobsRoot, { recursive: true });
 
-    let succeeded = false
+    let succeeded = false;
     try {
-      const assignments = await this.assignFiles()
-      this.assertNonEmptyAssignments(assignments)
-      const configPaths = await this.writePartitionConfigs(assignments)
-      const commands = assignments.map((_, index) => this.partitionCommand(index + 1, configPaths[index] ?? ''))
-      const results = await Promise.all(commands.map(async (command) => {
-        console.log(`coverage-partitions: start ${command.label}`)
-        const result = await this.runCommand(command)
-        if (commandFailed(result)) {
-          console.error(`coverage-partitions: FAIL ${command.label} (${commandFailureReason(result)})`)
-          if (result.outputTail !== undefined && result.outputTail !== '') {
-            console.error(`coverage-partitions: output tail for ${command.label}:\n${result.outputTail}`)
+      const assignments = await this.assignFiles();
+      this.assertNonEmptyAssignments(assignments);
+      const configPaths = await this.writePartitionConfigs(assignments);
+      const commands = assignments.map((_, index) =>
+        this.partitionCommand(index + 1, configPaths[index] ?? ""),
+      );
+      const results = await Promise.all(
+        commands.map(async (command) => {
+          console.log(`coverage-partitions: start ${command.label}`);
+          const result = await this.runCommand(command);
+          if (commandFailed(result)) {
+            console.error(
+              `coverage-partitions: FAIL ${command.label} (${commandFailureReason(result)})`,
+            );
+            if (result.outputTail !== undefined && result.outputTail !== "") {
+              console.error(
+                `coverage-partitions: output tail for ${command.label}:\n${result.outputTail}`,
+              );
+            }
           }
-        }
-        return result
-      }))
+          return result;
+        }),
+      );
       // Persist durations before blob validation: a missing blob aborts the
       // run, but the completed partitions' timings are still worth keeping.
-      this.persistDurations(this.partitions)
-      await this.assertCompleteBlobSet(commands)
-      await this.assertCompleteTestFiles(assignments)
+      this.persistDurations(this.partitions);
+      await this.assertCompleteBlobSet(commands);
+      await this.assertCompleteTestFiles(assignments);
 
-      const mergeCommand = this.mergeCommand()
-      console.log(`coverage-partitions: start ${mergeCommand.label}`)
-      const mergeResult = await this.runCommand(mergeCommand)
-      succeeded = !results.some(commandFailed) && !commandFailed(mergeResult)
-      return succeeded ? 0 : 1
+      const mergeCommand = this.mergeCommand();
+      console.log(`coverage-partitions: start ${mergeCommand.label}`);
+      const mergeResult = await this.runCommand(mergeCommand);
+      succeeded = !results.some(commandFailed) && !commandFailed(mergeResult);
+      return succeeded ? 0 : 1;
     } finally {
-      if (succeeded) await removeOwnedTree(this.temporaryRoot)
-      else console.error(`coverage-partitions: diagnostics retained at ${this.relativePath(this.temporaryRoot)}`)
+      if (succeeded) await removeOwnedTree(this.temporaryRoot);
+      else
+        console.error(
+          `coverage-partitions: diagnostics retained at ${this.relativePath(this.temporaryRoot)}`,
+        );
     }
   }
 
@@ -536,23 +615,22 @@ export class CoveragePartitionCoordinator {
    * suite once per empty partition.
    */
   private assertNonEmptyAssignments(assignments: readonly (readonly string[])[]): void {
-    const empty = assignments.findIndex(files => files.length === 0)
+    const empty = assignments.findIndex((files) => files.length === 0);
     if (empty >= 0) {
       throw new Error(
-        `coverage partitions: partition ${empty + 1}/${this.partitions} has no files; `
-        + 'the instrumented inventory is empty or smaller than the partition count.',
-      )
+        `coverage partitions: partition ${empty + 1}/${this.partitions} has no files; ` +
+          "the instrumented inventory is empty or smaller than the partition count.",
+      );
     }
   }
 
   /** Persist measured per-file durations so the next run can weight by them. */
   private persistDurations(partitionCount: number): void {
-    const reportFiles = Array.from(
-      { length: partitionCount },
-      (_, index) => join(this.temporaryRoot, `partition-${index + 1}.times.json`),
-    )
-    const currentFiles = this.projectOf.size > 0 ? [...this.projectOf.keys()] : undefined
-    writeFileDurations(this.root, collectPartitionDurations(reportFiles), currentFiles)
+    const reportFiles = Array.from({ length: partitionCount }, (_, index) =>
+      join(this.temporaryRoot, `partition-${index + 1}.times.json`),
+    );
+    const currentFiles = this.projectOf.size > 0 ? [...this.projectOf.keys()] : undefined;
+    writeFileDurations(this.root, collectPartitionDurations(reportFiles), currentFiles);
   }
 
   /**
@@ -563,24 +641,29 @@ export class CoveragePartitionCoordinator {
    * cache reads (scheduler tests); production collection always runs.
    */
   private async assignFiles(): Promise<string[][]> {
-    let files: readonly string[]
-    let weights: ReadonlyMap<string, number>
+    let files: readonly string[];
+    let weights: ReadonlyMap<string, number>;
     if (this.files.length > 0) {
-      files = this.files
-      weights = this.weights ?? new Map()
+      files = this.files;
+      weights = this.weights ?? new Map();
     } else {
       // Positional filters live after the `--` separator; options and their
       // values (`--testTimeout 5000`) must never be mistaken for filters.
-      const separator = this.vitestArgs.indexOf('--')
-      const filters = separator >= 0 ? this.vitestArgs.slice(separator + 1) : []
-      const inventory = await collectInstrumentedFiles(this.root, this.pnpmEntrypoint, join(this.temporaryRoot, 'inventory.json'), filters)
-      files = inventory.files
-      this.projectOf = inventory.projectOf
-      weights = readFileDurations(this.root)
+      const separator = this.vitestArgs.indexOf("--");
+      const filters = separator >= 0 ? this.vitestArgs.slice(separator + 1) : [];
+      const inventory = await collectInstrumentedFiles(
+        this.root,
+        this.pnpmEntrypoint,
+        join(this.temporaryRoot, "inventory.json"),
+        filters,
+      );
+      files = inventory.files;
+      this.projectOf = inventory.projectOf;
+      weights = readFileDurations(this.root);
     }
-    const buckets = assignWeightedPartitions(files, weights, this.partitions)
-    buckets.sort((left, right) => partitionWeight(right, weights) - partitionWeight(left, weights))
-    return buckets
+    const buckets = assignWeightedPartitions(files, weights, this.partitions);
+    buckets.sort((left, right) => partitionWeight(right, weights) - partitionWeight(left, weights));
+    return buckets;
   }
 
   /**
@@ -590,147 +673,172 @@ export class CoveragePartitionCoordinator {
    * held a few hundred paths, so each partition instead points Vitest at a
    * short `--config` path.
    */
-  private async writePartitionConfigs(assignments: readonly (readonly string[])[]): Promise<string[]> {
-    return await Promise.all(assignments.map(async (files, index) => {
-      const configPath = join(this.temporaryRoot, `vitest-partition-${index + 1}.config.ts`)
-      await writeFile(configPath, partitionConfigSource(files, this.projectOf), 'utf8')
-      return configPath
-    }))
+  private async writePartitionConfigs(
+    assignments: readonly (readonly string[])[],
+  ): Promise<string[]> {
+    return await Promise.all(
+      assignments.map(async (files, index) => {
+        const configPath = join(this.temporaryRoot, `vitest-partition-${index + 1}.config.ts`);
+        await writeFile(configPath, partitionConfigSource(files, this.projectOf), "utf8");
+        return configPath;
+      }),
+    );
   }
 
   private partitionCommand(index: number, configPath: string): CoverageCommand {
-    const blobPath = join(this.blobsRoot, `partition-${index}.json`)
-    const reportsDirectory = join(this.temporaryRoot, `coverage-${index}`)
-    const timingReportPath = join(this.temporaryRoot, `partition-${index}.times.json`)
-    const invocation = pnpmInvocation([
-      'exec',
-      'vitest',
-      'run',
-      '--coverage',
-      '--coverage.reportOnFailure',
-      '--maxWorkers=1',
-      `--config=${this.relativePath(configPath)}`,
-      '--reporter=default',
-      '--reporter=blob',
-      `--reporter=${FILE_TIMES_REPORTER}`,
-      `--reporter=${CANONICAL_LOCATIONS_REPORTER}`,
-      `--outputFile.blob=${this.relativePath(blobPath)}`,
-      `--outputFile.fileTimes=${this.relativePath(timingReportPath)}`,
-      `--coverage.reportsDirectory=${this.relativePath(reportsDirectory)}`,
-      ...this.vitestArgs,
-    ], { npm_execpath: this.pnpmEntrypoint })
+    const blobPath = join(this.blobsRoot, `partition-${index}.json`);
+    const reportsDirectory = join(this.temporaryRoot, `coverage-${index}`);
+    const timingReportPath = join(this.temporaryRoot, `partition-${index}.times.json`);
+    const invocation = pnpmInvocation(
+      [
+        "exec",
+        "vitest",
+        "run",
+        "--coverage",
+        "--coverage.reportOnFailure",
+        "--maxWorkers=1",
+        `--config=${this.relativePath(configPath)}`,
+        "--reporter=default",
+        "--reporter=blob",
+        `--reporter=${FILE_TIMES_REPORTER}`,
+        `--reporter=${CANONICAL_LOCATIONS_REPORTER}`,
+        `--outputFile.blob=${this.relativePath(blobPath)}`,
+        `--outputFile.fileTimes=${this.relativePath(timingReportPath)}`,
+        `--coverage.reportsDirectory=${this.relativePath(reportsDirectory)}`,
+        ...this.vitestArgs,
+      ],
+      { npm_execpath: this.pnpmEntrypoint },
+    );
     return {
       label: `partition ${index}/${this.partitions}`,
       ...invocation,
       env: {
         [COVERAGE_PARTITIONS_ENV]: undefined,
-        [COVERAGE_PARTITION_MODE_ENV]: '1',
+        [COVERAGE_PARTITION_MODE_ENV]: "1",
       },
       cwd: this.root,
       blobPath,
-    }
+    };
   }
 
   private mergeCommand(): CoverageCommand {
-    const invocation = pnpmInvocation([
-      'exec',
-      'vitest',
-      `--merge-reports=${this.relativePath(this.blobsRoot)}`,
-      '--coverage',
-    ], { npm_execpath: this.pnpmEntrypoint })
+    const invocation = pnpmInvocation(
+      ["exec", "vitest", `--merge-reports=${this.relativePath(this.blobsRoot)}`, "--coverage"],
+      { npm_execpath: this.pnpmEntrypoint },
+    );
     return {
-      label: 'merged coverage report',
+      label: "merged coverage report",
       ...invocation,
       env: {
         [COVERAGE_PARTITIONS_ENV]: undefined,
         [COVERAGE_PARTITION_MODE_ENV]: undefined,
       },
       cwd: this.root,
-    }
+    };
   }
 
   private relativePath(path: string): string {
-    return relative(this.root, path).split(sep).join('/')
+    return relative(this.root, path).split(sep).join("/");
   }
 
   private async assertCompleteBlobSet(commands: CoverageCommand[]): Promise<void> {
-    const expected = commands.map((command) => {
-      if (command.blobPath === undefined) throw new Error(`${command.label} has no blob path.`)
-      return this.relativePath(command.blobPath)
-    }).sort()
+    const expected = commands
+      .map((command) => {
+        if (command.blobPath === undefined) throw new Error(`${command.label} has no blob path.`);
+        return this.relativePath(command.blobPath);
+      })
+      .sort();
     const actual = (await readdir(this.blobsRoot))
-      .map(name => this.relativePath(join(this.blobsRoot, name)))
-      .sort()
-    if (actual.length !== expected.length || actual.some((name, index) => name !== expected[index])) {
-      throw new Error(`coverage partitions produced ${JSON.stringify(actual)}; expected ${JSON.stringify(expected)}.`)
+      .map((name) => this.relativePath(join(this.blobsRoot, name)))
+      .sort();
+    if (
+      actual.length !== expected.length ||
+      actual.some((name, index) => name !== expected[index])
+    ) {
+      throw new Error(
+        `coverage partitions produced ${JSON.stringify(actual)}; expected ${JSON.stringify(expected)}.`,
+      );
     }
   }
 
   /** Require each compact timing report to account for every assigned file exactly once. */
-  private async assertCompleteTestFiles(assignments: readonly (readonly string[])[]): Promise<void> {
-    await Promise.all(assignments.map(async (expected, index) => {
-      const path = join(this.temporaryRoot, `partition-${index + 1}.times.json`)
-      const report: unknown = JSON.parse(await readFile(path, 'utf8'))
-      if (!Array.isArray(report)) {
-        throw new Error(`coverage partition report ${path} must contain file timing records`)
-      }
-      const actual = report.map((result: unknown) => {
-        if (result === null || typeof result !== 'object' || !('file' in result) || typeof result.file !== 'string') {
-          throw new Error(`coverage partition report ${path} contains a test result without a filename`)
+  private async assertCompleteTestFiles(
+    assignments: readonly (readonly string[])[],
+  ): Promise<void> {
+    await Promise.all(
+      assignments.map(async (expected, index) => {
+        const path = join(this.temporaryRoot, `partition-${index + 1}.times.json`);
+        const report: unknown = JSON.parse(await readFile(path, "utf8"));
+        if (!Array.isArray(report)) {
+          throw new Error(`coverage partition report ${path} must contain file timing records`);
         }
-        return result.file
-      })
-      const observed = new Set(actual)
-      const assigned = new Set(expected)
-      const missing = expected.filter(file => !observed.has(file))
-      const unexpected = actual.filter(file => !assigned.has(file))
-      if (missing.length > 0 || unexpected.length > 0 || observed.size !== actual.length) {
-        throw new Error(`coverage partition ${index + 1}: missing files ${JSON.stringify(missing)}; unexpected files ${JSON.stringify(unexpected)}; duplicate results ${actual.length - observed.size}`)
-      }
-    }))
+        const actual = report.map((result: unknown) => {
+          if (
+            result === null ||
+            typeof result !== "object" ||
+            !("file" in result) ||
+            typeof result.file !== "string"
+          ) {
+            throw new Error(
+              `coverage partition report ${path} contains a test result without a filename`,
+            );
+          }
+          return result.file;
+        });
+        const observed = new Set(actual);
+        const assigned = new Set(expected);
+        const missing = expected.filter((file) => !observed.has(file));
+        const unexpected = actual.filter((file) => !assigned.has(file));
+        if (missing.length > 0 || unexpected.length > 0 || observed.size !== actual.length) {
+          throw new Error(
+            `coverage partition ${index + 1}: missing files ${JSON.stringify(missing)}; unexpected files ${JSON.stringify(unexpected)}; duplicate results ${actual.length - observed.size}`,
+          );
+        }
+      }),
+    );
   }
 }
 
 /** Spawn one pnpm-backed command without a platform shell. */
 function runCoverageCommand(command: CoverageCommand): Promise<CoverageCommandResult> {
   return new Promise((resolveCommand) => {
-    let outputTail = ''
-    const env = { ...process.env }
+    let outputTail = "";
+    const env = { ...process.env };
     for (const [name, value] of Object.entries(command.env)) {
-      if (value === undefined) Reflect.deleteProperty(env, name)
-      else env[name] = value
+      if (value === undefined) Reflect.deleteProperty(env, name);
+      else env[name] = value;
     }
     const child = spawn(command.command, command.args, {
       cwd: command.cwd,
       env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    child.stdout.setEncoding('utf8')
-    child.stderr.setEncoding('utf8')
-    child.stdout.on('data', (chunk: string) => {
-      process.stdout.write(chunk)
-      outputTail = appendOutputTail(outputTail, chunk)
-    })
-    child.stderr.on('data', (chunk: string) => {
-      process.stderr.write(chunk)
-      outputTail = appendOutputTail(outputTail, chunk)
-    })
-    child.once('error', (error: Error) => {
-      resolveCommand({ exitCode: null, signalCode: null, error: error.message, outputTail })
-    })
-    child.once('close', (exitCode, signalCode) => {
-      resolveCommand({ exitCode, signalCode, outputTail })
-    })
-  })
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      process.stdout.write(chunk);
+      outputTail = appendOutputTail(outputTail, chunk);
+    });
+    child.stderr.on("data", (chunk: string) => {
+      process.stderr.write(chunk);
+      outputTail = appendOutputTail(outputTail, chunk);
+    });
+    child.once("error", (error: Error) => {
+      resolveCommand({ exitCode: null, signalCode: null, error: error.message, outputTail });
+    });
+    child.once("close", (exitCode, signalCode) => {
+      resolveCommand({ exitCode, signalCode, outputTail });
+    });
+  });
 }
 
 function appendOutputTail(previous: string, chunk: string): string {
-  const combined = previous + chunk
-  return combined.length <= 65_536 ? combined : combined.slice(-65_536)
+  const combined = previous + chunk;
+  return combined.length <= 65_536 ? combined : combined.slice(-65_536);
 }
 
 function commandFailed(result: CoverageCommandResult): boolean {
-  return result.exitCode !== 0 || result.signalCode !== null || result.error !== undefined
+  return result.exitCode !== 0 || result.signalCode !== null || result.error !== undefined;
 }
 
 function commandFailureReason(result: CoverageCommandResult): string {
@@ -738,19 +846,19 @@ function commandFailureReason(result: CoverageCommandResult): string {
     result.error,
     result.exitCode === null ? undefined : `exit ${result.exitCode}`,
     result.signalCode === null ? undefined : `signal ${result.signalCode}`,
-  ].filter((fact): fact is string => fact !== undefined)
-  return facts.join(', ') || 'no exit code or signal'
+  ].filter((fact): fact is string => fact !== undefined);
+  return facts.join(", ") || "no exit code or signal";
 }
 
 async function removeOwnedTree(path: string): Promise<void> {
   const metadata = await lstat(path).catch((error: unknown) => {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined
-    throw error
-  })
-  if (metadata === undefined) return
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return undefined;
+    throw error;
+  });
+  if (metadata === undefined) return;
   if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
-    await unlink(path)
-    return
+    await unlink(path);
+    return;
   }
-  await rm(path, { recursive: true, force: true })
+  await rm(path, { recursive: true, force: true });
 }

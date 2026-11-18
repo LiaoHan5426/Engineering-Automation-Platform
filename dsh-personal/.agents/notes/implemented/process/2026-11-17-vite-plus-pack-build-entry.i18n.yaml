@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-11-17-vite-plus-pack-build-entry.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-11-17-vite-plus-pack-build-entry.md
+/agent-note-one-vite-pack-entry-for-workspace-builds:
+  en: fdcc6b28dc0571a3
+  zh: b23016f6f45572d6
+/agent-note-one-vite-pack-entry-for-workspace-builds/problem:
+  en: 76ccc8004790d656
+  zh: 0459a086d4cdd89a
+/agent-note-one-vite-pack-entry-for-workspace-builds/decision:
+  en: 1304df45cdf939ee
+  zh: 77775b930c849085
+/agent-note-one-vite-pack-entry-for-workspace-builds/alternatives-considered:
+  en: 73f16ea9f964de78
+  zh: cc8cdc68d8216814
+/agent-note-one-vite-pack-entry-for-workspace-builds/consequences:
+  en: 76bf017f56c0106d
+  zh: 621786b1a07892b9
+/agent-note-one-vite-pack-entry-for-workspace-builds/verification:
+  en: 837c23fb3a0481fc
+  zh: 6a91f6049b5e1dca

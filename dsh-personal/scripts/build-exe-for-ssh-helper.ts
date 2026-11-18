@@ -4,7 +4,8 @@ import { existsSync, globSync } from 'node:fs'
 import { chmod, copyFile, cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { build } from 'tsdown'
+import { build } from 'vite-plus/pack'
+import { loadPackConfig } from './pack-config.ts'
 import { create as createTar } from 'tar'
 import { verifyRuntimeClosure } from './verify-runtime-closure.ts'
 import { pnpmInvocation, restoreLegacyHoists } from './executable-packaging.ts'
@@ -44,8 +45,10 @@ async function compileRuntime(dependencies: Readonly<Record<string, string>>): P
   for (const path of globSync(['packages/*/*/package.json', 'vendor/*/package.json'], { cwd: root }).sort()) {
     if (!names.has((await manifest(join(root, path))).name)) continue
     const cwd = dirname(join(root, path))
-    const config = join(cwd, 'tsdown.config.ts')
-    if (existsSync(config)) await build({ cwd, config })
+    const config = join(cwd, 'vite.config.ts')
+    if (existsSync(config)) {
+      for (const pack of await loadPackConfig(config)) await build({ ...pack, cwd, config: false })
+    }
     else await build({ cwd, config: false, entry: ['lib/types/{index,invariant,startup}.js'], outDir: 'lib', format: ['esm'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false })
   }
 }

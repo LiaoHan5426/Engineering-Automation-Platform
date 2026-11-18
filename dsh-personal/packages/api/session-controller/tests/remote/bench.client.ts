@@ -1,10 +1,10 @@
 /** Session objects owned by a client test's explicitly started Gateway assembly. */
-import { onTestFinished } from 'vitest'
-import type { RemoteMock } from '@deepseek-ai/dsh-remote-mock'
-import type { TestClient } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { Session, type SessionOptions } from '../../src/client/sessions/session.ts'
-import { sessionWorld } from './session.client.ts'
+import { onTestFinished } from "vite-plus/test";
+import type { RemoteMock } from "@deepseek-ai/dsh-remote-mock";
+import type { TestClient } from "@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts";
+import type { SessionId } from "@deepseek-ai/dsh-session/types";
+import { Session, type SessionOptions } from "../../src/client/sessions/session.ts";
+import { sessionWorld } from "./session.client.ts";
 
 /**
  * Create a Session after installing its default Remote responses.
@@ -20,9 +20,9 @@ export async function sessionBench(
   sessionId: SessionId,
   options: SessionOptions = {},
 ): Promise<Session> {
-  mock.load(sessionWorld)
-  const client = await start()
-  const session = new Session(sessionId, client.ctx.remote, options)
-  onTestFinished(() => session.dispose())
-  return session
+  mock.load(sessionWorld);
+  const client = await start();
+  const session = new Session(sessionId, client.ctx.remote, options);
+  onTestFinished(() => session.dispose());
+  return session;
 }

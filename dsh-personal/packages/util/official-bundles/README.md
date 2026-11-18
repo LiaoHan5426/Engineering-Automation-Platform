@@ -51,7 +51,7 @@ Edit this package when the installation's bundle selection or the plugin manager
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-Repository checks read the lists in `src/bundles.ts` as TypeScript literals without executing them, so each list stays a static array or object literal of package names. `INLINE_SAFE` in [`tsdown.client.ts`](../../client/tsdown.client.ts) lets Client bundles inline this whole package, so every export stays data with no runtime identity to share. `ui-plugin-manager` imports the Web lists from the package root, and tree-shaking keeps the profile templates and the generated catalog out of its bundle while no Client code imports them.
+Repository checks read the lists in `src/bundles.ts` as TypeScript literals without executing them, so each list stays a static array or object literal of package names. `INLINE_SAFE` in [`pack.client.ts`](../../client/pack.client.ts) lets Client bundles inline this whole package, so every export stays data with no runtime identity to share. `ui-plugin-manager` imports the Web lists from the package root, and tree-shaking keeps the profile templates and the generated catalog out of its bundle while no Client code imports them.
 
 ### Source map
 

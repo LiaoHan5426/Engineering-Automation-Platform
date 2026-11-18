@@ -13,39 +13,39 @@
  * covering boxes outside those rows subtract themselves explicitly. Composed
  * geometry itself is the browser lane's claim — ui-theme cannot see layout.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
-import ts from 'typescript'
-import { packageFiles, packageStylesheets, parseRules, type CssRule } from './stylesheet-scan.ts'
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vite-plus/test";
+import ts from "typescript";
+import { packageFiles, packageStylesheets, parseRules, type CssRule } from "./stylesheet-scan.ts";
 
 /** The one stylesheet allowed to declare a darwin window drag region, relative to packages/. */
-const SHELL_SHEET = 'client/web/src/base.css'
+const SHELL_SHEET = "client/web/src/base.css";
 
 /** The mark that stylesheet's rule selects, as authored. */
-const SHELL_DRAG_SELECTOR = "html[data-platform='darwin'] [data-window-drag]"
+const SHELL_DRAG_SELECTOR = "html[data-platform='darwin'] [data-window-drag]";
 
 /** The frame's Windows caption row, relative to packages/; the other platform's chrome. */
-const WINDOWS_CAPTION = 'client/ui-layout/src/client/AppFrame.module.css'
+const WINDOWS_CAPTION = "client/ui-layout/src/client/AppFrame.module.css";
 
 /** That caption row's selector, as authored. */
-const WINDOWS_CAPTION_SELECTOR = ':global([data-windows-titlebar]) .frame::before'
+const WINDOWS_CAPTION_SELECTOR = ":global([data-windows-titlebar]) .frame::before";
 
 /** The mark a chrome row puts on the element that owns its drag. */
-const DRAG_MARK = 'data-window-drag'
+const DRAG_MARK = "data-window-drag";
 
 /** The mark attribute, without swallowing the recall mark that starts the same way. */
-const DRAG_MARK_PATTERN = /data-window-drag(?![\w-])/
+const DRAG_MARK_PATTERN = /data-window-drag(?![\w-])/;
 
 /** Workspace root of the package tree, so the manifest can name files outside this package. */
-const PACKAGES_DIR = fileURLToPath(new URL('../../../', import.meta.url))
+const PACKAGES_DIR = fileURLToPath(new URL("../../../", import.meta.url));
 
-const SIDEBAR = 'client/ui-sidebar/src/client/SidebarRoot.module.css'
-const CONVERSATION = 'client/ui-conversation/src/client/skeleton/ConversationRoot.module.css'
-const DOCKKIT = 'client/ui-dockkit/src/components/dockkit.module.css'
-const PLUGIN_MANAGER = 'client/ui-plugin-manager/src/client/PluginManagerPage.module.css'
-const PLATFORM_OVERLAY = 'client/ui-settings-account/src/client/PlatformOverlay.module.css'
+const SIDEBAR = "client/ui-sidebar/src/client/SidebarRoot.module.css";
+const CONVERSATION = "client/ui-conversation/src/client/skeleton/ConversationRoot.module.css";
+const DOCKKIT = "client/ui-dockkit/src/components/dockkit.module.css";
+const PLUGIN_MANAGER = "client/ui-plugin-manager/src/client/PluginManagerPage.module.css";
+const PLATFORM_OVERLAY = "client/ui-settings-account/src/client/PlatformOverlay.module.css";
 
 /**
  * One chrome row: the sheet that lays it out, the markup that marks it, and the
@@ -55,71 +55,71 @@ const PLATFORM_OVERLAY = 'client/ui-settings-account/src/client/PlatformOverlay.
  */
 interface ChromeRow {
   /** Stylesheet declaring the row's geometry, relative to packages/. */
-  readonly file: string
+  readonly file: string;
   /** Class selector of the row's rule, in the sheet's source form. */
-  readonly selector: string
+  readonly selector: string;
   /** TSX file marking the row's element `data-window-drag`, relative to packages/. */
-  readonly markup: string
+  readonly markup: string;
   /** Height declaration to read, as `[property, value]` exactly as authored; omitted for content-sized rows. */
-  readonly height?: readonly [property: string, value: string]
+  readonly height?: readonly [property: string, value: string];
   /** Top inset that belongs to the row's own box, as `[property, value]`. */
-  readonly inset?: readonly [property: string, value: string]
+  readonly inset?: readonly [property: string, value: string];
 }
 
 const CHROME_ROWS: readonly ChromeRow[] = [
   {
-    file: 'client/ui-settings-account/src/client/OnboardingSurface.module.css',
-    selector: '.dragBand',
-    markup: 'client/ui-settings-account/src/client/OnboardingSurface.tsx',
-    inset: ['inset', '8px'],
+    file: "client/ui-settings-account/src/client/OnboardingSurface.module.css",
+    selector: ".dragBand",
+    markup: "client/ui-settings-account/src/client/OnboardingSurface.tsx",
+    inset: ["inset", "8px"],
   },
   {
     file: SIDEBAR,
-    selector: '.topStrip',
-    markup: 'client/ui-sidebar/src/client/SidebarRoot.tsx',
-    height: ['height', '52px'],
+    selector: ".topStrip",
+    markup: "client/ui-sidebar/src/client/SidebarRoot.tsx",
+    height: ["height", "52px"],
   },
   {
     file: SIDEBAR,
-    selector: '.logoRow',
-    markup: 'client/ui-sidebar/src/client/SidebarRoot.tsx',
-    height: ['height', '60px'],
+    selector: ".logoRow",
+    markup: "client/ui-sidebar/src/client/SidebarRoot.tsx",
+    height: ["height", "60px"],
   },
   {
     file: CONVERSATION,
-    selector: '.header',
-    markup: 'client/ui-conversation/src/client/skeleton/ConversationHeader.tsx',
-    height: ['min-height', '76px'],
+    selector: ".header",
+    markup: "client/ui-conversation/src/client/skeleton/ConversationHeader.tsx",
+    height: ["min-height", "76px"],
   },
   {
     file: DOCKKIT,
-    selector: '.tabStrip',
-    markup: 'client/ui-dockkit/src/components/TabPanel.tsx',
-    height: ['height', '28px'],
-    inset: ['padding', '10px 6px 0 var(--dsh-dockkit-strip-inline-start, 10px)'],
+    selector: ".tabStrip",
+    markup: "client/ui-dockkit/src/components/TabPanel.tsx",
+    height: ["height", "28px"],
+    inset: ["padding", "10px 6px 0 var(--dsh-dockkit-strip-inline-start, 10px)"],
   },
   {
     file: PLUGIN_MANAGER,
-    selector: '.pageHead',
-    markup: 'client/ui-plugin-manager/src/client/PluginManagerPage.tsx',
+    selector: ".pageHead",
+    markup: "client/ui-plugin-manager/src/client/PluginManagerPage.tsx",
   },
   {
     file: PLUGIN_MANAGER,
-    selector: '.detailTop',
-    markup: 'client/ui-plugin-manager/src/client/PluginManagerPage.tsx',
+    selector: ".detailTop",
+    markup: "client/ui-plugin-manager/src/client/PluginManagerPage.tsx",
   },
   {
     file: PLUGIN_MANAGER,
-    selector: '.moreHead',
-    markup: 'client/ui-plugin-manager/src/client/PluginManagerPage.tsx',
+    selector: ".moreHead",
+    markup: "client/ui-plugin-manager/src/client/PluginManagerPage.tsx",
   },
   {
     file: PLATFORM_OVERLAY,
-    selector: '.header',
-    markup: 'client/ui-settings-account/src/client/PlatformOverlay.tsx',
-    height: ['height', '48px'],
+    selector: ".header",
+    markup: "client/ui-settings-account/src/client/PlatformOverlay.tsx",
+    height: ["height", "48px"],
   },
-]
+];
 
 /**
  * Whether a rule declares a window drag region. Matches the prefixed and
@@ -129,8 +129,9 @@ const CHROME_ROWS: readonly ChromeRow[] = [
  * @returns true when the rule declares a drag region.
  */
 function declaresDrag(rule: CssRule): boolean {
-  return rule.declarations
-    .some(([property, value]) => /^(-webkit-)?app-region$/.test(property) && /^drag(\s|!|$)/.test(value))
+  return rule.declarations.some(
+    ([property, value]) => /^(-webkit-)?app-region$/.test(property) && /^drag(\s|!|$)/.test(value),
+  );
 }
 
 /**
@@ -141,7 +142,7 @@ function declaresDrag(rule: CssRule): boolean {
 function dragSelectors(css: string): string[] {
   return parseRules(css)
     .filter(declaresDrag)
-    .map(rule => rule.selectors.join(', '))
+    .map((rule) => rule.selectors.join(", "));
 }
 
 /**
@@ -151,10 +152,10 @@ function dragSelectors(css: string): string[] {
 function dragOwners(): { file: string; selectors: string[] }[] {
   return packageStylesheets()
     .flatMap((file) => {
-      const selectors = dragSelectors(readFileSync(file, 'utf8'))
-      return selectors.length === 0 ? [] : [{ file: underPackages(file), selectors }]
+      const selectors = dragSelectors(readFileSync(file, "utf8"));
+      return selectors.length === 0 ? [] : [{ file: underPackages(file), selectors }];
     })
-    .sort((left, right) => left.file.localeCompare(right.file))
+    .sort((left, right) => left.file.localeCompare(right.file));
 }
 
 /**
@@ -163,27 +164,49 @@ function dragOwners(): { file: string; selectors: string[] }[] {
  * @returns one attribute description per element, in source order.
  */
 function elementProps(source: string): string[] {
-  const file = ts.createSourceFile('component.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-  const elements: string[] = []
+  const file = ts.createSourceFile(
+    "component.tsx",
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const elements: string[] = [];
   const visit = (node: ts.Node): void => {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
-      elements.push(node.attributes.properties.filter(ts.isJsxAttribute).map((attribute) => {
-        const name = attribute.name.getText(file)
-        return name === 'class' || name === 'className' ? attribute.getText(file) : name
-      }).join(' '))
-    } else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'h') {
-      const props = node.arguments[1]
+      elements.push(
+        node.attributes.properties
+          .filter(ts.isJsxAttribute)
+          .map((attribute) => {
+            const name = attribute.name.getText(file);
+            return name === "class" || name === "className" ? attribute.getText(file) : name;
+          })
+          .join(" "),
+      );
+    } else if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "h"
+    ) {
+      const props = node.arguments[1];
       if (props !== undefined && ts.isObjectLiteralExpression(props)) {
-        elements.push(props.properties.filter(ts.isPropertyAssignment).map((property) => {
-          const name = property.name.getText(file)
-          return /^(?:['"])?class(?:Name)?(?:['"])?$/.test(name) ? property.getText(file) : name
-        }).join(' '))
+        elements.push(
+          props.properties
+            .filter(ts.isPropertyAssignment)
+            .map((property) => {
+              const name = property.name.getText(file);
+              return /^(?:['"])?class(?:Name)?(?:['"])?$/.test(name)
+                ? property.getText(file)
+                : name;
+            })
+            .join(" "),
+        );
       }
     }
-    ts.forEachChild(node, visit)
-  }
-  visit(file)
-  return elements
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return elements;
 }
 
 /**
@@ -193,7 +216,7 @@ function elementProps(source: string): string[] {
  * @returns true when the tag names the row's class through any local alias.
  */
 function referencesRow(tag: string, row: ChromeRow): boolean {
-  return new RegExp(`[\\w$]+\\.${row.selector.slice(1)}\\b`).test(tag)
+  return new RegExp(`[\\w$]+\\.${row.selector.slice(1)}\\b`).test(tag);
 }
 
 /**
@@ -202,7 +225,7 @@ function referencesRow(tag: string, row: ChromeRow): boolean {
  * @returns the path below packages/.
  */
 function underPackages(file: string): string {
-  return file.slice(file.lastIndexOf('/packages/') + '/packages/'.length)
+  return file.slice(file.lastIndexOf("/packages/") + "/packages/".length);
 }
 
 /**
@@ -213,32 +236,40 @@ function underPackages(file: string): string {
  * @returns the value text, or undefined when the rule or declaration is absent.
  */
 function declaredValue(file: string, selector: string, property: string): string | undefined {
-  const path = packageStylesheets().find(candidate => candidate.endsWith(`/${file}`))
+  const path = packageStylesheets().find((candidate) => candidate.endsWith(`/${file}`));
   /* v8 ignore next -- the manifest names shipped stylesheets; a missing one is reported by the height assertion below. */
-  if (path === undefined) return undefined
-  const rule = parseRules(readFileSync(path, 'utf8')).find(candidate => candidate.selectors.includes(selector))
-  return rule?.declarations.find(([name]) => name === property)?.[1]
+  if (path === undefined) return undefined;
+  const rule = parseRules(readFileSync(path, "utf8")).find((candidate) =>
+    candidate.selectors.includes(selector),
+  );
+  return rule?.declarations.find(([name]) => name === property)?.[1];
 }
 
-describe('window drag-region ownership', () => {
-  it('rejects a drag declaration and passes no-drag', () => {
-    expect(dragSelectors('.a { -webkit-app-region: drag; }')).toEqual(['.a'])
-    expect(dragSelectors('.a { -webkit-app-region: drag !important; }')).toEqual(['.a'])
-    expect(dragSelectors('.a { app-region: drag; }')).toEqual(['.a'])
-    expect(dragSelectors('.a { -webkit-app-region: no-drag; }')).toEqual([])
-    expect(dragSelectors('.a { app-region: no-drag !important; }')).toEqual([])
-  })
+describe("window drag-region ownership", () => {
+  it("rejects a drag declaration and passes no-drag", () => {
+    expect(dragSelectors(".a { -webkit-app-region: drag; }")).toEqual([".a"]);
+    expect(dragSelectors(".a { -webkit-app-region: drag !important; }")).toEqual([".a"]);
+    expect(dragSelectors(".a { app-region: drag; }")).toEqual([".a"]);
+    expect(dragSelectors(".a { -webkit-app-region: no-drag; }")).toEqual([]);
+    expect(dragSelectors(".a { app-region: no-drag !important; }")).toEqual([]);
+  });
 
-  it('recognizes native Vue marks without borrowing marks or classes from child elements', () => {
-    const attrs = elementProps('h(\'div\', { class: css.wrapper }, [h(\'div\', { class: css.header, \'data-window-drag\': \'\' })])')
-    const marked = attrs.filter(tag => DRAG_MARK_PATTERN.test(tag))
-    expect(marked).toHaveLength(1)
-    expect(referencesRow(marked[0]!, { file: '', markup: '', selector: '.header' })).toBe(true)
-    expect(referencesRow(marked[0]!, { file: '', markup: '', selector: '.wrapper' })).toBe(false)
-    expect(elementProps('h(\'div\', { class: css.header, \'data-window-drag-recall\': \'\' })').filter(tag => DRAG_MARK_PATTERN.test(tag))).toEqual([])
-  })
+  it("recognizes native Vue marks without borrowing marks or classes from child elements", () => {
+    const attrs = elementProps(
+      "h('div', { class: css.wrapper }, [h('div', { class: css.header, 'data-window-drag': '' })])",
+    );
+    const marked = attrs.filter((tag) => DRAG_MARK_PATTERN.test(tag));
+    expect(marked).toHaveLength(1);
+    expect(referencesRow(marked[0]!, { file: "", markup: "", selector: ".header" })).toBe(true);
+    expect(referencesRow(marked[0]!, { file: "", markup: "", selector: ".wrapper" })).toBe(false);
+    expect(
+      elementProps("h('div', { class: css.header, 'data-window-drag-recall': '' })").filter((tag) =>
+        DRAG_MARK_PATTERN.test(tag),
+      ),
+    ).toEqual([]);
+  });
 
-  it('declares the window drag surface in exactly two places', () => {
+  it("declares the window drag surface in exactly two places", () => {
     // Rows mark themselves instead of each sheet declaring its own drag, so the
     // tree holds one darwin rule — the mark rule in the shell sheet — plus the
     // Windows caption row, which is that platform's own chrome. A third
@@ -246,42 +277,53 @@ describe('window drag-region ownership', () => {
     expect(dragOwners()).toEqual([
       { file: WINDOWS_CAPTION, selectors: [WINDOWS_CAPTION_SELECTOR] },
       { file: SHELL_SHEET, selectors: [SHELL_DRAG_SELECTOR] },
-    ])
-  })
+    ]);
+  });
 
-  it('declares every pinned chrome row at the height the manifest pins', () => {
+  it("declares every pinned chrome row at the height the manifest pins", () => {
     for (const row of CHROME_ROWS) {
-      if (row.height === undefined) continue
-      expect(declaredValue(row.file, row.selector, row.height[0]), `${row.selector} ${row.height[0]}`)
-        .toBe(row.height[1])
+      if (row.height === undefined) continue;
+      expect(
+        declaredValue(row.file, row.selector, row.height[0]),
+        `${row.selector} ${row.height[0]}`,
+      ).toBe(row.height[1]);
       if (row.inset !== undefined) {
-        expect(declaredValue(row.file, row.selector, row.inset[0]), `${row.selector} ${row.inset[0]}`)
-          .toBe(row.inset[1])
+        expect(
+          declaredValue(row.file, row.selector, row.inset[0]),
+          `${row.selector} ${row.inset[0]}`,
+        ).toBe(row.inset[1]);
       }
     }
-  })
+  });
 
-  it('marks its own window drag in every chrome row’s markup', () => {
+  it("marks its own window drag in every chrome row’s markup", () => {
     for (const row of CHROME_ROWS) {
-      const marked = elementProps(readFileSync(join(PACKAGES_DIR, row.markup), 'utf8'))
-        .filter(tag => DRAG_MARK_PATTERN.test(tag) && referencesRow(tag, row))
-      expect(marked, `${row.markup} ${row.selector}`).toHaveLength(1)
+      const marked = elementProps(readFileSync(join(PACKAGES_DIR, row.markup), "utf8")).filter(
+        (tag) => DRAG_MARK_PATTERN.test(tag) && referencesRow(tag, row),
+      );
+      expect(marked, `${row.markup} ${row.selector}`).toHaveLength(1);
     }
-  })
+  });
 
-  it('finds the drag mark on exactly the chrome rows the manifest names', () => {
+  it("finds the drag mark on exactly the chrome rows the manifest names", () => {
     // A mark on any other element — a content container, a wrapper, a row that
     // has no manifest entry — would drag the window over something that is not
     // window chrome, so the two lists must match exactly.
-    const found: string[] = []
-    for (const file of packageFiles(name => name.endsWith('.tsx'))) {
-      if (!file.includes('/src/')) continue
-      for (const tag of elementProps(readFileSync(file, 'utf8'))) {
-        if (!DRAG_MARK_PATTERN.test(tag)) continue
-        const row = CHROME_ROWS.find(candidate => file.endsWith(`/${candidate.markup}`) && referencesRow(tag, candidate))
-        found.push(row === undefined ? `${underPackages(file)} <unmatched ${DRAG_MARK} tag>` : `${row.markup} ${row.selector}`)
+    const found: string[] = [];
+    for (const file of packageFiles((name) => name.endsWith(".tsx"))) {
+      if (!file.includes("/src/")) continue;
+      for (const tag of elementProps(readFileSync(file, "utf8"))) {
+        if (!DRAG_MARK_PATTERN.test(tag)) continue;
+        const row = CHROME_ROWS.find(
+          (candidate) => file.endsWith(`/${candidate.markup}`) && referencesRow(tag, candidate),
+        );
+        found.push(
+          row === undefined
+            ? `${underPackages(file)} <unmatched ${DRAG_MARK} tag>`
+            : `${row.markup} ${row.selector}`,
+        );
       }
     }
-    expect(found.sort()).toEqual(CHROME_ROWS.map(row => `${row.markup} ${row.selector}`).sort())
-  })
-})
+    expect(found.sort()).toEqual(CHROME_ROWS.map((row) => `${row.markup} ${row.selector}`).sort());
+  });
+});
