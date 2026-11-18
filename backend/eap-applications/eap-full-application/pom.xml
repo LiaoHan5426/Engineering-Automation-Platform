@@ -12,6 +12,7 @@
         <eap.run.working-directory>${project.basedir}/../..</eap.run.working-directory>
     </properties>
     <dependencies>
+        <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>test</scope></dependency>
         <dependency>
             <groupId>com.lh</groupId>
             <artifactId>eap-ai-chat</artifactId>

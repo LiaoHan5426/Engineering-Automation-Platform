@@ -1,0 +1,250 @@
+{
+  "head": "53954f99d6746d06f5a5115dbbae040c1f1d53a1",
+  "phase": "before",
+  "sources": [
+    {
+      "path": "frontend/apps/web/src/App.vue",
+      "sha256": "7acb1edf43c917082ab238bd98bb41da5d9bb2c68038ea060f2fc4122c743ab2"
+    },
+    {
+      "path": "frontend/apps/web/src/work-pages.css",
+      "sha256": "03497728427262c625dde43da320d763b74b86ff1661174ef0e776e67d27697c"
+    }
+  ],
+  "results": [
+    {
+      "viewport": {
+        "width": 1918,
+        "height": 914
+      },
+      "states": [
+        {
+          "state": "first-pending",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 338.953px 527.047px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 386.953125,
+                "width": 1918,
+                "height": 527.046875,
+                "clientHeight": 527,
+                "scrollHeight": 527
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 338.953125,
+                "clientHeight": 339,
+                "scrollHeight": 339
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 455.953125,
+                "width": 1622,
+                "height": 228.046875,
+                "clientHeight": 228,
+                "scrollHeight": 544
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              }
+            }
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        }
+      ],
+      "blocked": [],
+      "errors": [],
+      "firstSendNewConversation": true,
+      "backend": false,
+      "realProvider": false
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "states": [
+        {
+          "state": "first-pending",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 914px 30px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 970,
+                "width": 390,
+                "height": 30,
+                "clientHeight": 30,
+                "scrollHeight": 30
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 1097.5,
+                "width": 318,
+                "height": 24,
+                "clientHeight": 24,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 1129.5,
+                "width": 302,
+                "height": 26,
+                "clientHeight": 24,
+                "scrollHeight": 298
+              }
+            }
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        }
+      ],
+      "blocked": [],
+      "errors": [],
+      "firstSendNewConversation": true,
+      "backend": false,
+      "realProvider": false
+    }
+  ]
+}

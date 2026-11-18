@@ -107,22 +107,22 @@ class ExpertKnowledgePersistenceTest {
         }, true, null, null);
         ReflectionTestUtils.setField(app, "expertKnowledge", resolver);
         var id = app.open("{}").conversationId();
-        assertTrue(app.send(id, send(refA)).knowledgeMemoryCleared());
+        assertTrue(app.send(id, ChatApplicationTestSupport.request(app, id,  send(refA))).knowledgeMemoryCleared());
         assertTrue(prompts.getLast().contains("alpha-private"));
-        app.send(id, send(refB));
+        app.send(id, ChatApplicationTestSupport.request(app, id,  send(refB)));
         assertFalse(prompts.getLast().contains("alpha-private")); assertTrue(prompts.getLast().contains("beta-private"));
         jdbc.update("UPDATE eap.knowledge_chunk SET content=? WHERE document_id=?", "needle updated-private", documentA);
-        assertTrue(app.send(id, send(refA)).knowledgeContext().toString().contains("updated-private"));
+        assertTrue(app.send(id, ChatApplicationTestSupport.request(app, id,  send(refA))).knowledgeContext().toString().contains("updated-private"));
         assertFalse(prompts.getLast().contains("alpha-private")); assertFalse(prompts.getLast().contains("beta-private"));
         tx.executeWithoutResult(s -> knowledge.removeDocument(baseA, documentA));
-        assertEquals("no_matches", app.send(id, send(refA)).knowledgeContext().status());
+        assertEquals("no_matches", app.send(id, ChatApplicationTestSupport.request(app, id,  send(refA))).knowledgeContext().status());
         assertFalse(prompts.getLast().contains("updated-private")); assertFalse(prompts.getLast().contains("derived-private-answer"));
         assertEquals("ready", resolver.resolve(refB, "needle").status());
         tx.executeWithoutResult(s -> experts.activate(expertB, false));
         int calls = prompts.size();
-        assertEquals("EXPERT_CONTEXT_STALE", assertThrows(ResponseStatusException.class, () -> app.send(id, send(refB))).getReason());
+        assertEquals("EXPERT_CONTEXT_STALE", assertThrows(ResponseStatusException.class, () -> app.send(id, ChatApplicationTestSupport.request(app, id,  send(refB)))).getReason());
         assertEquals(calls, prompts.size());
-        app.send(id, ExpertKnowledgeChatTest.PLAIN);
+        app.send(id, ChatApplicationTestSupport.request(app, id,  ExpertKnowledgeChatTest.PLAIN));
         assertFalse(prompts.getLast().contains("private"));
     }
     @Test void definitionUpdateCommittedBeforeReadRejectsTheOldRevisionWithoutAModel() throws Exception {

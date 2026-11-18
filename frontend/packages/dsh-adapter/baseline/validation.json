@@ -1,0 +1,20 @@
+{
+  "commit": "39163dd30f703a79079e2d2446545cff3c453738",
+  "sourceFiles": 82,
+  "license": "MIT; original copyright retained in upstream/LICENSE.snapshot",
+  "build": {
+    "command": "vp run build (package directory)",
+    "sourceDigestsVerified": true,
+    "repeatBuildByteIdentical": true,
+    "originalJsSha256": "d11eb1513239b2ef5dab5b23051bd75337c9cf2bf33873bc4f2eb7b3d67ad32c",
+    "originalCssSha256": "515f3d08861c743c24093f13115ccb928250f15a50548b30194280d61049c0d7"
+  },
+  "checks": [
+    { "command": "vp test run packages/dsh-adapter/__tests__", "result": "6 passed in 3 files" },
+    { "command": "vp run typecheck", "result": "passed" },
+    { "command": "vp run check:architecture", "result": "passed" },
+    { "command": "vp lint packages/dsh-adapter/src packages/dsh-adapter/__tests__ apps/web/src/features/plugins/DshContextMenu.vue", "result": "passed" },
+    { "command": "vp run upgrade 39163dd30f703a79079e2d2446545cff3c453738 (package directory)", "result": "82 unchanged; accepted baseline untouched" }
+  ],
+  "knownLimits": "See compat/matrix.json. Host browser acceptance is recorded separately by the EAP integrator. A different real candidate SHA has not been accepted."
+}

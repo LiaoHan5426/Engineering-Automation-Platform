@@ -25,7 +25,7 @@ class AiConversationReconnectTest {
         var target = UUID.randomUUID();
         when(connections.requireModel(target, "denied")).thenThrow(new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.FORBIDDEN, "MODEL_NOT_ALLOWED"));
-        var app = new AiChatApplication(mock(AiConnectionStatus.class), registry, mock(EngineeringChatService.class), root, connections);
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(mock(AiConnectionStatus.class), registry, mock(EngineeringChatService.class), root, connections));
         var body = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(java.util.Map.of(
                 "confirmContextReset", true, "expectedWorkspaceLabel", AiConnectionStatus.workspaceLabel(root),
                 "connectionId", target.toString(), "model", "denied"));
@@ -40,7 +40,7 @@ class AiConversationReconnectTest {
         var registry = mock(AiConversationRegistry.class);
         var chat = mock(EngineeringChatService.class);
         var connections = mock(ModelConnections.class);
-        var app = new AiChatApplication(mock(AiConnectionStatus.class), registry, chat, root, connections);
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(mock(AiConnectionStatus.class), registry, chat, root, connections));
         var mvc = MockMvcBuilders.standaloneSetup(new AiChatController(app, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         String label = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(AiConnectionStatus.workspaceLabel(root));
         String valid = "{\"confirmContextReset\":true,\"expectedWorkspaceLabel\":" + label + ",\"connectionId\":\"" + UUID.randomUUID() + "\",\"model\":\"m\"}";
@@ -68,9 +68,10 @@ class AiConversationReconnectTest {
                 "http://localhost:12345", "m", "test-key", 1, false, "r");
         when(connections.requireModel(target.id, "m")).thenReturn(target);
         var statusService = mock(AiConnectionStatus.class);
-        var app = new AiChatApplication(statusService, registry, chat, root, connections);
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(statusService, registry, chat, root, connections));
         var mvc = MockMvcBuilders.standaloneSetup(new AiChatController(app, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         var id = UUID.randomUUID();
+        ChatApplicationTestSupport.rememberConversation(app, id);
         var key = EngineeringChatService.memoryKey(AiConversationRegistry.PRINCIPAL, id);
         memory.add(key, new UserMessage("orphan transcript"));
         String body = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(java.util.Map.of(

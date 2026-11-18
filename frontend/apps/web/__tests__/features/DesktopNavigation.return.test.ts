@@ -126,6 +126,76 @@ function expectSourceIntact(mode = 'work') {
 }
 
 describe('source-surface return through the real App navigation', () => {
+  it('keeps pending-send status in a stable shell region through navigation and clears it when sending ends', async () => {
+    await mountSource('chat')
+    const shell = root.querySelector('.app')!
+    const notices = shell.querySelector(':scope > .shell-notices')
+    expect(notices).not.toBeNull()
+    const body = shell.querySelector(':scope > .body')!
+    const regions = [...shell.children]
+    expect(notices!.textContent).toBe('')
+
+    chatBinding.value = { ...chatBinding.value!, sending: true }
+    await nextTick()
+    expect(root.querySelector('[data-testid="send-in-flight"]')).toBeNull()
+    expect([...shell.children]).toEqual(regions)
+
+    await click('.activity-bar button:nth-child(5)')
+    expect(window.location.hash).toBe('#model-settings')
+    const status = root.querySelector('[data-testid="send-in-flight"]')!
+    expect(status.parentElement).toBe(notices)
+    expect(status.getAttribute('role')).toBe('status')
+    expect(status.textContent).toContain(i18n.global.t('desktop.sendingAway'))
+    await click('[data-testid="return-running-chat"]')
+    expect(window.location.hash).toBe('#chat')
+    expect(chatBinding.value?.draft).toBe('未发送的 Work 草稿')
+    expect(chatBinding.value?.activeId).toBe('source')
+    expect(create).not.toHaveBeenCalled()
+    expect(select).not.toHaveBeenCalled()
+    expect(root.querySelector('[data-testid="send-in-flight"]')).toBeNull()
+    expect(shell.querySelector(':scope > .body')).toBe(body)
+    expect([...shell.children]).toEqual(regions)
+
+    chatBinding.value = { ...chatBinding.value!, sending: false }
+    await nextTick()
+    expect(root.querySelector('[data-testid="send-in-flight"]')).toBeNull()
+    expect(shell.querySelector(':scope > .shell-notices')).toBe(notices)
+    expect([...shell.children]).toEqual(regions)
+    expect(runtimeApi.sendAiMessage).not.toHaveBeenCalled()
+  })
+
+  it('keeps workspace and pending-send notices together without displacing the SQL body or footer', async () => {
+    localStorage.setItem('eap.console.workspaces', JSON.stringify(['notice-test-workspace']))
+    await mountSource('sql')
+    await click('.topbar .ws')
+    const workspaceOption = [...root.querySelectorAll<HTMLButtonElement>('.menu button')].find(
+      (button) => button.textContent?.trim() === 'notice-test-workspace',
+    )
+    expect(workspaceOption).toBeDefined()
+    workspaceOption!.click()
+    await nextTick()
+    const shell = root.querySelector('.app')!
+    const notices = shell.querySelector(':scope > .shell-notices')!
+    const regions = [...shell.children]
+    const message = root.querySelector('.shell-message')!
+    expect(message.parentElement).toBe(notices)
+    expect(message.textContent).toContain('notice-test-workspace')
+    expect(message.textContent).toContain('任务在服务端不按工作空间分表')
+    expect(shell.querySelector(':scope > .body')).not.toBeNull()
+    expect(shell.querySelector(':scope > .statusbar')).not.toBeNull()
+
+    chatBinding.value = { ...chatBinding.value!, sending: true }
+    await nextTick()
+    expect(root.querySelector('[data-testid="send-in-flight"]')!.parentElement).toBe(notices)
+    expect(notices.querySelectorAll('[role="status"]')).toHaveLength(2)
+    expect([...shell.children]).toEqual(regions)
+    chatBinding.value = { ...chatBinding.value!, sending: false }
+    await nextTick()
+    expect(notices.querySelectorAll('[role="status"]')).toHaveLength(1)
+    expect(root.querySelector('.shell-message')).toBe(message)
+    expect([...shell.children]).toEqual(regions)
+  })
+
   it.each([
     ['work', '', 'work'],
     ['code', '', 'chat'],

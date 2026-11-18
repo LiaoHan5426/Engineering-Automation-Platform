@@ -13,7 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /** Bounded line transport. Protocol sessions own this process and its retained descendants. */
 public final class StdioMcpTransport implements McpTransport {
-    static final int MAX_FRAME_BYTES = 1024 * 1024;
+    static final int MAX_FRAME_BYTES = 6 * 1024 * 1024;
     private static final Set<String> BASE_ENV = Set.of("path", "systemroot", "windir", "temp", "tmp", "tmpdir", "lang", "lc_all");
     private final Process process;
     private final ReentrantLock lock = new ReentrantLock();

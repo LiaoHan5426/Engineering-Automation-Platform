@@ -14,11 +14,18 @@
     "@eap/icons": "workspace:*",
     "@eap/request": "workspace:*",
     "@eap/style": "workspace:*",
+    "dompurify": "3.3.1",
+    "highlight.js": "11.11.1",
+    "katex": "0.16.22",
+    "markdown-it": "14.1.0",
+    "mermaid": "11.12.2",
     "reka-ui": "2.11.0",
     "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@eap/tsconfig": "workspace:*",
+    "@types/katex": "0.16.7",
+    "@types/markdown-it": "14.1.2",
     "typescript": "catalog:tooling",
     "vite-plus": "catalog:tooling"
   }

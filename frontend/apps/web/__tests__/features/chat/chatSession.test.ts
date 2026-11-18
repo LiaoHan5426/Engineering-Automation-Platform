@@ -1,6 +1,145 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
-import type { AiMessageResult, AiStatus, ContextBudgetObservation } from '@eap/runtime-client'
+import {
+  createChatSession as createSession,
+  type ChatApi,
+} from '../../../src/features/chat/chatSession'
+import type {
+  AiMessageResult,
+  AiStatus,
+  ContextBudgetObservation,
+  ChatGraph,
+  ChatGraphOperation,
+} from '@eap/runtime-client'
+
+type SessionApiFixture = Partial<ChatApi>
+// Explicit canonical readback fixture for these API-isolated session regressions.
+// It supplies graph nodes/operation associations; local storage never supplies turns.
+const graphFixtures = new WeakMap<SessionApiFixture, ChatApi>()
+function createChatSession(
+  fixture: SessionApiFixture,
+  storage?: Pick<Storage, 'getItem' | 'setItem'>,
+) {
+  let api = graphFixtures.get(fixture)
+  if (!api) {
+    const graphs = new Map<string, ChatGraph>()
+    const operations = new Map<string, ChatGraphOperation>()
+    const conversations = new Map<string, Awaited<ReturnType<ChatApi['openAiConversation']>>>()
+    const graph = (id: string) => {
+      if (!graphs.has(id))
+        graphs.set(id, { conversationId: id, revision: 0, nodes: [], operations: [] })
+      return graphs.get(id)!
+    }
+    api = {
+      aiStatus: async () => status(),
+      cancelAiExecution: async (_id, executionId) => ({ cancelled: false, executionId }),
+      ...fixture,
+      openAiConversation: async () => {
+        const conversation = await fixture.openAiConversation!()
+        conversations.set(conversation.conversationId, conversation)
+        return conversation
+      },
+      aiConversation:
+        fixture.aiConversation ??
+        (async (id) => {
+          const conversation = conversations.get(id)
+          if (!conversation) throw { response: { status: 404 } }
+          return structuredClone(conversation)
+        }),
+      chatGraph: async (id) => structuredClone(graph(id)),
+      chatOperation: async (id, operationId) => {
+        const operation = operations.get(id + ':' + operationId)
+        if (!operation) throw { response: { status: 404 } }
+        return structuredClone(operation)
+      },
+      sendAiMessage: async (id, request, options) => {
+        const state = graph(id)
+        expect(request.expectedRevision).toBe(state.revision)
+        expect(request.operationId).toBeTruthy()
+        let operation: ChatGraphOperation | undefined
+        const publish = (executionId: string, response: AiMessageResult | null = null) => {
+          if (!operation) {
+            const userMessageId = request.operationId + '-user'
+            const assistantMessageId = request.operationId + '-assistant'
+            operation = {
+              operationId: request.operationId,
+              userMessageId,
+              assistantMessageId,
+              executionId,
+              graphRevision: ++state.revision,
+              status: 'RUNNING',
+              response: null,
+            }
+            operations.set(id + ':' + request.operationId, operation)
+            const { status: _status, response: _response, ...binding } = operation
+            state.operations.push(binding)
+            state.nodes.push(
+              {
+                id: userMessageId,
+                parentId: request.parentMessageId,
+                role: 'user',
+                content: request.message,
+                executionId: null,
+                operationId: request.operationId,
+                status: 'SUCCEEDED',
+                response: null,
+              },
+              {
+                id: assistantMessageId,
+                parentId: userMessageId,
+                role: 'assistant',
+                content: '',
+                executionId,
+                operationId: request.operationId,
+                status: 'RUNNING',
+                response: null,
+              },
+            )
+          }
+          if (response) {
+            operation.executionId = response.executionId
+            operation.status = response.status
+            operation.response = response
+            const node = state.nodes.find((item) => item.id === operation!.assistantMessageId)!
+            Object.assign(node, {
+              executionId: response.executionId,
+              status: response.status,
+              response,
+              content: response.answer || node.content,
+            })
+          }
+        }
+        const response = await fixture.sendAiMessage!(id, request, {
+          ...options,
+          onEvent(event) {
+            if (event.conversationId === id) {
+              publish(event.executionId)
+              const node = state.nodes.find((item) => item.id === operation!.assistantMessageId)!
+              if (event.executionId === operation!.executionId) {
+                if (event.type === 'answer.delta') node.content += event.text
+                if (event.status) node.status = event.status
+                if (event.type === 'error')
+                  publish(
+                    event.executionId,
+                    result({
+                      executionId: event.executionId,
+                      status: event.status,
+                      error: event.code,
+                      answer: node.content,
+                    }),
+                  )
+              }
+            }
+            options?.onEvent?.(event)
+          },
+        })
+        publish(response.executionId, response)
+        return response
+      },
+    }
+    graphFixtures.set(fixture, api)
+  }
+  return createSession(api, storage)
+}
 
 function status(state: AiStatus['state'] = 'disabled'): AiStatus {
   return {
@@ -41,6 +180,126 @@ function deferred<T>() {
 }
 
 describe('chat session', () => {
+  it.each(['SUCCEEDED', 'CANCELLED'] as const)(
+    'retains streamed plan through final reconstruction (%s) and rejects foreign events before sequence',
+    async (finalStatus) => {
+      const id = '11111111-1111-4111-8111-111111111111'
+      const executionId = '22222222-2222-4222-8222-222222222222'
+      const snapshot: import('@eap/runtime-client').ChatPlanSnapshot = {
+        schemaVersion: 1,
+        planId: '33333333-3333-4333-8333-333333333333',
+        conversationId: id,
+        executionId,
+        revision: 1,
+        updatedAt: '2026-11-14T12:00:00Z',
+        items: [
+          { id: '44444444-4444-4444-8444-444444444444', content: 'Review', status: 'in_progress' },
+        ],
+      }
+      const session = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: id, workspaceLabel: '', memory: '' }),
+        chatPlan: async () => snapshot,
+        sendAiMessage: async (_id, _request, options) => {
+          const event = {
+            type: 'plan.updated',
+            text: '',
+            status: 'RUNNING',
+            code: '',
+            executionId,
+            conversationId: id,
+            sequence: 1,
+            payload: snapshot,
+          }
+          options?.onEvent?.({ ...event, conversationId: executionId, sequence: 999 })
+          options?.onEvent?.(event)
+          options?.onEvent?.({ ...event, executionId: id, sequence: 998 })
+          options?.onEvent?.({ ...event, type: 'answer.delta', text: 'answer', sequence: 2 })
+          return result({ executionId, status: finalStatus })
+        },
+      })
+      await session.openConversation()
+      session.draft.value = 'hello'
+      await session.send()
+      expect(session.turns.value[1]).toMatchObject({
+        executionId,
+        status: finalStatus,
+        plan: { snapshot },
+      })
+      expect(session.turns.value[1]?.plan?.snapshot?.items[0]?.status).toBe('in_progress')
+    },
+  )
+  it.each([false, true])(
+    'accepts saved connection settings without extra reads, selection changes or stale overwrite (stale failure=%s)',
+    async (staleFailure) => {
+      const connection = {
+        id: 'saved',
+        name: 'Saved connection',
+        kind: 'openai-compatible' as const,
+        enabled: true,
+        baseUrl: 'https://127.0.0.1:9/v1',
+        defaultModel: 'saved-model',
+        models: [{ id: 'saved-model', reasoningEfforts: [] }],
+        allowedModels: ['saved-model'],
+        discoveredAt: '',
+        discoveryError: '',
+        secretPresent: true,
+        revision: 1,
+        defaultSelected: true,
+        configurationRevision: 'r1',
+      }
+      let requests = 0
+      const session = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+        sendAiMessage: async () => result(),
+        modelConnections: async () => {
+          requests += 1
+          return { items: [{ ...connection }], effectiveDefaultId: 'saved' }
+        },
+      })
+      session.draft.value = 'Keep this draft'
+      session.applyConnectionDirectory([{ ...connection }])
+      expect(requests).toBe(0)
+      expect(session.connections.value[0]?.name).toBe('Saved connection')
+      expect(session.conversationId.value).toBeNull()
+      expect(session.pendingConnectionId.value).toBeNull()
+      expect(session.boundConnectionId.value).toBeNull()
+      expect(session.pendingModel.value).toBe('')
+      expect(session.draft.value).toBe('Keep this draft')
+      // Startup retains its intentional default selection through the same loader.
+      await session.refreshConnections()
+      expect(requests).toBe(1)
+      expect(session.pendingConnectionId.value).toBe('saved')
+      session.pendingModel.value = 'keep-pending-model'
+      connection.name = 'Edited connection'
+      session.applyConnectionDirectory([{ ...connection }])
+      expect(requests).toBe(1)
+      expect(session.connections.value[0]?.name).toBe('Edited connection')
+      expect(session.pendingConnectionId.value).toBe('saved')
+      expect(session.pendingModel.value).toBe('keep-pending-model')
+      expect(session.draft.value).toBe('Keep this draft')
+      const stale = deferred<Awaited<ReturnType<NonNullable<ChatApi['modelConnections']>>>>()
+      const concurrent = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+        sendAiMessage: async () => result(),
+        modelConnections: () => stale.promise,
+      })
+      const oldRead = concurrent.refreshConnections()
+      concurrent.applyConnectionDirectory([{ ...connection, name: 'Accepted editor readback' }])
+      if (staleFailure) stale.reject(new Error('Obsolete catalog failure'))
+      else
+        stale.resolve({
+          items: [{ ...connection, name: 'Stale catalog' }],
+          effectiveDefaultId: 'saved',
+        })
+      await oldRead
+      expect(concurrent.connections.value[0]?.name).toBe('Accepted editor readback')
+      expect(concurrent.pendingConnectionId.value).toBeNull()
+      expect(concurrent.pendingModel.value).toBe('')
+    },
+  )
   it('sends explicit planning without tools and preserves the selected implementation settings', async () => {
     let sent: unknown[] = []
     const session = createChatSession({
@@ -59,8 +318,14 @@ describe('chat session', () => {
     session.toolMode.value = 'git_status'
     session.draft.value = 'Plan the page'
     await session.send({ ...session.context.value, mode: 'plan' })
-    expect(sent[2]).toBe('none')
-    expect(sent[3]).toMatchObject({ mode: 'plan' })
+    expect(sent[1]).toMatchObject({
+      toolMode: 'none',
+      context: { mode: 'plan' },
+      kind: 'send',
+      expectedRevision: 0,
+      parentMessageId: null,
+      targetMessageId: null,
+    })
     expect(session.context.value.mode).toBe('code')
     expect(session.toolMode.value).toBe('git_status')
     expect(session.turns.value.at(-1)?.text).toBe('Read-only plan')
@@ -247,7 +512,7 @@ describe('chat session', () => {
       expect(session.context.value.knowledgeExpertRef).toEqual({ id: 'saved', revision: 4 })
     },
   )
-  it('preserves returned resource evidence and safety clearing on the assistant turn and local replay', async () => {
+  it('preserves returned resource evidence and safety clearing on the assistant turn and canonical graph reload', async () => {
     const evidence = {
       expertRef: { id: 'saved', revision: 4 },
       status: 'no_matches' as const,
@@ -274,6 +539,8 @@ describe('chat session', () => {
       knowledgeContext: evidence,
       knowledgeMemoryCleared: true,
     })
+    session.flushPersistence()
+    expect(JSON.parse(saved).transcripts).toBeUndefined()
     const replay = createChatSession(api, storage)
     await replay.restoreLastConversation()
     expect(replay.turns.value[1]).toMatchObject({
@@ -297,7 +564,7 @@ describe('chat session', () => {
   ])(
     'keeps the draft and distinguishes source preparation failure %s %s from a model switch',
     async (http, code, expected) => {
-      const api: ChatApi = {
+      const api: SessionApiFixture = {
         aiStatus: async () => status('configured_unverified'),
         openAiConversation: async () => ({
           conversationId: 'c1',
@@ -330,7 +597,7 @@ describe('chat session', () => {
     },
   )
   it('keeps an oversized code response as an explicit failure without a partial candidate', async () => {
-    const api: ChatApi = {
+    const api: SessionApiFixture = {
       aiStatus: async () => status('configured_unverified'),
       openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: 'ws', memory: '' }),
       sendAiMessage: async () =>
@@ -346,7 +613,7 @@ describe('chat session', () => {
   })
   it('loads status without sending a message', async () => {
     let sent = 0
-    const api: ChatApi = {
+    const api: SessionApiFixture = {
       aiStatus: async () => status('configured_unverified'),
       openAiConversation: async () => {
         throw new Error('no')
@@ -367,7 +634,7 @@ describe('chat session', () => {
   it('blocks a second send and keeps a failed draft', async () => {
     const pending = deferred<AiMessageResult>()
     let sent = 0
-    const api: ChatApi = {
+    const api: SessionApiFixture = {
       aiStatus: async () => status(),
       openAiConversation: async () => ({
         conversationId: 'c1',
@@ -395,7 +662,7 @@ describe('chat session', () => {
 
   it('writes a late response only to the conversation that sent it', async () => {
     const pending = deferred<AiMessageResult>()
-    const api: ChatApi = {
+    const api: SessionApiFixture = {
       aiStatus: async () => status(),
       openAiConversation: async () => ({
         conversationId: session.conversationId.value ? 'c2' : 'c1',
@@ -419,7 +686,7 @@ describe('chat session', () => {
   })
 
   it('does not show a simulated answer when the model is not configured', async () => {
-    const api: ChatApi = {
+    const api: SessionApiFixture = {
       aiStatus: async () => status('disabled'),
       openAiConversation: async () => ({
         conversationId: 'c1',
@@ -443,7 +710,7 @@ describe('chat session', () => {
 
   it('clears the failed send once the same draft succeeds', async () => {
     let calls = 0
-    const api: ChatApi = {
+    const api: SessionApiFixture = {
       aiStatus: async () => status('configured_unverified'),
       openAiConversation: async () => ({
         conversationId: 'c1',
@@ -452,7 +719,7 @@ describe('chat session', () => {
       }),
       sendAiMessage: async () => {
         calls += 1
-        if (calls === 1) throw { response: { status: 500 } }
+        if (calls === 1) throw { response: { status: 400 } }
         return result({ answer: 'retried' })
       },
     }
@@ -469,29 +736,20 @@ describe('chat session', () => {
     expect(session.turns.value.map((turn) => turn.text)).toEqual(['hello', 'retried'])
   })
 
-  it('preserves partial stream evidence as unknown after interruption and retries only explicitly', async () => {
+  it('keeps a lost response pending and blocks duplicate sends until operation readback', async () => {
     let calls = 0
     const session = createChatSession({
-      aiStatus: async () => status(),
       openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
-      sendAiMessage: async (_id, _message, _mode, _context, options) => {
+      sendAiMessage: async (_id, _request, options) => {
         calls++
-        if (calls > 1) return result({ answer: 'retried' })
         options?.onEvent?.({
           type: 'answer.delta',
           text: 'partial',
           status: 'RUNNING',
           code: '',
+          conversationId: 'c1',
           executionId: 'exec-partial',
           sequence: 1,
-        })
-        options?.onEvent?.({
-          type: 'tool',
-          text: '',
-          status: 'RUNNING',
-          code: 'TOOL_STARTED',
-          executionId: 'exec-partial',
-          sequence: 2,
         })
         throw { response: { status: 502, data: { code: 'AI_RESPONSE_INCOMPLETE' } } }
       },
@@ -499,43 +757,37 @@ describe('chat session', () => {
     await session.openConversation()
     session.draft.value = 'hello'
     await session.send()
-    expect(calls).toBe(1)
-    expect(session.sending.value).toBe(false)
+    expect(session.failure.value).toBe('response-uncertain')
     expect(session.draft.value).toBe('hello')
-    expect(session.failure.value).toBe('failed')
     expect(session.turns.value[1]).toMatchObject({
       text: 'partial',
-      status: 'UNKNOWN',
-      error: 'AI_RESPONSE_INCOMPLETE',
+      status: 'RUNNING',
       executionId: 'exec-partial',
-      toolEvents: [{ sequence: 2, code: 'TOOL_STARTED' }],
     })
     await session.send()
-    expect(calls).toBe(2)
-    expect(session.turns.value.map((turn) => turn.text)).toEqual([
-      'hello',
-      'partial',
-      'hello',
-      'retried',
-    ])
-    expect(session.turns.value[1]?.status).toBe('UNKNOWN')
-    expect(session.failure.value).toBe('')
-    expect(session.draft.value).toBe('')
+    expect(calls).toBe(1)
+    await session.recoverOperation()
+    expect(session.pendingOperations.value).toEqual({})
+    // The canonical RUNNING graph still interlocks another execution.
+    await session.send()
+    expect(calls).toBe(1)
+    expect(session.draft.value).toBe('hello')
   })
 
-  it.each(['FAILED', 'UNKNOWN', 'RUNNING', 'unrecognized'])(
+  it.each(['FAILED', 'UNKNOWN', 'RUNNING'])(
     'retains streamed output and the draft when the final result is %s without an error code',
     async (terminalStatus) => {
       const session = createChatSession({
         aiStatus: async () => status(),
         openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
-        sendAiMessage: async (_id, _message, _mode, _context, options) => {
+        sendAiMessage: async (_id, _request, options) => {
           options?.onEvent?.({
             type: 'answer.delta',
             text: 'partial',
             status: 'RUNNING',
             code: '',
             executionId: 'exec-partial',
+            conversationId: 'c1',
             sequence: 1,
           })
           return result({ answer: '', status: terminalStatus })
@@ -546,7 +798,7 @@ describe('chat session', () => {
       await session.send()
       expect(session.turns.value[1]).toMatchObject({
         text: 'partial',
-        status: terminalStatus === 'RUNNING' ? 'UNKNOWN' : terminalStatus,
+        status: terminalStatus,
       })
       expect(session.draft.value).toBe('retain')
       expect(session.failure.value).toBe('kept')
@@ -577,30 +829,44 @@ describe('chat session', () => {
     expect(session.turns.value[1]).toMatchObject({ text: '模拟回答', status: 'SUCCEEDED' })
   })
 
-  it('treats local abort as unknown rather than confirmed backend cancellation', async () => {
+  it('does not promote an unconfirmed cancel acknowledgement to backend cancellation', async () => {
+    const pending = deferred<AiMessageResult>()
+    const accepted = deferred<void>()
+    let cancelledExecution = ''
     const session = createChatSession({
-      aiStatus: async () => status(),
       openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
-      sendAiMessage: (_id, _message, _mode, _context, options) =>
-        new Promise((_resolve, reject) => {
-          options?.signal?.addEventListener('abort', () => {
-            reject(Object.assign(new Error('stopped waiting'), { name: 'AbortError' }))
-          })
-        }),
-      cancelAiConversation: async () => ({ cancelled: false, executionId: '' }),
+      sendAiMessage: async (_id, _request, options) => {
+        options?.onEvent?.({
+          type: 'accepted',
+          text: '',
+          code: '',
+          status: 'RUNNING',
+          conversationId: 'c1',
+          executionId: 'exec-1',
+          sequence: 0,
+        })
+        accepted.resolve()
+        return pending.promise
+      },
+      cancelAiExecution: async (_id, executionId) => {
+        cancelledExecution = executionId
+        return { cancelled: false, executionId }
+      },
     })
     await session.openConversation()
     session.draft.value = 'retain'
-    const pending = session.send()
+    const sending = session.send()
+    await accepted.promise
+    // Let the queued accepted frame read the operation association.
+    await Promise.resolve()
     await session.cancelSend()
-    await pending
-    expect(session.turns.value[1]).toMatchObject({
-      status: 'UNKNOWN',
-      error: 'AI_RESPONSE_INCOMPLETE',
-    })
-    expect(session.failure.value).toBe('failed')
+    expect(cancelledExecution).toBe('exec-1')
+    expect(session.turns.value[1]?.status).toBe('RUNNING')
     expect(session.draft.value).toBe('retain')
-    expect(session.sending.value).toBe(false)
+    pending.resolve(result({ status: 'CANCELLED', answer: '' }))
+    await sending
+    expect(session.turns.value[1]?.status).toBe('CANCELLED')
+    expect(session.draft.value).toBe('retain')
   })
 
   it.each([false, true])(
@@ -626,7 +892,7 @@ describe('chat session', () => {
           workspaceLabel: '',
           memory: '',
         }),
-        sendAiMessage: async (id, _message, _mode, _context, options) => {
+        sendAiMessage: async (id, _request, options) => {
           if (id === 'c2') return result({ contextBudget: { ...budget, usedChars: 500 } })
           options?.onEvent?.({
             type: 'answer.delta',
@@ -634,6 +900,7 @@ describe('chat session', () => {
             status: 'RUNNING',
             code: '',
             executionId: 'exec-c1',
+            conversationId: 'c1',
             sequence: 1,
           })
           return pending.promise
@@ -671,7 +938,7 @@ describe('chat session', () => {
       expect(session.draft.value).toBe('first')
       expect(session.turns.value[1]).toMatchObject({
         text: 'partial-c1',
-        status: rejected ? 'UNKNOWN' : 'FAILED',
+        status: rejected ? 'RUNNING' : 'FAILED',
         executionId: rejected ? 'exec-c1' : 'exec-1',
       })
     },
@@ -683,13 +950,14 @@ describe('chat session', () => {
       const session = createChatSession({
         aiStatus: async () => status(),
         openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
-        sendAiMessage: async (_id, _message, _mode, _context, options) => {
+        sendAiMessage: async (_id, _request, options) => {
           options?.onEvent?.({
             type: 'error',
             text: '',
             status: terminalStatus,
             code: 'SERVER_TERMINAL',
             executionId: 'exec-1',
+            conversationId: 'c1',
             sequence: 1,
           })
           throw new Error('socket closed')
@@ -711,16 +979,16 @@ describe('chat session', () => {
   it('rolls back only a rejected attempt and ignores its events after explicit retry', async () => {
     let calls = 0
     let lateEvent: NonNullable<
-      NonNullable<Parameters<ChatApi['sendAiMessage']>[4]>['onEvent']
+      NonNullable<Parameters<ChatApi['sendAiMessage']>[2]>['onEvent']
     > = () => {}
     const session = createChatSession({
       aiStatus: async () => status(),
       openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
-      sendAiMessage: async (_id, _message, _mode, _context, options) => {
+      sendAiMessage: async (_id, _request, options) => {
         calls++
         if (calls === 2) {
           lateEvent = options!.onEvent!
-          throw { response: { status: 500 } }
+          throw { response: { status: 400 } }
         }
         return result({ answer: calls === 1 ? 'previous answer' : 'retry answer' })
       },
@@ -755,7 +1023,7 @@ describe('chat session', () => {
   it('holds the old conversation until a target change is confirmed', async () => {
     let sent = 0
     let confirmed = 0
-    const api: ChatApi = {
+    const api: SessionApiFixture = {
       aiStatus: async () => status('configured_unverified'),
       openAiConversation: async () => ({
         conversationId: 'c1',
@@ -835,7 +1103,7 @@ describe('chat session', () => {
   })
 
   it('says when a confirmed switch keeps server memory', async () => {
-    const api: ChatApi = {
+    const api: SessionApiFixture = {
       aiStatus: async () => status('configured_unverified'),
       openAiConversation: async () => ({
         conversationId: 'c1',
@@ -908,7 +1176,7 @@ it('keeps independent drafts, binding and transcripts through switching, reload,
       store.set(key, value)
     },
   }
-  const api: ChatApi = {
+  const api: SessionApiFixture = {
     aiStatus: async () => status(),
     openAiConversation: async () => ({
       conversationId: 'chat-' + ++serial,
@@ -949,7 +1217,7 @@ it('keeps independent drafts, binding and transcripts through switching, reload,
 })
 it('keeps expired history readable without sending or silently creating a replacement', async () => {
   let sent = 0
-  const api: ChatApi = {
+  const api: SessionApiFixture = {
     aiStatus: async () => status(),
     openAiConversation: async () => ({
       conversationId: 'old',
@@ -976,7 +1244,7 @@ it('keeps expired history readable without sending or silently creating a replac
 
 it('creates the first conversation on send and assigns an explicitly selected model without losing prototype context', async () => {
   const requests: unknown[] = []
-  const api: ChatApi = {
+  const api: SessionApiFixture = {
     aiStatus: async () => status(),
     openAiConversation: async () => ({
       conversationId: 'first',
@@ -987,8 +1255,8 @@ it('creates the first conversation on send and assigns an explicitly selected mo
       requests.push([id, connection, confirmed, model])
       return { connectionId: connection, connectionName: 'desk', model, memoryCleared: false }
     },
-    sendAiMessage: async (id, message, tool, context) => {
-      requests.push([id, message, tool, context?.prototypeVersionId])
+    sendAiMessage: async (id, request) => {
+      requests.push([id, request.message, request.toolMode, request.context?.prototypeVersionId])
       return result()
     },
   }
@@ -1003,7 +1271,7 @@ it('creates the first conversation on send and assigns an explicitly selected mo
     ['first', 'Implement this prototype', 'none', 'saved-version'],
   ])
   expect(session.boundModel.value).toBe('model-b')
-  expect(session.turns.value[0].model).toBe('model-b')
+  expect(session.turns.value[0]?.text).toBe('Implement this prototype')
 })
 
 it('preserves per-conversation context and restores the active conversation after returning from settings', async () => {
@@ -1015,7 +1283,7 @@ it('preserves per-conversation context and restores the active conversation afte
       store.set(key, value)
     },
   }
-  const api: ChatApi = {
+  const api: SessionApiFixture = {
     aiStatus: async () => status(),
     openAiConversation: async () => ({
       conversationId: 'c' + ++serial,
@@ -1044,7 +1312,7 @@ it('preserves per-conversation context and restores the active conversation afte
 
 it('keeps a new draft local until the first message', async () => {
   let opened = 0
-  const api: ChatApi = {
+  const api: SessionApiFixture = {
     aiStatus: async () => status(),
     openAiConversation: async () => {
       opened += 1
@@ -1063,4 +1331,50 @@ it('keeps a new draft local until the first message', async () => {
   await session.send()
   expect(opened).toBe(2)
   expect(session.history.value[0]?.title).toBe('第一条')
+})
+
+it('keeps legacy v1 observations exportable without promoting them to canonical messages', async () => {
+  const legacy = JSON.stringify({
+    version: 1,
+    items: [],
+    transcripts: {
+      old: [{ role: 'assistant', text: 'legacy local observation', status: 'SUCCEEDED' }],
+    },
+  })
+  const values = new Map([['eap.chat.history.v1', legacy]])
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      values.set(key, value)
+    },
+  }
+  const session = createChatSession(
+    {
+      openAiConversation: async () => ({ conversationId: 'new', workspaceLabel: '', memory: '' }),
+      sendAiMessage: async () => result(),
+    },
+    storage,
+  )
+  expect(session.legacyHistoryExport()).toBe(legacy)
+  expect(session.turns.value).toEqual([])
+  await session.openConversation()
+  expect(session.turns.value).toEqual([])
+  session.draft.value = 'unsent draft'
+  session.flushPersistence()
+  expect(values.get('eap.chat.history.v1')).toBe(legacy)
+  expect(JSON.parse(values.get('eap.chat.preferences.v2')!).transcripts).toBeUndefined()
+})
+
+it('rejects an illegal canonical execution status without inventing business UNKNOWN', async () => {
+  const session = createChatSession({
+    openAiConversation: async () => ({ conversationId: 'invalid', workspaceLabel: '', memory: '' }),
+    sendAiMessage: async () => result({ status: 'unrecognized' }),
+  })
+  await session.openConversation()
+  session.draft.value = 'retain malformed response draft'
+  await session.send()
+  expect(session.turns.value).toEqual([])
+  expect(session.graphUnavailable.value).toBe(true)
+  expect(session.draft.value).toBe('retain malformed response draft')
+  expect(session.failure.value).toBe('response-uncertain')
 })

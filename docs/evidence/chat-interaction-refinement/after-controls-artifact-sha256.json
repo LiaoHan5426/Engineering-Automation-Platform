@@ -1,0 +1,22 @@
+[
+  {
+    "path": "after-controls/after-capabilities-1918.png",
+    "sha256": "7cecf682ac87b9bdf0dcffed16ab1d3cc747c877aed9e16344a2030072d4b95d"
+  },
+  {
+    "path": "after-controls/after-capabilities-390.png",
+    "sha256": "edc97832076ab080efb72cd257455ea1ee1e572c746ed4fceecd9d9ed88dbb02"
+  },
+  {
+    "path": "after-controls/after-context-review-1918.png",
+    "sha256": "8c1222798c8db0615d834a7a7763034065766f215118e15a473c989ba28a85b3"
+  },
+  {
+    "path": "after-controls/after-context-review-390.png",
+    "sha256": "7abdc321136dd8c01ced9a2964d907bd1a4b112de6dce65ce5ee0b5432d9103a"
+  },
+  {
+    "path": "after-controls/after-controls.json",
+    "sha256": "d0e4c7975df196657b5c14221805553a0675612fd0e37e8086bdd0ee5127d5ab"
+  }
+]

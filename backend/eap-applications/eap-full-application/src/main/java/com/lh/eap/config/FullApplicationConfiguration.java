@@ -98,6 +98,7 @@ import com.lh.eap.runtime.handler.SqlParseHandler;
 import com.lh.eap.runtime.handler.WorkspaceSearchHandler;
 import com.lh.eap.runtime.mcp.McpSessionRegistry;
 import com.lh.eap.runtime.mcp.client.McpClientService;
+import com.lh.eap.runtime.mcp.client.McpWebService;
 import com.lh.eap.skill.SkillController;
 import com.lh.eap.skill.SkillService;
 import com.lh.eap.skill.SkillTextParser;
@@ -157,6 +158,10 @@ import org.springframework.context.annotation.Import;
     WorkflowExpertKnowledgeAccess.class,
     SqlKnowledgeQueryEnricher.class,
     AiChatApplication.class,
+    com.lh.eap.ai.AiSpeechApplication.class,
+    com.lh.eap.web.controller.AiSpeechController.class,
+    com.lh.eap.web.SpeechBodyLimitFilter.class,
+    com.lh.eap.runtime.mcp.client.McpSpeechService.class,
     com.lh.eap.ai.TaskDescriptionOptimizer.class,
     com.lh.eap.web.controller.TaskDescriptionOptimizationController.class,
     AiConnectionStatus.class,
@@ -246,6 +251,7 @@ import org.springframework.context.annotation.Import;
     WorkspaceSearchHandler.class,
     McpSessionRegistry.class,
     McpClientService.class,
+    McpWebService.class,
     SkillController.class,
     SkillService.class,
     SkillTextParser.class,
@@ -290,6 +296,21 @@ import org.springframework.context.annotation.Import;
     SqlExpertAgentController.class
 })
 public class FullApplicationConfiguration {
+    @Bean
+    com.lh.eap.ai.ChatGraphStore chatGraphStore(org.springframework.jdbc.core.JdbcTemplate jdbc,
+            org.springframework.transaction.PlatformTransactionManager transactions) {
+        return new com.lh.eap.ai.ChatGraphStore(jdbc, transactions);
+    }
+    @Bean
+    com.lh.eap.ai.ChatPlanStore chatPlanStore(org.springframework.jdbc.core.JdbcTemplate jdbc,
+            org.springframework.transaction.PlatformTransactionManager transactions) {
+        return new com.lh.eap.ai.JdbcChatPlanStore(jdbc, transactions);
+    }
+    @Bean
+    com.lh.eap.ai.ChatPlanService chatPlanService(com.lh.eap.ai.ChatPlanStore store) {
+        return new com.lh.eap.ai.ChatPlanService(store);
+    }
+
     /** Legacy manifests use SQL v1; explicit bindings must match an installed behavior version. */
     @Bean
     @ConditionalOnMissingBean(ExpertAnalysisPolicyResolver.class)

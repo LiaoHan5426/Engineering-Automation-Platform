@@ -40,6 +40,7 @@
 | `@eap/layout` | 壳层布局原语（非业务页） | SplitPane、Dock/Rail 槽位、WorkbenchFrame、滚动区约定 | `@eap/ui` + hooks；不含 Chat/Board 业务 |
 | `@eap/toggle` *或* 并入 `@eap/ui` | 开关类控制 | Switch、Segmented、ThemeToggle（纯展示） | 默认**先做进 `@eap/ui`**；仅当体积/依赖独立时再拆 `@eap/toggle` |
 | `@eap/plugin-sdk` / `@eap/plugin-runtime` | 工作台插件契约与可信运行时 | Manifest、贡献点、启停、槽位 | 见 v1.6 §2B；**不等于** Skill/MCP |
+| `@eap/dsh-adapter`（首片已建） | DSH浏览器兼容、固定基线与升级；受审原client适配 | manifest/模块图、React/Cordis共享身份及dispose、精确服务门面/槽位、compat夹具与升级差异；[合同](dsh-frontend-adaptation.md) | 由现有Host注入端口，不依赖apps/features；不新建Agent/后端宿主或权威业务状态，不吞并plugin-sdk/runtime通用职责 |
 | `@eap/plugin-table` | 纯表格插件（vxe-table + `@vxe-ui/core`） | `Table`；分页用 `@eap/ui` Pagination | 不 `app.use` vxe-pc-ui，不把表格实现放进 `@eap/ui`。vxe-pc-ui 只作类型依赖 |
 | `@eap/request`（已落地） | 无领域依赖的 HTTP/流/上传/下载传输 | Axios 实例、动态 headers、超时/取消、注入 UploadRequest | 仅依赖 Axios；不导入 EAP 业务包，不含 API/凭据地址；UI FileUpload 仅引用请求函数类型 |
 | `@eap/runtime-client` | EAP API 与分域 DTO/状态/错误、业务 SSE 帧解析 | 复用 request；纯 contracts 入口供服务及测试使用 | 被 feature / 可选 L3 使用；**不被** `@eap/ui` 依赖 |
@@ -64,6 +65,7 @@ FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File
 | 内容 | 暂存位置 | 目标模块 | 触发抽包条件 |
 |---|---|---|---|
 | Dialog / Button / Input / Select / Textarea / Checkbox / Switch / FileInput / FileUpload / Slider / Scrollbar / InfiniteScroll / Tabs / Popover | `packages/ui`（已落地） | `@eap/ui` | — |
+| RichText / RichCode / Markdown、公式与图表安全渲染 | `packages/ui/src/rich-text`；从 `@eap/ui` 导出 RichText | L2 无领域展示，统一解析、代码复制、内容预算与 SVG 净化；消息身份、引用、附件与执行状态由应用槽位装配 | 当前授权切片直接定义完整公共能力，不增加应用私有渲染器或平行包；验证见[聊天重构记录](../records/chat-core-refactor-validation.md) |
 | `useFocusTrap` / `useEscClose` | `packages/ui/src/hooks`（Dialog 与 ConfirmBox 共用） | `@eap/hooks` | feature 需要同一陷阱时抽包；在此之前不得另写一份 |
 | ConnectionDialog | `apps/web/src/components/ConnectionDialog.vue`（薄包装 Dialog） | 保持薄包装；壳能力只在 Dialog | 出现第三处平行弹层实现时必须删平行实现 |
 | SessionPanel / WorkspaceWelcome / RepositoryBrowser | `apps/web/src/components/`（聊天装配与会话轨共用；领域状态仍在 `features/shell`） | SessionPanel 的 Dock/Rail 契约 → `@eap/layout`；仓库 API 与懒加载留应用，通用 Tree 已在 UI 包；文件浮层组装 Drawer | 第二工作台复用同一 Dock/Rail 契约时抽 layout 包 |
@@ -78,6 +80,7 @@ FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File
 | 生成快照与候选应用 | `components/GenerationBaseline.vue`、`components/ProposalApplication.vue`（从Chat移出，旧文件删除） | Chat和任务候选共同使用的L3产品组合，复用Badge/Collapse/Checkbox/Button；Board通过显式operations接入任务API，无网络错误回退另一入口 | 第二宿主复用完整候选域时再评估抽包，不增加平行应用面板 |
 | 候选文件Diff | `components/ProposalDiffView.vue`，Chat与专家审批共用 | 应用层只读候选展示，复用现有Monaco/文本降级，销毁前先解除模型绑定；审批状态/API留各feature | 第二宿主复用候选交付合同再抽包，不新增平行Diff或基础UI包 |
 | 多文件交付证据面板 | `components/DeliveryEvidencePanel.vue`、`DeliveryEvidenceSummary.vue`、`deliveryEvidenceModel.ts`，任务候选审阅消费 | L3应用交付域组合，复用Input/Button/Panel/Badge；只做计数/筛选/选择/正文展示，无API/应用/验证/接受动作；不新建基础包 | 第二宿主复用完整交付域时评估抽包；通用控件留@eap/ui |
+| 连接配置与模型目录 | `components/ModelConnectionEditor.vue`、`ModelCatalogEditor.vue`（从settings迁出） | 设置页和聊天上下文共用的L3应用模型域组合；统一表单/保存/读回/dirty和目录合同，复用ConnectionDialog及@eap/ui；不进入无领域UI包，不复制第二保存路径 | 第二宿主需要完整模型管理域时再评估抽包；未新增模块包 |
 | 场景原型工作面 | `features/ScenarioWorkspace.vue` 只组装版本选择与开发准备，设计器经既有 Builder 入口打开 | 不再复制挂载 LayoutDraft/GrapesJS；场景返回状态留应用层 | 无新增共享包 |
 
 ## 4. 何时新建 `packages/*`
@@ -124,7 +127,7 @@ FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File
 
 ## 6. `@eap/ui` 当前清单与扩展原则
 
-**已导出（实现事实以 `packages/ui/src/index.ts` 为准，共 38 个组件）**：Button（含公共语义变体和 size/active）、Badge、Tag、Feedback、Panel、MetricCard、EmptyState、StatusCard、ConfirmBox、Dialog、Input、Select、Textarea、Checkbox、Switch、FileInput、Slider、Scrollbar、InfiniteScroll、Tabs、Popover、Collapse、Pagination、Radio、Divider、Progress、Skeleton、Descriptions、WorkbenchFrame、DatePicker、Tree、Tooltip、Segmented、Splitter、Drawer、ActionCard、DropdownMenu、SvgActionPath。TreeNode / MenuAction 为类型导出；`useFocusTrap` / `useEscClose` 从同一入口导出，仍是 `@eap/hooks` 的暂存实现。
+**已导出（实现事实以 `packages/ui/src/index.ts` 为准，共 42 个组件）**：RichText、Icon、EditorWorkbench、FileUpload、Button（含公共语义变体和 size/active）、Badge、Tag、Feedback、Panel、MetricCard、EmptyState、StatusCard、ConfirmBox、Dialog、Input、Select、Textarea、Checkbox、Switch、FileInput、Slider、Scrollbar、InfiniteScroll、Tabs、Popover、Collapse、Pagination、Radio、Divider、Progress、Skeleton、Descriptions、WorkbenchFrame、DatePicker、Tree、Tooltip、Segmented、Splitter、Drawer、ActionCard、DropdownMenu、SvgActionPath。TreeNode / MenuAction 为类型导出；`useFocusTrap` / `useEscClose` 从同一入口导出，仍是 `@eap/hooks` 的暂存实现。
 
 **目录约定（防止平行实现）**：
 

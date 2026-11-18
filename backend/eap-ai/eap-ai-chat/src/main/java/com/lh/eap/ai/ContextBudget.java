@@ -73,8 +73,9 @@ public final class ContextBudget {
         public Observation enforce() {
             note("COMPRESSION_NOT_ENABLED");
             int material = included("user");
-            int used = (int) Math.min(Integer.MAX_VALUE,
-                    (long) included("system") + material + included("history"));
+            int used = (int) Math.min(Integer.MAX_VALUE, sources.values().stream()
+                    .filter(source -> "included".equals(source.disposition()))
+                    .mapToLong(SourceUsage::chars).sum());
             boolean hasUnknown = sources.values().stream().anyMatch(s -> METERING_UNKNOWN.equals(s.metering()));
             String metering = hasUnknown ? METERING_UNKNOWN : METERING_CHAR_ESTIMATE;
             int remaining = PLATFORM_CONTEXT_CHARS - OUTPUT_RESERVE_CHARS - used;

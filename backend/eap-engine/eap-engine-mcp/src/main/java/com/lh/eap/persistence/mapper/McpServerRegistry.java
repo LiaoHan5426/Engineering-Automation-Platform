@@ -79,6 +79,25 @@ public class McpServerRegistry implements ExpertScopedCapabilityQuery {
         return servers().stream().filter(server -> server.id().equals(serverId)).findFirst();
     }
 
+    public record OperationBindings(long revision, String endpoint, String transport,
+                                    List<com.lh.eap.runtime.mcp.client.McpOperationBinding> bindings) {}
+
+    /** Missing/unreadable authoritative mapping storage denies operations. No property fallback. */
+    public OperationBindings operationBindings(String serverId) {
+        try {
+            var rows=jdbc.queryForList("SELECT binding_revision,operation_bindings::text AS bindings,binding_endpoint,binding_transport FROM eap.mcp_server WHERE id=?",serverId);
+            if(rows.size()!=1)throw new IllegalStateException();
+            var row=rows.getFirst();
+            var raw=JsonMapper.builder().build().readValue(String.valueOf(row.get("bindings")),List.class);
+            return new OperationBindings(((Number)row.get("binding_revision")).longValue(),
+                    Objects.toString(row.get("binding_endpoint"),""),Objects.toString(row.get("binding_transport"),""),
+                    com.lh.eap.runtime.mcp.client.McpOperationBinding.parseList(raw));
+        } catch(RuntimeException unavailable){
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    com.lh.eap.error.McpErrors.MCP_SERVER_NOT_USABLE.code());
+        }
+    }
+
     /** Servers that are enabled and trusted, i.e. the only ones whose tools may be called at all. */
     public List<McpServer> usableServers() {
         return servers().stream().filter(McpServer::usable).toList();

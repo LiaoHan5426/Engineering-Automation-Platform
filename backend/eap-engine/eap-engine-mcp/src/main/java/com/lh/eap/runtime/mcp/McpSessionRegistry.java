@@ -53,6 +53,8 @@ public class McpSessionRegistry implements ExecutionResource {
 
     private record Owned(McpCallScope scope, McpSession session) { }
 
+    private record Opening(McpCallScope scope, Thread creator, java.util.concurrent.CompletableFuture<McpSession> result) {}
+    private final Map<String,Opening> opening=new HashMap<>();
     private final Map<String, Owned> sessions = new ConcurrentHashMap<>();
     /** executionId → the one expert that execution belongs to. */
     private final Map<UUID, String> executions = new ConcurrentHashMap<>();
@@ -71,19 +73,37 @@ public class McpSessionRegistry implements ExecutionResource {
      *                               it — a session created outside a run, or on behalf of another expert,
      *                               would outlive the grant that allowed it
      */
-    public synchronized McpSession session(McpCallScope scope, Supplier<McpSession> factory) {
-        Objects.requireNonNull(scope, "scope");
-        var owner = executions.get(scope.executionId());
-        if (owner == null) {
-            throw new IllegalStateException("MCP 会话只能在一次专家执行内创建：执行 " + scope.executionId()
+    public McpSession session(McpCallScope scope, Supplier<McpSession> factory) {
+        Objects.requireNonNull(scope,"scope");
+        Opening pending;boolean creator=false;
+        synchronized(this){
+            var owner=executions.get(scope.executionId());
+            if(owner==null)throw new IllegalStateException("MCP 会话只能在一次专家执行内创建：执行 " + scope.executionId()
                     + " 未处于打开状态，长生命周期会话会跨专家复用授权上下文。");
+            if(!owner.equals(scope.expertId()))throw new IllegalStateException("MCP 会话不能跨专家复用：执行 " + scope.executionId()
+                    + " 属于专家 " + owner + "，但调用方是 " + scope.expertId() + "。");
+            var existing=sessions.get(scope.sessionKey());if(existing!=null)return existing.session();
+            pending=opening.get(scope.sessionKey());
+            if(pending==null){pending=new Opening(scope,Thread.currentThread(),new java.util.concurrent.CompletableFuture<>());opening.put(scope.sessionKey(),pending);creator=true;}
         }
-        if (!owner.equals(scope.expertId())) {
-            throw new IllegalStateException("MCP 会话不能跨专家复用：执行 " + scope.executionId() + " 属于专家 "
-                    + owner + "，但调用方是 " + scope.expertId() + "。");
+        if(!creator){
+            try{return pending.result().get();}
+            catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new IllegalStateException("MCP initialization interrupted",interrupted);}
+            catch(java.util.concurrent.ExecutionException failed){throw new IllegalStateException("MCP initialization failed",failed.getCause());}
         }
-        var owned = sessions.computeIfAbsent(scope.sessionKey(), key -> new Owned(scope, factory.get()));
-        return owned.session();
+        McpSession created=null;
+        try{
+            created=factory.get();
+            synchronized(this){
+                if(opening.get(scope.sessionKey())!=pending || !scope.expertId().equals(executions.get(scope.executionId())) || Thread.currentThread().isInterrupted())
+                    throw new IllegalStateException("MCP execution ended during initialization");
+                sessions.put(scope.sessionKey(),new Owned(scope,created));opening.remove(scope.sessionKey());pending.result().complete(created);
+                return created;
+            }
+        }catch(RuntimeException failed){
+            synchronized(this){opening.remove(scope.sessionKey(),pending);pending.result().completeExceptionally(failed);}
+            if(created!=null)closeQuietly(created);throw failed;
+        }
     }
 
     /** The session already created for this exact scope, if any. Never creates one. */
@@ -113,26 +133,28 @@ public class McpSessionRegistry implements ExecutionResource {
     }
 
     /** Close everything owned by this execution. Called from the executor's {@code finally}. */
-    public synchronized int endExecution(UUID executionId) {
-        var closed = 0;
-        for (var entry : List.copyOf(sessions.entrySet())) {
-            if (!entry.getValue().scope().executionId().equals(executionId)) continue;
-            closeQuietly(entry.getValue().session());
-            sessions.remove(entry.getKey());
-            closed++;
+    public int endExecution(UUID executionId) {
+        var toClose=new ArrayList<McpSession>();var toCancel=new ArrayList<Opening>();
+        synchronized(this){
+            executions.remove(executionId);
+            for(var entry:List.copyOf(sessions.entrySet()))if(entry.getValue().scope().executionId().equals(executionId)){
+                sessions.remove(entry.getKey());toClose.add(entry.getValue().session());
+            }
+            for(var entry:List.copyOf(opening.entrySet()))if(entry.getValue().scope().executionId().equals(executionId)){
+                opening.remove(entry.getKey());toCancel.add(entry.getValue());
+            }
         }
-        executions.remove(executionId);
-        return closed;
+        for(var pending:toCancel){pending.result().completeExceptionally(new IllegalStateException("MCP execution ended"));pending.creator().interrupt();}
+        toClose.forEach(McpSessionRegistry::closeQuietly);
+        return toClose.size();
     }
 
     /** Shutdown hook / tests. */
     @PreDestroy
-    public synchronized void closeAll() {
-        for (var key : List.copyOf(sessions.keySet())) {
-            var owned = sessions.remove(key);
-            if (owned != null) closeQuietly(owned.session());
-        }
-        executions.clear();
+    public void closeAll() {
+        List<UUID> ids;
+        synchronized(this){ids=List.copyOf(executions.keySet());}
+        ids.forEach(this::endExecution);
     }
 
     public int openSessionCount() { return sessions.size(); }

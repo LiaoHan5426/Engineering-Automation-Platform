@@ -1,9 +1,9 @@
 import { expect, it } from 'vite-plus/test'
-import { createMockChatBackend } from '../src/chatBackend'
+import { createChatGraphFixture } from './graphRequests.fixture'
 import type { AiConversation, ModelConnection, ModelConnectionList } from '@eap/runtime-client'
 
 it('discovers models, preserves allowed selection and applies settings to conversations', async () => {
-  const api = createMockChatBackend()
+  const api = createChatGraphFixture()
   const call = (path: string, body: Record<string, unknown> = {}) => api.handle('POST', path, body)
   const saved = (
     await call('/ai/connections', {
@@ -50,7 +50,7 @@ it('discovers models, preserves allowed selection and applies settings to conver
 })
 
 it('simulates account authorization and disconnect without external login', async () => {
-  const api = createMockChatBackend()
+  const api = createChatGraphFixture()
   const started = (await api.handle('POST', '/ai/chatgpt/login')).data as {
     loginId: string
     authorizationUrl: string

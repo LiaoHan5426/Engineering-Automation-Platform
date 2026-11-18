@@ -1,3 +1,23 @@
+import {
+  isMcpOperationBindingsSnapshot,
+  type McpOperationBindingsSnapshot,
+  type McpOperationBindingsWrite,
+} from './contracts/mcpOperationBindings'
+import {
+  isSpeechServicesResponse,
+  isSpeechOperation,
+  type SpeechServicesResponse,
+  type SpeechOperation,
+  type SpeechTranscriptionRequest,
+  type SpeechSynthesisRequest,
+} from './contracts/speech'
+import {
+  validateChatGraph,
+  type ChatGraph,
+  type ChatGraphRequest,
+  type ChatGraphOperation,
+} from './contracts/chatGraph'
+import { isChatPlanSnapshot, type ChatPlanSnapshot } from './contracts/chatPlan'
 import type { GitExecutionOperation } from './contracts/toolModels'
 import type { ToolExecution } from './contracts/toolModels'
 import type { ScenarioSnapshot } from './contracts/scenarioModels'
@@ -79,8 +99,6 @@ import type { VerificationProbe } from './contracts/codeModels'
 import type { AiConversation, ModelHistoryUsage, ModelHistorySummary } from './contracts/chatModels'
 import type { AiConversationRecovery } from './contracts/chatModels'
 import type { TaskWorkingMemorySnapshot } from './contracts/chatModels'
-import type { AiToolMode } from './contracts/chatModels'
-import type { TaskContext } from './contracts/chatModels'
 import type { ChatExecutionSnapshot } from './contracts/chatModels'
 import type { ChatGptLoginAttempt } from './contracts/chatModels'
 import type { ChatGptLoginState } from './contracts/chatModels'
@@ -783,8 +801,9 @@ export const runtimeApi = {
 async function postChatSse(
   transport: RequestClient,
   path: string,
-  body: unknown,
-  options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
+  body: ChatGraphRequest,
+  options: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void } | undefined,
+  conversationId: string,
 ): Promise<AiMessageResult> {
   const requestLanguage = runtimeLanguage()
   const response = await openStream(transport, path, {
@@ -806,6 +825,8 @@ async function postChatSse(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let executionId = ''
+  let latestSequence = -1
   let answer = ''
   const toolEvents: AiToolEvent[] = []
   try {
@@ -819,7 +840,20 @@ async function postChatSse(
         const chunk = buffer.slice(0, separator.index)
         buffer = buffer.slice(separator.index + separator[0].length)
         const event = parseSseChunk(chunk)
-        if (!event) continue
+        if (!event || event.conversationId !== conversationId || event.sequence <= latestSequence)
+          continue
+        if (!executionId) {
+          const accepted = event.payload as Partial<ChatGraphOperation> | null
+          if (
+            event.type !== 'accepted' ||
+            accepted?.operationId !== body.operationId ||
+            accepted.executionId !== event.executionId
+          )
+            continue
+          executionId = event.executionId
+        }
+        if (event.executionId !== executionId) continue
+        latestSequence = event.sequence
         options?.onEvent?.(event)
         if (event.type === 'answer.delta') answer += event.text ?? ''
         if (event.type === 'tool') {
@@ -910,11 +944,22 @@ function parseSseChunk(chunk: string): ChatExecutionEvent | null {
     (event.sequence as number) < 0
   )
     throw chatStreamError('AI_RESPONSE_INVALID')
+  if (
+    event.type === 'plan.updated' &&
+    (!isChatPlanSnapshot(event.payload) ||
+      event.payload.conversationId !== event.conversationId ||
+      event.payload.executionId !== event.executionId)
+  )
+    throw chatStreamError('AI_RESPONSE_INVALID')
   if (event.type === 'final' && event.payload != null) {
     const payload = event.payload
     if (
       !isStreamRecord(payload) ||
       (payload.status !== undefined && !isChatExecutionStatus(payload.status)) ||
+      (payload.plan != null &&
+        (!isChatPlanSnapshot(payload.plan) ||
+          payload.plan.conversationId !== event.conversationId ||
+          payload.plan.executionId !== event.executionId)) ||
       !['answer', 'error', 'status', 'approval', 'verification', 'artifactError'].every(
         (key) => payload[key] === undefined || typeof payload[key] === 'string',
       ) ||
@@ -949,6 +994,73 @@ export function createChatApi(
   })
   const get = <T>(path: string) => client.get<T>(path).then((response) => response.data)
   return {
+    getMcpOperationBindings: async (id: string) => {
+      const result = await get<McpOperationBindingsSnapshot>(
+        '/mcp-servers/' + encodeURIComponent(id) + '/operation-bindings',
+      )
+      if (!isMcpOperationBindingsSnapshot(result)) throw new Error('INVALID_MCP_OPERATION_BINDINGS')
+      return result
+    },
+    saveMcpOperationBindings: async (id: string, request: McpOperationBindingsWrite) => {
+      const result = (
+        await client.put<McpOperationBindingsSnapshot>(
+          '/mcp-servers/' + encodeURIComponent(id) + '/operation-bindings',
+          request,
+        )
+      ).data
+      if (!isMcpOperationBindingsSnapshot(result)) throw new Error('INVALID_MCP_OPERATION_BINDINGS')
+      return result
+    },
+    speechServices: async (options?: { signal?: AbortSignal }) => {
+      const result = (
+        await client.get<SpeechServicesResponse>('/ai/speech/services', { signal: options?.signal })
+      ).data
+      if (!isSpeechServicesResponse(result)) throw new Error('INVALID_SPEECH_SERVICES')
+      return result
+    },
+    transcribeSpeech: async (
+      request: SpeechTranscriptionRequest,
+      options?: { signal?: AbortSignal },
+    ) => {
+      const result = (
+        await client.post<SpeechOperation>('/ai/speech/transcriptions', request, {
+          signal: options?.signal,
+        })
+      ).data
+      if (!isSpeechOperation(result)) throw new Error('INVALID_SPEECH_OPERATION')
+      return result
+    },
+    synthesizeSpeech: async (
+      request: SpeechSynthesisRequest,
+      options?: { signal?: AbortSignal },
+    ) => {
+      const result = (
+        await client.post<SpeechOperation>('/ai/speech/synthesis', request, {
+          signal: options?.signal,
+        })
+      ).data
+      if (!isSpeechOperation(result)) throw new Error('INVALID_SPEECH_OPERATION')
+      return result
+    },
+    getSpeechOperation: async (operationId: string, options?: { signal?: AbortSignal }) => {
+      const result = (
+        await client.get<SpeechOperation>(
+          '/ai/speech/operations/' + encodeURIComponent(operationId),
+          { signal: options?.signal },
+        )
+      ).data
+      if (!isSpeechOperation(result)) throw new Error('INVALID_SPEECH_OPERATION')
+      return result
+    },
+    cancelSpeechOperation: (operationId: string, options?: { signal?: AbortSignal }) =>
+      client
+        .post<{ operationId: string; cancelRequested: boolean }>(
+          '/ai/speech/' + encodeURIComponent(operationId) + '/cancel',
+          {},
+          { signal: options?.signal },
+        )
+        .then((response) => response.data),
+
     aiStatus: () => get<AiStatus>('/ai/status'),
     skills: () => get<{ items: SkillSummary[] }>('/skills'),
     skill: (id: string, version: string) =>
@@ -1006,16 +1118,47 @@ export function createChatApi(
       client
         .post<VerificationProbe>('/ai/workspace/verification/probe', {})
         .then((response) => response.data),
+    chatPlan: async (
+      conversationId: string,
+      executionId: string,
+    ): Promise<ChatPlanSnapshot | null> => {
+      const plan = await get<unknown>(
+        '/ai/conversations/' +
+          encodeURIComponent(conversationId) +
+          '/executions/' +
+          encodeURIComponent(executionId) +
+          '/plan',
+      )
+      if (
+        plan !== null &&
+        (!isChatPlanSnapshot(plan) ||
+          plan.conversationId !== conversationId ||
+          plan.executionId !== executionId)
+      )
+        throw chatStreamError('AI_RESPONSE_INVALID')
+      return plan
+    },
     aiConversation: (id: string) =>
       get<AiConversation>('/ai/conversations/' + encodeURIComponent(id)),
     modelHistory: (id: string) =>
       get<ModelHistoryUsage>('/ai/conversations/' + encodeURIComponent(id) + '/model-history'),
-    summarizeModelHistory: (id: string) =>
+    summarizeModelHistory: (id: string, operationId: string) =>
       client
         .post<ModelHistorySummary>(
           '/ai/conversations/' + encodeURIComponent(id) + '/model-history/summary',
-          {},
+          { operationId },
           { timeout: 60_000 },
+        )
+        .then((response) => response.data),
+    cancelModelHistorySummary: (id: string, operationId: string) =>
+      client
+        .post<{ cancelled: boolean; operationId: string }>(
+          '/ai/conversations/' +
+            encodeURIComponent(id) +
+            '/model-history/summary/' +
+            encodeURIComponent(operationId) +
+            '/cancel',
+          {},
         )
         .then((response) => response.data),
     clearModelHistory: (id: string) =>
@@ -1058,23 +1201,39 @@ export function createChatApi(
       client
         .post<AiConversation>('/ai/conversations', {}, { timeout: 10_000 })
         .then((response) => response.data),
+    webSources: () => get<import('./contracts/chatModels').WebSourceService[]>('/ai/web-sources'),
+    chatGraph: async (id: string) =>
+      validateChatGraph(
+        await get<ChatGraph>('/ai/conversations/' + encodeURIComponent(id) + '/graph'),
+        id,
+      ),
+    chatOperation: (id: string, operationId: string) =>
+      get<ChatGraphOperation>(
+        '/ai/conversations/' +
+          encodeURIComponent(id) +
+          '/operations/' +
+          encodeURIComponent(operationId),
+      ),
     sendAiMessage: (
       id: string,
-      message: string,
-      toolMode: AiToolMode,
-      context?: TaskContext,
+      request: ChatGraphRequest,
       options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
     ) =>
       postChatSse(
         client,
         '/ai/conversations/' + encodeURIComponent(id) + '/messages',
-        { message, toolMode, ...(context ? { context } : {}) },
+        request,
         options,
+        id,
       ),
-    cancelAiConversation: (id: string) =>
+    cancelAiExecution: (id: string, executionId: string) =>
       client
         .post<{ cancelled: boolean; executionId: string }>(
-          '/ai/conversations/' + encodeURIComponent(id) + '/cancel',
+          '/ai/conversations/' +
+            encodeURIComponent(id) +
+            '/executions/' +
+            encodeURIComponent(executionId) +
+            '/cancel',
           {},
         )
         .then((response) => response.data),

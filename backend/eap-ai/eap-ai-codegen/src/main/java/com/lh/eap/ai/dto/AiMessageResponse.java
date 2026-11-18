@@ -12,7 +12,17 @@ public record AiMessageResponse(UUID executionId, String answer, String error, S
                                 List<AiArtifactSummary> artifacts, CodeChangeService.Proposal proposal,
                                 ExpertKnowledgeContextService.Context knowledgeContext, boolean knowledgeMemoryCleared,
                                 SkillService.Context skillContext, boolean contextMemoryCleared,
-                                ContextBudget.Observation contextBudget) {
+                                ContextBudget.Observation contextBudget,
+                                List<com.lh.eap.runtime.mcp.client.McpWebService.Source> webSources) {
+    public AiMessageResponse { webSources=webSources==null?List.of():List.copyOf(webSources); }
+    public AiMessageResponse(UUID executionId, String answer, String error, String status, String approval,
+            String verification, List<AiToolEvent> toolEvents, String artifactError, List<AiArtifactSummary> artifacts,
+            CodeChangeService.Proposal proposal, ExpertKnowledgeContextService.Context knowledgeContext,
+            boolean knowledgeMemoryCleared, SkillService.Context skillContext, boolean contextMemoryCleared,
+            ContextBudget.Observation contextBudget) {
+        this(executionId,answer,error,status,approval,verification,toolEvents,artifactError,artifacts,proposal,knowledgeContext,
+            knowledgeMemoryCleared,skillContext,contextMemoryCleared,contextBudget,List.of());
+    }
     public AiMessageResponse(UUID executionId, String answer, String error, String status, String approval,
             String verification, List<AiToolEvent> toolEvents, String artifactError, List<AiArtifactSummary> artifacts,
             CodeChangeService.Proposal proposal, ExpertKnowledgeContextService.Context knowledgeContext,

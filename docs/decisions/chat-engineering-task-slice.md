@@ -123,7 +123,7 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 
 - `POST /api/ai/conversations/{id}/cancel`（JSON `{}`）：协作取消进行中的 exclusive 轮次；空闲为 no-op。
 - `GET /api/ai/conversations/{id}/executions/{executionId}/snapshot?afterSequence=`：进程内游标补齐；非法游标 `CURSOR_INVALID`。
-- 前端 `runtime-client` 用 fetch 消费 SSE；`eventProjector` 按 `executionId+sequence` 去重并记录缺序；发送中可取消。
+- 前端 `runtime-client` 用 fetch 消费 SSE；发送中可请求取消。2026-11-14实现核查纠正：`eventProjector`是未接入生产发送链的辅助函数，projectEvents仅按sequence去重、未先隔离执行身份；其离线单测不证明线上重复/乱序/缺序恢复。生产ChatTurn仍由流回调直接追加，完整单一路径回放需后续定向实现。
 
 离线证据：`ChatExecutionStreamTest` 4 项；前端 eventProjector/reconnect/wireApi 等定向通过。不宣称跨重启持久事件日志或真实供应商流式验收。
 

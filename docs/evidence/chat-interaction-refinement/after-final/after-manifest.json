@@ -1,0 +1,2852 @@
+{
+  "head": "579c0d59a2f131715f5b79c3455dad81bc74d7ef",
+  "phase": "after",
+  "sources": [
+    {
+      "path": "frontend/apps/web/src/App.vue",
+      "sha256": "1eaf0e0b7565664e646879f14cf90ff2829fe66857ad63854729f2355838e389"
+    },
+    {
+      "path": "frontend/apps/web/src/work-pages.css",
+      "sha256": "8019045b9f7c48990ae0403bb7209423a2272acbda23dd26c4a0a98e77edf6f0"
+    }
+  ],
+  "results": [
+    {
+      "viewport": {
+        "width": 1918,
+        "height": 914
+      },
+      "states": [
+        {
+          "state": "default-composer",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 613
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "web-options",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 613
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 924,
+                "y": 466.390625,
+                "width": 410,
+                "height": 331.5,
+                "clientHeight": 332,
+                "scrollHeight": 332
+              },
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "speech-options",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 613
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 924,
+                "y": 466.390625,
+                "width": 410,
+                "height": 331.5,
+                "clientHeight": 332,
+                "scrollHeight": 332
+              },
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "first-pending",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 613
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": {
+                "x": 683,
+                "y": 157,
+                "width": 760,
+                "height": 50.390625,
+                "clientHeight": 48,
+                "scrollHeight": 48
+              },
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "first-streaming",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 613
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 683,
+                "y": 428.390625,
+                "width": 832,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "navigated-sending",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 44px 822px",
+            "noticeParent": "shell-notices",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 92,
+                "width": 1918,
+                "height": 822,
+                "clientHeight": 822,
+                "scrollHeight": 822
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 44,
+                "clientHeight": 44,
+                "scrollHeight": 44
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              ".composer-draft": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              }
+            }
+          }
+        },
+        {
+          "state": "returned-sending",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 613
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 683,
+                "y": 407.796875,
+                "width": 832,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "success",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 613
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "second-pending-failed",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 613
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": {
+                "x": 683,
+                "y": 439.796875,
+                "width": 760,
+                "height": 50.390625,
+                "clientHeight": 48,
+                "scrollHeight": 48
+              },
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "failed",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 666
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 683,
+                "y": 594.796875,
+                "width": 832,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "second-pending-cancelled",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 740
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": {
+                "x": 683,
+                "y": 554.96875,
+                "width": 760,
+                "height": 50.390625,
+                "clientHeight": 48,
+                "scrollHeight": 48
+              },
+              "[data-testid=\"turn-progress\"]": {
+                "x": 683,
+                "y": 467.796875,
+                "width": 832,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "cancelled",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 886
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 683,
+                "y": 321.796875,
+                "width": 832,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "unknown-read-only-inspection",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 1029
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 683,
+                "y": 178.796875,
+                "width": 832,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "unknown-recovered",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 612.5,
+                "clientHeight": 613,
+                "scrollHeight": 1097
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 737.5,
+                "width": 980,
+                "height": 148.5,
+                "clientHeight": 147,
+                "scrollHeight": 147
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 683,
+                "y": 110.796875,
+                "width": 832,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-1/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-2/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-3/plan"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-3/cancel"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-4/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/operations/8b3de3fe-14cd-4a26-a254-e6812bcce21e"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        }
+      ],
+      "blocked": [],
+      "errors": [],
+      "firstSendNewConversation": true,
+      "backend": false,
+      "realProvider": false
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "states": [
+        {
+          "state": "default-composer",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "web-options",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 95,
+                "y": 534.78125,
+                "width": 272,
+                "height": 351,
+                "clientHeight": 351,
+                "scrollHeight": 351
+              },
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "speech-options",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 95,
+                "y": 534.78125,
+                "width": 272,
+                "height": 351,
+                "clientHeight": 351,
+                "scrollHeight": 351
+              },
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "first-pending",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 551
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": {
+                "x": 80,
+                "y": 223.5,
+                "width": 286,
+                "height": 70.78125,
+                "clientHeight": 69,
+                "scrollHeight": 69
+              },
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "first-streaming",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 551
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 80,
+                "y": 515.890625,
+                "width": 286,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "navigated-sending",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 44px 900px",
+            "noticeParent": "shell-notices",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 100,
+                "width": 390,
+                "height": 900,
+                "clientHeight": 900,
+                "scrollHeight": 900
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 44,
+                "clientHeight": 44,
+                "scrollHeight": 44
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              ".composer-draft": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              }
+            }
+          }
+        },
+        {
+          "state": "returned-sending",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 551
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 80,
+                "y": 495.296875,
+                "width": 286,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "success",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 551
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "second-pending-failed",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 551
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": {
+                "x": 80,
+                "y": 527.296875,
+                "width": 286,
+                "height": 70.78125,
+                "clientHeight": 69,
+                "scrollHeight": 69
+              },
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "failed",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 750
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 80,
+                "y": 618.296875,
+                "width": 286,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "second-pending-cancelled",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 845
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": {
+                "x": 80,
+                "y": 517.46875,
+                "width": 286,
+                "height": 70.78125,
+                "clientHeight": 69,
+                "scrollHeight": 69
+              },
+              "[data-testid=\"turn-progress\"]": {
+                "x": 80,
+                "y": 409.296875,
+                "width": 286,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "cancelled",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 991
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 80,
+                "y": 263.296875,
+                "width": 286,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "unknown-read-only-inspection",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 1162
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 80,
+                "y": 92.296875,
+                "width": 286,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        },
+        {
+          "state": "unknown-recovered",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 550.5,
+                "clientHeight": 551,
+                "scrollHeight": 1202
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 742,
+                "width": 302,
+                "height": 238,
+                "clientHeight": 236,
+                "scrollHeight": 236
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 755,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": null,
+              "[data-testid=\"outgoing-preview\"]": null,
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": {
+                "x": 80,
+                "y": 52.296875,
+                "width": 286,
+                "height": 33.171875,
+                "clientHeight": 33,
+                "scrollHeight": 33
+              }
+            }
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-5/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-6/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-7/plan"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-7/cancel"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-8/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/operations/b30162ad-f61d-4ddc-85e3-91fb754a3ea2"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        }
+      ],
+      "blocked": [],
+      "errors": [],
+      "firstSendNewConversation": true,
+      "backend": false,
+      "realProvider": false
+    }
+  ]
+}

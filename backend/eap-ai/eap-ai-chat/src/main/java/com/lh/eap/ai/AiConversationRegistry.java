@@ -187,6 +187,17 @@ public class AiConversationRegistry {
         }
     }
 
+    public List<org.springframework.ai.chat.messages.Message> modelMessages(UUID id) {
+        synchronized(lock) {require(id);return List.copyOf(memory.get(ChatClients.memoryKey(PRINCIPAL,id)));}
+    }
+    /** Keep idle state changes and their durable graph boundaries under the turn admission lock. */
+    public <T> T idleMutation(UUID id, Supplier<T> action) {
+        synchronized(lock) {
+            var session=sessions.get(id);
+            if(session!=null&&session.busy)throw new ResponseStatusException(HttpStatus.CONFLICT,ChatErrors.CONVERSATION_BUSY.code());
+            return action.get();
+        }
+    }
     public void clearModelHistory(UUID id) {
         synchronized (lock) {
             var session = require(id);
@@ -247,10 +258,42 @@ public class AiConversationRegistry {
         }
     }
 
+    /** Match under the same lock as interrupt: a late cancel cannot reach a later turn. */
+    public boolean cancel(UUID id, UUID executionId) {
+        synchronized(lock) {
+            var session=sessions.get(id);
+            if(session==null || !executionId.equals(session.activeExecutionId)) return false;
+            return cancel(id);
+        }
+    }
+    /** Provider memory is a derived cache of one safe selected path, never a transcript authority. */
+    public void deriveBranchHistory(UUID id, List<org.springframework.ai.chat.messages.Message> history, boolean sensitive, boolean branchChanged) {
+        synchronized(lock) {
+            var session=require(id);
+            if(!session.busy) throw new IllegalStateException("Branch derivation requires exclusive turn");
+            String key=ChatClients.memoryKey(PRINCIPAL,id);
+            memory.clear(key);
+            if(!sensitive&&!session.contextSensitive&&!history.isEmpty()) memory.add(key,history);
+            if(branchChanged) {
+                session.workingMemory.invalidate("BRANCH_CONTEXT_REBUILT",clock.get());
+                persistWorkingMemory(session);
+            }
+        }
+    }
+
     public boolean cancelRequested(UUID id) {
         synchronized (lock) {
             var session = sessions.get(id);
             return session != null && session.cancelRequested;
+        }
+    }
+
+    /** Publish the durable reservation and cancellation target under one admission lock. */
+    public <T> T reserveExecution(UUID id, Supplier<T> reservation, java.util.function.Function<T,UUID> executionId) {
+        synchronized(lock) {
+            var session=require(id);
+            if(!session.busy)throw new IllegalStateException("Execution reserve requires exclusive turn");
+            T result=reservation.get();session.activeExecutionId=executionId.apply(result);return result;
         }
     }
 

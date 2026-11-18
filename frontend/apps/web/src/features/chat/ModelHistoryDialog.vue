@@ -24,11 +24,14 @@ async function summarize() {
   confirmingSummary.value = false
   if (busy.value) return
   const ticket = ++revision
+  const conversationId = props.conversationId
+  const operationId = crypto.randomUUID()
+  activeSummary = { conversationId, operationId }
   busy.value = true
   generating.value = true
   error.value = ''
   try {
-    const result = await runtimeApi.summarizeModelHistory(props.conversationId)
+    const result = await runtimeApi.summarizeModelHistory(conversationId, operationId)
     if (ticket === revision) {
       summary.value = result.text
       adoptedText.value = ''
@@ -39,16 +42,21 @@ async function summarize() {
     if (ticket === revision) {
       busy.value = false
       generating.value = false
+      activeSummary = undefined
       await nextTick()
       refreshControl.value?.$el.focus()
     }
   }
 }
+let activeSummary: { conversationId: string; operationId: string } | undefined
 async function cancelSummary() {
+  const target = activeSummary
+  const ticket = revision
+  if (!target) return
   try {
-    await runtimeApi.cancelAiConversation(props.conversationId)
+    await runtimeApi.cancelModelHistorySummary(target.conversationId, target.operationId)
   } catch (failure) {
-    error.value = errorMessage(failure)
+    if (ticket === revision && activeSummary === target) error.value = errorMessage(failure)
   }
 }
 function adoptSummary() {
@@ -112,6 +120,8 @@ async function clear() {
 watch(
   () => props.conversationId,
   () => {
+    activeSummary = undefined
+    generating.value = false
     usage.value = undefined
     summary.value = ''
     adoptedText.value = ''

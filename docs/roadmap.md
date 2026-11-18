@@ -2,7 +2,7 @@
 
 ## 当前基线与事实源
 
-更新于 2026-11-14。本轮核查的实现基线为 `1496335`，与核查时获取后的 `origin/main` 一致；本轮只改文档。工作项现状和问题状态统一见[台账](planning-status.md#next-work-register)，设计交付各切片按[统一索引](records/design-delivery-index.md)追溯。历史命令与验收不能作为本轮重跑结果；环境准备与验证结果见[本轮复核](records/validation-history.md#development-readiness-review)。
+更新于 2026-11-14。本轮核查的实现基线为 `1496335`，与核查时获取后的 `origin/main` 一致；该句保留为全库核查基线；后续PR #7的G1/P1/T1已有历史技术证据，当前HEAD为`9e7257b`；扩展聊天重构为未提交工作区，最终验证PENDING，最新状态见下方CT-02，不把历史核查当本轮代码验证。工作项现状和问题状态统一见[台账](planning-status.md#next-work-register)，设计交付各切片按[统一索引](records/design-delivery-index.md)追溯。历史命令与验收不能作为本轮重跑结果；环境准备与验证结果见[本轮复核](records/validation-history.md#development-readiness-review)。
 
 - [规划状态与验收台账](planning-status.md)：工作项的当前实现、证据及剩余关口。
 - [当前产品与架构合同](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)：五入口、交互和验收要求。
@@ -21,14 +21,16 @@
 | 上下文/记忆/Work | 窗口字符预算、显式清空、人工摘要预览/采用、任务记忆CAS编辑；已加载会话导出、Work本机Markdown草稿/下载；FTS实库对照已验 | 精确token、自动分段/压缩、外部模型摘要质量；长期记忆、Word/PDF与办公工具执行 |
 | SQL Agent/后端 | full唯一宿主与分域条件组合；专业行为绑定、持久检查点/租约/调度、单SQL文件审批；Responses真实两轮整链及限定复杂SQL样例 | 产品目录/CLI/Chat剩余耦合、旧DAG长事务、schema及跨环境组合；生产SQL质量、通用写工具和SQL UNKNOWN独立 |
 | 本地工具与MCP | Git status/diff统一持久执行、取消/UNKNOWN审计/恢复、授权及存储异常矩阵；MCP四传输与固定read_graph子进程协议夹具 | 其他工具/平台与进程接管；官方memory包经Expert入口实网验收、常驻GET listen；有界身份线索不证明完整树退出 |
-| 插件与场景 | 看板启停/在途观测；设计器贡献启停、实例草稿恢复与版本保留；可信依赖阻断/恢复及发布断连核对 | 用户接受、外部安装/任意第三方代码隔离；反向Agent调用独立，不另建状态机 |
+| 插件与场景 | 看板/设计器可信生命周期；DSH独立前端适配包、原context-menu及EAP内置计划已有历史技术证据；本轮新增原ui-shortcuts/ui-file-actions源码接入 | 固定39163dd基线的扩展闭包最终验证PENDING；跨版本升级、其他插件/Host服务、真实MCP与用户接受分别验收；不部署独立DSH宿主 |
 | 目录、受管工具与发行 | FS-01盘点/迁移就绪观测，CLI登记与路径发现；Electron preload与bootstrap脚手架 | 明确数据处置后的物理迁移/失败恢复，再做一个受管工具；Windows sidecar、一体启停和安装包/签名 |
 
 范围与验证层级详见台账，不把 Fake、实库、真实供应商和用户接受合并为整体完成百分比。
 
 ## 推进顺序与门禁
 
-**2026-11-14用户新增方向：CT-02聊天核心重做。** 按[改造方案](decisions/deepseek-chat-adaptation.md)先交付可点击核心交互，再逐片实现富文本与消息/输入/滚动、消息分支和后端上下文、本机附件、MCP按需网页搜索/链接阅读、语音。此范围超过局部样式借鉴，保留Vue与现有领域执行能力；不以展示改造关闭下列工程交付或CT-01恢复缺口。当前为方案阶段，状态与下一关口见[CT-02](planning-status.md#ct-02-chat-adaptation)。
+**CT-02继续推进完整聊天核心与插件兼容。** 前轮消息图/富文本/附件/网页回调及受审原client证据保留为[0f7defa历史](records/chat-core-refactor-validation.md)。当前新增现有MCP登记表上的持久操作配置入口及有界ASR/TTS链路，见[新记录](records/chat-service-config-validation.md)；最新前端199文件1198项、类型/边界及双视口模拟行为通过，后端focused84项0失败/错误4环境跳过、18项MIME定向已有结果，不累加重叠范围。编辑器恢复与语音hook已纳入最新全量通过，双视口完整行为已通过；最终架构/构建/领域检查已通过；最新图像说明、窄屏局部可达性测量与源码提交revision归档仍待收口；实际远端服务效果未验是联调限制，不阻塞预留配置开发。消息图或语音缓存均不关闭CT-01持久接管缺口。
+
+CT-02交互边界保留聊天内Dialog/Drawer与显式独立工作面；G1、原context-menu和持久EAP内置计划的已测历史证据保留。本轮公共富文本、消息图/分支、附件及网页工具接入，以及单React/Cordis岛内原ui-shortcuts/ui-file-actions已纳入本轮前端全量通过范围，最终视觉已验证，源码revision为`0f7defa437eb516ff853965f779208f5ab644679`。插件和计划按[确定路线](decisions/dsh-frontend-adaptation.md)：一个前端适配模块、Java执行与审批、EAP原生计划，不引入独立DSH宿主或第二模型循环；原包兼容只按实际受审闭包声明。
 
 1. **先关闭当前交付失败，再扩展真实任务**：沿用已安装的开发工具链，先关闭本轮发现的跨平台回归阻断，再定向核对PB-01生成弹窗焦点循环/恢复与关闭控件定位，分别确认产品缺陷和验收脚本问题；通过后再复验受影响的真实源码整链及技术ACCEPT。随后复用规划→任务→候选→人工应用→独立验证→交付推进更完整页面，逐项获得用户接受。已有单文件、跨路由和详情切片沿用注明日期的证据；不反复生成整链掩盖局部失败。具体关闭条件见[问题台账](planning-status.md#next-work-register)。
 2. **资源与上下文按缺口补齐**：先做真实语料质量评测和明确供应商范围的效果验证；KR-02仅在KR-01证据不足后比较向量/混合检索。自动摘要、长期记忆、多个Skill及远端获取各自限定合同。

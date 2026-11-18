@@ -1,5 +1,5 @@
 import { expect, it } from 'vite-plus/test'
-import { createMockChatBackend } from '../src/chatBackend'
+import { createChatGraphFixture as createMockChatBackend } from './graphRequests.fixture'
 import { mockSkillText } from '../src/skillFixture'
 import type { SkillSnapshot } from '@eap/runtime-client'
 it.each([

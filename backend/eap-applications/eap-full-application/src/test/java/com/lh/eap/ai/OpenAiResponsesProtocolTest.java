@@ -297,18 +297,18 @@ class OpenAiResponsesProtocolTest {
             connections.configureModels(saved.id(), List.of(new ModelOption("test-model", List.of("high"))), List.of("test-model"), "test-model");
             var handlers = new com.lh.eap.runtime.handler.CapabilityHandlerRegistry(List.of());
             var status = new AiConnectionStatus(handlers, root, root, "none", "", "", false, connections);
-            var app = new AiChatApplication(status, new AiConversationRegistry(memory),
+            var app = ChatApplicationTestSupport.graph(new AiChatApplication(status, new AiConversationRegistry(memory),
                     new EngineeringChatService(null, handlers, root,
-                            new com.lh.eap.application.service.FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections);
+                            new com.lh.eap.application.service.FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections));
             org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges", new CodeChangeService(
                     new com.lh.eap.config.RuntimeWorkspace(root, root.toString()), null, null,
                     new InMemoryCodeGenerationStore(), new InMemoryCodeProposalStore()));
             var id = app.open("{}").conversationId();
-            assertEquals("offline answer", app.send(id, "{\"message\":\"memory-marker\",\"toolMode\":\"none\"}").answer());
-            assertEquals("offline answer", app.send(id, "{\"message\":\"followup\",\"toolMode\":\"none\",\"context\":{\"reasoning\":\"high\"}}").answer());
+            assertEquals("offline answer", app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"memory-marker\",\"toolMode\":\"none\"}")).answer());
+            assertEquals("offline answer", app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"followup\",\"toolMode\":\"none\",\"context\":{\"reasoning\":\"high\"}}")).answer());
             assertTrue(requests.get(1).get("input").toString().contains("memory-marker"));
             assertEquals("high", requests.get(1).get("reasoning").get("effort").asText());
-            var code = app.send(id, "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"Page.vue\"}}");
+            var code = app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"Page.vue\"}}"));
             assertEquals("", code.error());
             assertNotNull(code.proposal());
             assertEquals("original", java.nio.file.Files.readString(root.resolve("Page.vue")));

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, useAttrs } from 'vue'
+import { computed, ref, useAttrs, watch, nextTick, onMounted } from 'vue'
 
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   modelValue?: string
   disabled?: boolean
+  autoResize?: boolean
+  maxHeight?: number
 }>()
 const emit = defineEmits<{
   'update:modelValue': [string]
@@ -19,7 +21,20 @@ const extra = computed(() => {
 })
 const shown = computed(() => String(props.modelValue ?? attrs.value ?? ''))
 
+function resize() {
+  if (!props.autoResize || !root.value) return
+  const node = root.value
+  node.style.height = 'auto'
+  const max = props.maxHeight ?? 240
+  node.style.height = `${Math.min(node.scrollHeight, max)}px`
+  node.style.overflowY = node.scrollHeight > max ? 'auto' : 'hidden'
+}
+watch(shown, () => {
+  void nextTick(resize)
+})
+onMounted(resize)
 function onInput(event: Event) {
+  resize()
   emit('update:modelValue', (event.target as HTMLTextAreaElement).value)
   emit('input', event)
 }

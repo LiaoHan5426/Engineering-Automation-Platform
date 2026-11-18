@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Button,
+  Checkbox,
   Collapse,
+  Dialog,
   Feedback,
   FileInput,
   Input,
@@ -26,9 +28,14 @@ import {
   AiToolMode,
   runtimeApi,
   type TaskContext,
+  type ModelConnection,
   type PrototypeVersionRecord,
   type WorkspaceSource,
+  type WebSourceService,
 } from '@eap/runtime-client'
+import ModelConnectionEditor from '../../components/ModelConnectionEditor.vue'
+import { modelApi } from './chatService'
+import { errorMessage } from '../../lib/presentation'
 import RepositoryBrowser from '../../components/RepositoryBrowser.vue'
 import KnowledgeExpertSelector from './KnowledgeExpertSelector.vue'
 import SkillSelector from './SkillSelector.vue'
@@ -47,17 +54,28 @@ import {
   setExecutionMode,
   workbench,
 } from '../shell/workbench'
-import { acceptFiles, FILE_CAP, type IncomingFile } from './acceptFiles'
+import { acceptFiles } from './acceptFiles'
+import {
+  createAttachmentPreviews,
+  type ChatAttachmentStore,
+  type AttachmentOwner,
+} from './chatAttachments'
 
 const props = withDefaults(
   defineProps<{
     active?: boolean
+    capabilityAttention?: boolean
+    attachmentStore?: ChatAttachmentStore
+    attachmentOwner?: AttachmentOwner
+    webSourceServices?: WebSourceService[]
+    webSourcesUnavailable?: boolean
     draft?: string
     toolMode?: AiToolMode
     context: TaskContext
     disabled: boolean
     refreshingModels?: boolean
     reasoningEfforts: Array<'low' | 'medium' | 'high'>
+    modelConnectionId?: string | null
     modelLabel?: string
     modelOptionsAvailable?: boolean
     agentAvailable?: boolean
@@ -72,14 +90,152 @@ const props = withDefaults(
     agentAvailable: false,
   },
 )
+const chosenWebService = computed(() =>
+  props.webSourceServices?.find(
+    (service) => service.serverId === props.context.webSources?.serverId,
+  ),
+)
+function selectWebService(serverId: string) {
+  if (
+    props.disabled ||
+    props.webSourcesUnavailable ||
+    (serverId && !props.webSourceServices?.some((service) => service.serverId === serverId))
+  )
+    return
+  emit('update', {
+    ...props.context,
+    webSources: { enabled: false, serverId, search: false, read: false },
+  })
+}
+function updateWebSource(key: 'enabled' | 'search' | 'read', value: boolean | unknown[]) {
+  if (typeof value !== 'boolean') return
+  const current = props.context.webSources
+  const service = chosenWebService.value
+  if (!current || !service || props.disabled || props.webSourcesUnavailable) return
+  if ((key === 'search' || key === 'read') && !service[key]) return
+  if (key === 'enabled' && value && !(current.search || current.read)) return
+  const next = { ...current, [key]: value }
+  if (!next.search && !next.read) next.enabled = false
+  emit('update', { ...props.context, webSources: next })
+}
 const reasoningSupported = computed(() => props.reasoningEfforts.length > 0)
 const shownEffort = computed(() =>
   props.context.reasoning !== 'default' && props.reasoningEfforts.includes(props.context.reasoning)
     ? props.context.reasoning
     : 'default',
 )
-const emit = defineEmits<{ update: [context: TaskContext]; refresh: [] }>()
-const { t } = useI18n()
+const emit = defineEmits<{
+  update: [context: TaskContext]
+  refresh: []
+  'connections-changed': [items: ModelConnection[]]
+  configure: []
+}>()
+const { t } = useI18n({ useScope: 'global' })
+const { t: inputT } = useI18n({
+  useScope: 'local',
+  missingWarn: false,
+  fallbackWarn: false,
+  messages: {
+    'zh-CN': {
+      inputUi: {
+        review: '上下文与输入',
+        capabilities: '工具与语音',
+        close: '关闭',
+        localAttachment: '添加本地附件',
+        selected: '已选上下文',
+        removeContext: '移除此上下文',
+        counts: '附件 {attachments} · 仓库引用 {sources} · 其他上下文 {references}',
+        noSelections: '尚未添加附件或引用',
+        permissions: '写入策略',
+        targetMissing: '请在上下文中填写交付目标',
+        capabilitiesHint: '按需选择能力；添加附件不会上传，选择服务不会自动启用。',
+      },
+    },
+    'en-US': {
+      inputUi: {
+        review: 'Context and input',
+        capabilities: 'Tools and speech',
+        close: 'Close',
+        localAttachment: 'Add local attachment',
+        selected: 'Selected context',
+        removeContext: 'Remove this context',
+        counts:
+          'Attachments {attachments} · Source references {sources} · Other context {references}',
+        noSelections: 'No attachments or references added',
+        permissions: 'Write policy',
+        targetMissing: 'Set a delivery target in context',
+        capabilitiesHint:
+          'Choose capabilities explicitly. Adding attachments does not upload them; choosing a service does not enable it.',
+      },
+    },
+  },
+})
+const contextOpen = ref(false)
+const capabilitiesOpen = ref(false)
+function openContext() {
+  hidePopups()
+  contextOpen.value = true
+}
+function openCapabilities() {
+  hidePopups()
+  positionPopup(root.value?.querySelector<HTMLElement>('[data-testid="capabilities-open"]') ?? null)
+  capabilitiesOpen.value = true
+}
+function closeContext() {
+  contextOpen.value = false
+}
+const selectionCounts = computed(() => ({
+  attachments: props.context.attachmentRefs?.length ?? 0,
+  sources: props.context.files.length,
+  references:
+    Number(!!props.context.prototypeVersionId) +
+    Number(!!props.context.skillRef) +
+    Number(!!props.context.knowledgeExpertRef) +
+    Number(!!props.context.instructions.trim()) +
+    currentExtras().experts.length,
+}))
+const connectionEditor = ref<InstanceType<typeof ModelConnectionEditor>>()
+function guardLeave(onDiscard?: () => void): boolean {
+  return connectionEditor.value?.guardLeave(onDiscard) ?? true
+}
+defineExpose({ guardLeave })
+async function connectionClosed() {
+  await nextTick()
+  if (props.active)
+    root.value?.querySelector<HTMLButtonElement>('[data-testid="model-picker"]')?.focus()
+}
+const setupBusy = ref(false)
+const setupNote = ref('')
+let setupRequest = 0
+watch(
+  () => [props.active, sessionKey()],
+  () => {
+    setupRequest++
+    setupBusy.value = false
+    setupNote.value = ''
+  },
+)
+async function setupConnection(create = false) {
+  if (!props.active || props.disabled || setupBusy.value) return
+  const origin = sessionKey()
+  const request = ++setupRequest
+  setupBusy.value = true
+  setupNote.value = ''
+  hidePopups()
+  try {
+    const { items } = await modelApi.modelConnections()
+    if (request !== setupRequest || origin !== sessionKey() || !props.active) return
+    const current = !create && items.find((item) => item.id === props.modelConnectionId)
+    if (current && current.kind === 'chatgpt-plan')
+      connectionEditor.value?.manageConnection(current)
+    else if (current) connectionEditor.value?.editConnection(current, items)
+    else connectionEditor.value?.newConnection(items)
+  } catch (error) {
+    if (request === setupRequest && origin === sessionKey()) setupNote.value = errorMessage(error)
+  } finally {
+    if (request === setupRequest) setupBusy.value = false
+  }
+}
 const knowledgeRemoved = ref(false)
 const skillRemoved = ref(false)
 const skillSelector = ref<InstanceType<typeof SkillSelector>>()
@@ -119,13 +275,13 @@ const menu = ref(false),
   executionOpen = ref(false),
   policyOpen = ref(false),
   modelOpen = ref(false),
-  category = ref<'files' | 'instructions' | 'actions' | 'experts' | 'skills' | 'mcp'>('files'),
+  category = ref<'files' | 'instructions' | 'experts' | 'skills'>('files'),
   note = ref(''),
   query = ref('')
 const workspacePicker = ref(false),
   versionsBusy = ref(false)
-/** Layered + menu mirrors §0B.2 frame-024: files / instructions / actions / experts / skills / MCP. */
-const menuCategories = ['files', 'instructions', 'actions', 'experts', 'skills', 'mcp'] as const
+/** Add only real context; execution and service choices have their own surfaces. */
+const menuCategories = ['files', 'instructions', 'experts', 'skills'] as const
 const needle = computed(() => query.value.trim().toLowerCase())
 function matches(value: string) {
   return !needle.value || value.toLowerCase().includes(needle.value)
@@ -134,12 +290,13 @@ const visibleExperts = computed(() =>
   expertCatalog.filter((item) => matches(item.name) || matches(item.category)),
 )
 const counts = computed(() => ({
-  files: props.context.files.length + (props.context.prototypeVersionId ? 1 : 0),
+  files:
+    props.context.files.length +
+    (props.context.attachmentRefs?.length ?? 0) +
+    (props.context.prototypeVersionId ? 1 : 0),
   experts: currentExtras().experts.length + (props.context.expert === 'general' ? 0 : 1),
   instructions: props.context.instructions.trim() ? 1 : 0,
-  actions: 0,
   skills: props.context.skillRef ? 1 : 0,
-  mcp: 0,
 }))
 function selectCategory(value: string) {
   if (menuCategories.includes(value as typeof category.value))
@@ -148,7 +305,6 @@ function selectCategory(value: string) {
 function categoryLabel(tab: (typeof menuCategories)[number]) {
   if (tab === 'files') return t('composerUi.files')
   if (tab === 'instructions') return t('composerUi.guidance')
-  if (tab === 'actions') return t('composerUi.actions')
   if (tab === 'experts') return t('composerUi.experts')
   return t('desktop.' + tab)
 }
@@ -207,6 +363,7 @@ function hidePopups() {
   executionOpen.value = false
   policyOpen.value = false
   modelOpen.value = false
+  capabilitiesOpen.value = false
 }
 function closePopups() {
   hidePopups()
@@ -239,14 +396,6 @@ function change<K extends keyof TaskContext>(key: K, value: TaskContext[K]) {
   }
   emit('update', { ...props.context, [key]: value })
 }
-function applyIncoming(incoming: IncomingFile[]) {
-  const result = acceptFiles(props.context.files, incoming)
-  if (!result.ok) {
-    note.value = t(result.reason === 'media' ? 'task.pasteMedia' : 'task.fileLimit')
-    return
-  }
-  change('files', result.files)
-}
 function referenceSource(source: WorkspaceSource) {
   if (props.disabled || source.denial || !source.exists || !source.excerpt || !source.baseHash)
     return
@@ -267,43 +416,91 @@ function referenceSource(source: WorkspaceSource) {
   note.value = ''
   workspacePicker.value = false
 }
-async function describeFile(file: File): Promise<IncomingFile> {
-  const media =
-    file.type.startsWith('image/') ||
-    file.type.startsWith('video/') ||
-    /\.(png|jpe?g|webp|mp4)$/i.test(file.name)
-  return {
-    name: file.name || 'pasted.txt',
-    size: file.size,
-    text: media ? '' : await file.text(),
-    media,
+const attachmentBusy = ref(false)
+const attachmentImages = ref<Record<string, string>>({})
+let previewLease: ReturnType<typeof createAttachmentPreviews> | undefined
+watch(
+  () => [props.attachmentStore, props.context.attachmentRefs, props.active],
+  async () => {
+    previewLease?.dispose()
+    attachmentImages.value = {}
+    if (!props.attachmentStore || !props.active) return
+    const lease = createAttachmentPreviews(props.attachmentStore)
+    previewLease = lease
+    for (const ref of props.context.attachmentRefs ?? []) {
+      if (!ref.mime.startsWith('image/')) continue
+      try {
+        const preview = await lease.acquire({ ...ref, kind: 'image' })
+        if (previewLease === lease)
+          attachmentImages.value = { ...attachmentImages.value, [ref.id]: preview.url }
+        else preview.release()
+      } catch {
+        /* Missing originals remain visible and can be reselected. */
+      }
+    }
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => previewLease?.dispose())
+function attachmentError(error: unknown) {
+  note.value = t('richText.attachmentError', {
+    code: error instanceof Error ? error.message : 'attachment.storage',
+  })
+}
+async function selectFiles(files: File[]) {
+  if (!props.active || props.disabled || attachmentBusy.value || !files.length) return
+  if (!props.attachmentStore || !props.attachmentOwner) {
+    attachmentError(new Error('attachment.storageUnavailable'))
+    return
+  }
+  const store = props.attachmentStore,
+    owner = props.attachmentOwner,
+    origin = props.context
+  attachmentBusy.value = true
+  note.value = ''
+  try {
+    const refs = await store.select(files, owner)
+    if (
+      origin !== props.context ||
+      owner !== props.attachmentOwner ||
+      !props.active ||
+      props.disabled
+    ) {
+      for (const ref of refs) await store.remove(owner, ref.id)
+      return
+    }
+    emit('update', { ...origin, attachmentRefs: [...(origin.attachmentRefs ?? []), ...refs] })
+  } catch (error) {
+    attachmentError(error)
+  } finally {
+    attachmentBusy.value = false
+  }
+}
+async function removeAttachment(ref: { id: string }) {
+  if (!props.attachmentStore || !props.attachmentOwner || props.disabled) return
+  const origin = props.context,
+    owner = props.attachmentOwner
+  try {
+    await props.attachmentStore.remove(owner, ref.id)
+    if (origin === props.context && owner === props.attachmentOwner)
+      emit('update', {
+        ...origin,
+        attachmentRefs: (origin.attachmentRefs ?? []).filter((item) => item.id !== ref.id),
+      })
+  } catch (error) {
+    attachmentError(error)
   }
 }
 async function filesChanged(event: Event) {
-  note.value = ''
   const input = event.target as HTMLInputElement
-  try {
-    const origin = props.context
-    const incoming = await Promise.all(Array.from(input.files ?? []).map(describeFile))
-    if (origin === props.context && props.active && !props.disabled) applyIncoming(incoming)
-  } catch {
-    note.value = t('task.fileLimit')
-  } finally {
-    input.value = ''
-  }
+  await selectFiles(Array.from(input.files ?? []))
+  input.value = ''
 }
 async function onPaste(event: ClipboardEvent) {
   const files = Array.from(event.clipboardData?.files ?? [])
   if (!files.length || props.disabled) return
   event.preventDefault()
-  note.value = ''
-  try {
-    const origin = props.context
-    const incoming = await Promise.all(files.map(describeFile))
-    if (origin === props.context && props.active && !props.disabled) applyIncoming(incoming)
-  } catch {
-    note.value = t('task.fileLimit')
-  }
+  await selectFiles(files)
 }
 function importPrototype() {
   if (!props.active || props.disabled) return
@@ -345,8 +542,10 @@ watch(() => workbench.policyMenuToken, takePolicyMenu)
 watch(
   () => props.active,
   (active) => {
-    if (!active) closePopups()
-    else takeModelMenu()
+    if (!active) {
+      closePopups()
+      contextOpen.value = false
+    } else takeModelMenu()
   },
 )
 function chooseExecution(mode: 'chat' | 'plan' | 'agent') {
@@ -363,15 +562,6 @@ function chooseEffort(effort: TaskContext['reasoning']) {
 const effortLabel = computed(() =>
   shownEffort.value === 'default' ? t('task.modelDefault') : t('task.' + shownEffort.value),
 )
-const contextCount = computed(() => ({
-  files: props.context.files.length,
-  limit: FILE_CAP,
-  count:
-    props.context.files.length +
-    (props.context.prototypeVersionId ? 1 : 0) +
-    currentExtras().experts.length +
-    currentExtras().resources.length,
-}))
 function chooseExpert(id: string) {
   if (currentExtras().experts.some((item) => item.id === id)) removeExpert(id)
   else addExpert(id)
@@ -400,6 +590,15 @@ async function loadVersions() {
 
 <template>
   <div ref="root" class="composer-stack" @paste="onPaste">
+    <ModelConnectionEditor
+      v-if="active"
+      :key="sessionKey()"
+      ref="connectionEditor"
+      @changed="emit('connections-changed', $event)"
+      @closed="connectionClosed"
+    />
+    <div class="composer-writing" data-testid="composer-writing"><slot name="draft" /></div>
+    <Feedback v-if="setupNote" tone="warning">{{ setupNote }}</Feedback>
     <SkillSelector
       v-if="active"
       ref="skillSelector"
@@ -455,146 +654,113 @@ async function loadVersions() {
     <Feedback v-if="knowledgeRemoved" tone="info" data-testid="knowledge-removed">{{
       t('knowledgeContext.removed')
     }}</Feedback>
-    <div class="composer-scope" data-testid="composer-scope">
-      <label>
-        <span class="sr-only">{{ t('desktop.composerScope') }}</span>
-        <Select
-          data-testid="composer-scope-select"
-          :disabled="disabled"
-          :model-value="scopeProjectId ?? ''"
-          @change="changeScopeProject(($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">{{ t('desktop.composerScopeFree') }}</option>
-          <option v-for="project in localProjects.projects" :key="project.id" :value="project.id">
-            {{ projectLabel(project.id) }}
-          </option>
-        </Select>
-      </label>
-    </div>
     <div v-if="hasExtraChips" class="context-chips">
-      <Tag
-        v-if="context.knowledgeExpertRef"
-        closable
-        type="info"
-        data-testid="knowledge-remove"
-        :aria-label="
-          t('knowledgeContext.remove') +
-          ': ' +
-          context.knowledgeExpertRef.id +
-          ' · r' +
-          context.knowledgeExpertRef.revision
-        "
-        :disabled="disabled"
-        @click="removeKnowledge"
-        @close="removeKnowledge"
-        >{{ context.knowledgeExpertRef.id }} · r{{ context.knowledgeExpertRef.revision }}</Tag
-      >
-      <Tag
-        v-if="context.skillRef"
-        closable
-        type="success"
-        data-testid="skill-remove"
-        :aria-label="
-          t('skill.remove') +
-          ': ' +
-          context.skillRef.id +
-          ' · ' +
-          context.skillRef.version +
-          ' · r' +
-          context.skillRef.stateRevision
-        "
-        :disabled="disabled"
-        @click="removeSkill"
-        @close="removeSkill"
+      <Tag v-if="context.knowledgeExpertRef" type="info" :disabled="disabled"
+        >{{ context.knowledgeExpertRef.id }} · r{{ context.knowledgeExpertRef.revision
+        }}<Button
+          class="context-chip-remove"
+          variant="icon"
+          size="sm"
+          type="button"
+          :aria-label="
+            t('knowledgeContext.remove') +
+            ': ' +
+            context.knowledgeExpertRef.id +
+            ' · r' +
+            context.knowledgeExpertRef.revision
+          "
+          :disabled="disabled"
+          data-testid="knowledge-remove"
+          @click="removeKnowledge"
+          ><Icon name="x" :size="12" /></Button
+      ></Tag>
+      <Tag v-if="context.skillRef" type="success" :disabled="disabled"
         >{{ context.skillRef.id }} · {{ context.skillRef.version }} · r{{
           context.skillRef.stateRevision
-        }}</Tag
-      >
-      <Tag
-        v-if="context.expert !== 'general'"
-        closable
-        type="info"
-        :disabled="disabled"
-        @click="change('expert', 'general')"
-        @close="change('expert', 'general')"
-        >{{ t('task.' + context.expert) }}</Tag
-      >
-      <Tag
-        v-for="(file, index) in context.files"
-        :key="index"
-        closable
-        type="info"
-        :disabled="disabled"
-        @click="
-          change(
-            'files',
-            context.files.filter((_, i) => i !== index),
-          )
-        "
-        @close="
-          change(
-            'files',
-            context.files.filter((_, i) => i !== index),
-          )
-        "
-        ><IconPaperclip />{{ file.name }}</Tag
-      >
-      <Tag
-        v-if="context.prototypeVersionId"
-        closable
-        type="info"
-        :disabled="disabled"
-        @click="change('prototypeVersionId', '')"
-        @close="change('prototypeVersionId', '')"
-        ><IconLayers />{{ selectedVersion?.title || context.prototypeVersionId.slice(0, 8) }}</Tag
-      >
-      <Tag
-        v-for="expert in currentExtras().experts"
-        :key="expert.id"
-        closable
-        :disabled="disabled"
-        @click="removeExpert(expert.id)"
-        @close="removeExpert(expert.id)"
-        >{{ t('desktop.collab') }}：{{ expert.name }}</Tag
-      >
-    </div>
-    <Collapse
-      v-if="context.mode === 'code'"
-      :open="workbench.executionMode !== 'plan' && !context.taskRef"
-    >
-      <template #summary
-        >{{ t('generation.target') }} ·
-        {{ context.targetPath || t('generation.targetPlaceholder') }}</template
-      >
-      <label class="generation-target">
-        <span>{{ t('generation.target') }}</span>
-        <Input
-          data-testid="generation-target"
-          :model-value="context.targetPath"
+        }}<Button
+          class="context-chip-remove"
+          variant="icon"
+          size="sm"
+          type="button"
+          :aria-label="
+            t('skill.remove') +
+            ': ' +
+            context.skillRef.id +
+            ' · ' +
+            context.skillRef.version +
+            ' · r' +
+            context.skillRef.stateRevision
+          "
           :disabled="disabled"
-          maxlength="240"
-          :placeholder="t('generation.targetPlaceholder')"
-          @update:model-value="change('targetPath', $event)"
-        />
-        <small>{{ t('generation.targetHelp') }}</small>
-        <span>{{ t('generation.components') }}</span>
-        <Textarea
-          data-testid="generation-component-paths"
-          :model-value="(context.componentPaths ?? []).join('\n')"
+          data-testid="skill-remove"
+          @click="removeSkill"
+          ><Icon name="x" :size="12" /></Button
+      ></Tag>
+      <Tag v-if="context.expert !== 'general'" type="info" :disabled="disabled"
+        >{{ t('task.' + context.expert)
+        }}<Button
+          class="context-chip-remove"
+          variant="icon"
+          size="sm"
+          type="button"
+          :aria-label="inputT('inputUi.removeContext')"
           :disabled="disabled"
-          rows="3"
-          :placeholder="t('generation.componentsHelp')"
-          @update:model-value="
+          @click="change('expert', 'general')"
+          ><Icon name="x" :size="12" /></Button
+      ></Tag>
+      <Tag v-for="(file, index) in context.files" :key="file.name + ':' + index" type="info">
+        <IconPaperclip />{{ file.name }}
+        <Button
+          class="context-chip-remove"
+          variant="icon"
+          size="sm"
+          type="button"
+          :aria-label="inputT('inputUi.removeContext') + ': ' + file.name"
+          :disabled="disabled"
+          @click="
             change(
-              'componentPaths',
-              String($event)
-                .split(/\r?\n/)
-                .filter((path) => path !== ''),
+              'files',
+              context.files.filter((_, i) => i !== index),
             )
           "
-        />
-      </label>
-    </Collapse>
+          ><Icon name="x" :size="12"
+        /></Button>
+      </Tag>
+      <Tag v-if="context.prototypeVersionId" type="info" :disabled="disabled"
+        ><IconLayers />{{ selectedVersion?.title || context.prototypeVersionId.slice(0, 8)
+        }}<Button
+          class="context-chip-remove"
+          variant="icon"
+          size="sm"
+          type="button"
+          :aria-label="inputT('inputUi.removeContext')"
+          :disabled="disabled"
+          @click="change('prototypeVersionId', '')"
+          ><Icon name="x" :size="12" /></Button
+      ></Tag>
+      <Tag v-for="expert in currentExtras().experts" :key="expert.id" :disabled="disabled"
+        >{{ t('desktop.collab') }}：{{ expert.name
+        }}<Button
+          class="context-chip-remove"
+          variant="icon"
+          size="sm"
+          type="button"
+          :aria-label="inputT('inputUi.removeContext')"
+          :disabled="disabled"
+          @click="removeExpert(expert.id)"
+          ><Icon name="x" :size="12" /></Button
+      ></Tag>
+    </div>
+    <p
+      v-if="context.mode === 'code' && !context.targetPath && !context.taskRef"
+      class="hint"
+      data-testid="target-missing"
+    >
+      {{ inputT('inputUi.targetMissing') }}
+    </p>
+    <p v-if="context.mode === 'code' && context.targetPath" class="hint">
+      {{ t('generation.target') }}: {{ context.targetPath }}
+    </p>
     <div v-if="context.taskRef" data-testid="composer-task-binding" class="generation-target">
       <span
         >{{ t('generation.taskBinding') }}：{{ context.taskRef.projectId }} ·
@@ -607,7 +773,36 @@ async function loadVersions() {
         >{{ t('generation.removeTask') }}</Button
       >
     </div>
-    <slot name="draft" />
+    <div
+      v-if="context.attachmentRefs?.length"
+      class="composer-local-attachments"
+      data-testid="local-attachments"
+    >
+      <section v-for="attachment in context.attachmentRefs" :key="attachment.id">
+        <img
+          v-if="attachmentImages[attachment.id]"
+          :src="attachmentImages[attachment.id]"
+          :alt="attachment.name"
+          width="72"
+          height="72"
+        />
+        <span>{{ attachment.name }} · {{ attachment.size }} B</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          :disabled="disabled"
+          @click="removeAttachment(attachment)"
+          >{{ t('richText.removeAttachment') }}</Button
+        >
+      </section>
+    </div>
+    <div
+      v-if="selectionCounts.attachments + selectionCounts.sources + selectionCounts.references"
+      class="composer-selection-summary"
+      data-testid="selection-summary"
+    >
+      {{ inputT('inputUi.counts', selectionCounts) }}
+    </div>
     <div class="task-context" data-testid="task-context">
       <div class="context-toolbar">
         <Button
@@ -622,6 +817,7 @@ async function loadVersions() {
             ($event) => {
               placePopup($event)
               menu = !menu
+              capabilitiesOpen = false
               policyOpen = false
               executionOpen = false
               modelOpen = false
@@ -631,21 +827,27 @@ async function loadVersions() {
         /></Button>
         <Tag
           v-if="activeScene"
-          closable
           :type="sceneMissingDeps.length ? 'warning' : 'success'"
-          data-testid="composer-scene-chip"
           :title="
             sceneMissingDeps.length
               ? t('desktop.pendingDependencyCheck') + ' · ' + sceneMissingDeps.join('、')
               : undefined
           "
           :disabled="disabled"
-          @click="currentExtras().scenarioId = null"
-          @close="currentExtras().scenarioId = null"
         >
           <IconTriangleAlert v-if="sceneMissingDeps.length" />
           {{ t('desktop.scenes') }}：{{ activeScene.name }}
-        </Tag>
+          <Button
+            class="context-chip-remove"
+            variant="icon"
+            size="sm"
+            type="button"
+            :aria-label="inputT('inputUi.removeContext')"
+            :disabled="disabled"
+            data-testid="composer-scene-chip"
+            @click="currentExtras().scenarioId = null"
+            ><Icon name="x" :size="12" /></Button
+        ></Tag>
         <div class="bar-picker">
           <Button
             variant="secondary"
@@ -660,6 +862,7 @@ async function loadVersions() {
                 menu = false
                 policyOpen = false
                 modelOpen = false
+                capabilitiesOpen = false
               }
             "
             >{{
@@ -683,6 +886,19 @@ async function loadVersions() {
             :label="t('desktop.executionChat')"
           >
             <h3>{{ t('desktop.executionChoiceTitle') }}</h3>
+            <label
+              >{{ t('task.goal')
+              }}<Select
+                :model-value="context.mode"
+                :disabled="disabled"
+                @change="
+                  change('mode', ($event.target as HTMLSelectElement).value as TaskContext['mode'])
+                "
+                ><option value="chat">{{ t('task.discuss') }}</option>
+                <option value="code">{{ t('task.generate') }}</option></Select
+              ></label
+            >
+
             <p class="hint" data-testid="execution-availability">
               {{ t('desktop.executionAvailability') }}
             </p>
@@ -742,6 +958,7 @@ async function loadVersions() {
                 menu = false
                 executionOpen = false
                 modelOpen = false
+                capabilitiesOpen = false
               }
             "
             >{{ context.approval === 'read_only' ? t('task.readOnlyShort') : t('task.askPolicy')
@@ -788,16 +1005,31 @@ async function loadVersions() {
             >
           </Popover>
         </div>
-        <span
-          class="context-meter"
-          data-testid="context-meter"
-          role="img"
-          :aria-label="t('desktop.contextMeterHint', contextCount)"
-          :title="t('desktop.contextMeterHint', contextCount)"
+        <Button
+          variant="ghost"
+          type="button"
+          data-testid="context-review"
+          :aria-expanded="contextOpen"
+          @click="openContext"
+          >{{ inputT('inputUi.review') }}</Button
         >
-          <Icon name="info" :size="22" />
-          <span class="sr-only">{{ t('desktop.contextMeter', contextCount) }}</span>
-        </span>
+        <Button
+          variant="ghost"
+          type="button"
+          data-testid="capabilities-open"
+          :active="capabilityAttention || !!context.webSources?.enabled"
+          :aria-expanded="capabilitiesOpen"
+          @click="
+            ($event) => {
+              placePopup($event)
+              const open = !capabilitiesOpen
+              hidePopups()
+              capabilitiesOpen = open
+            }
+          "
+          >{{ inputT('inputUi.capabilities')
+          }}<span v-if="context.webSources?.enabled"> · {{ t('richText.webOn') }}</span></Button
+        >
         <div class="composer-submit-controls">
           <div class="bar-picker model-picker">
             <Button
@@ -869,12 +1101,22 @@ async function loadVersions() {
               <p v-if="modelLabel && !reasoningSupported" class="hint">
                 {{ t('task.reasoningUnsupported') }}
               </p>
-              <a
-                href="#model-settings"
+              <Button
+                type="button"
+                variant="link"
                 data-testid="model-setup-link"
-                class="model-setup-link"
-                @click="closePopups"
-                >{{ t('desktop.locateSettings') }}</a
+                :disabled="disabled || setupBusy"
+                @click="setupConnection()"
+                >{{ t('composerUi.modelSettings') }}</Button
+              >
+              <Button
+                v-if="modelConnectionId"
+                type="button"
+                variant="link"
+                data-testid="model-add-connection"
+                :disabled="disabled || setupBusy"
+                @click="setupConnection(true)"
+                >{{ t('composerUi.addConnection') }}</Button
               >
               <Button
                 v-if="modelOptionsAvailable"
@@ -896,6 +1138,161 @@ async function loadVersions() {
         </div>
       </div>
       <div v-if="$slots.status" class="composer-status"><slot name="status" /></div>
+      <slot name="capability-status" :open-capabilities="openCapabilities" />
+      <Dialog
+        v-if="contextOpen"
+        :title="inputT('inputUi.review')"
+        :close-label="inputT('inputUi.close')"
+        close-test-id="context-review-close"
+        data-testid="context-review-dialog"
+        @close="closeContext"
+      >
+        <div class="composer-scope" data-testid="composer-scope">
+          <label>
+            <span class="sr-only">{{ t('desktop.composerScope') }}</span>
+            <Select
+              data-testid="composer-scope-select"
+              :disabled="disabled"
+              :model-value="scopeProjectId ?? ''"
+              @change="changeScopeProject(($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">{{ t('desktop.composerScopeFree') }}</option>
+              <option
+                v-for="project in localProjects.projects"
+                :key="project.id"
+                :value="project.id"
+              >
+                {{ projectLabel(project.id) }}
+              </option>
+            </Select>
+          </label>
+        </div>
+        <p>{{ inputT('inputUi.counts', selectionCounts) }}</p>
+        <ul v-if="context.attachmentRefs?.length">
+          <li v-for="attachment in context.attachmentRefs" :key="attachment.id">
+            {{ attachment.name }}
+          </li>
+        </ul>
+        <ul v-if="context.files.length">
+          <li v-for="file in context.files" :key="file.name">{{ file.name }}</li>
+        </ul>
+        <p v-if="context.skillRef">{{ t('skill.title') }}: {{ context.skillRef.id }}</p>
+        <p v-if="context.knowledgeExpertRef">
+          {{ t('knowledgeContext.title') }}: {{ context.knowledgeExpertRef.id }}
+        </p>
+        <p v-if="context.instructions">{{ context.instructions }}</p>
+        <Collapse
+          v-if="context.mode === 'code'"
+          :open="workbench.executionMode !== 'plan' && !context.taskRef"
+        >
+          <template #summary
+            >{{ t('generation.target') }} ·
+            {{ context.targetPath || t('generation.targetPlaceholder') }}</template
+          >
+          <label class="generation-target">
+            <span>{{ t('generation.target') }}</span>
+            <Input
+              data-testid="generation-target"
+              :model-value="context.targetPath"
+              :disabled="disabled"
+              maxlength="240"
+              :placeholder="t('generation.targetPlaceholder')"
+              @update:model-value="change('targetPath', $event)"
+            />
+            <small>{{ t('generation.targetHelp') }}</small>
+            <span>{{ t('generation.components') }}</span>
+            <Textarea
+              data-testid="generation-component-paths"
+              :model-value="(context.componentPaths ?? []).join('\n')"
+              :disabled="disabled"
+              rows="3"
+              :placeholder="t('generation.componentsHelp')"
+              @update:model-value="
+                change(
+                  'componentPaths',
+                  String($event)
+                    .split(/\r?\n/)
+                    .filter((path) => path !== ''),
+                )
+              "
+            />
+          </label>
+        </Collapse>
+        <slot name="details" />
+      </Dialog>
+      <Popover
+        v-if="capabilitiesOpen"
+        :anchor="popupAnchor"
+        :return-focus-to="root?.closest('form')?.querySelector('textarea')"
+        side="top"
+        class="composer-popup capabilities-menu"
+        :label="inputT('inputUi.capabilities')"
+        data-testid="capabilities-panel"
+        @close="capabilitiesOpen = false"
+      >
+        <h3>{{ inputT('inputUi.capabilities') }}</h3>
+        <p class="hint">{{ inputT('inputUi.capabilitiesHint') }}</p>
+        <section data-testid="web-source-options">
+          <h3>
+            {{ t('richText.webTitle') }} ·
+            {{ context.webSources?.enabled ? t('richText.webOn') : t('richText.webOff') }}
+          </h3>
+          <Feedback v-if="webSourcesUnavailable || !webSourceServices?.length" tone="info">{{
+            t('richText.webUnavailable')
+          }}</Feedback>
+          <Button variant="secondary" size="sm" @click="emit('configure')">{{
+            t('richText.configureServices')
+          }}</Button>
+          <label
+            >{{ t('richText.webService') }}
+            <Select
+              data-testid="web-source-server"
+              :model-value="context.webSources?.serverId ?? ''"
+              :disabled="disabled || webSourcesUnavailable || !webSourceServices?.length"
+              @update:model-value="selectWebService(String($event))"
+            >
+              <option value="">{{ t('richText.webSelect') }}</option>
+              <option
+                v-for="service in webSourceServices"
+                :key="service.serverId"
+                :value="service.serverId"
+              >
+                {{ service.serverId }}
+              </option>
+            </Select>
+          </label>
+          <label class="capability-choice"
+            ><Checkbox
+              :model-value="context.webSources?.search ?? false"
+              :disabled="disabled || webSourcesUnavailable || !chosenWebService?.search"
+              @update:model-value="updateWebSource('search', $event)"
+            /><span>{{ t('richText.webSearch') }}</span></label
+          >
+          <label class="capability-choice"
+            ><Checkbox
+              :model-value="context.webSources?.read ?? false"
+              :disabled="disabled || webSourcesUnavailable || !chosenWebService?.read"
+              @update:model-value="updateWebSource('read', $event)"
+            /><span>{{ t('richText.webRead') }}</span></label
+          >
+          <label class="capability-choice"
+            ><Checkbox
+              data-testid="web-source-enable"
+              :model-value="context.webSources?.enabled ?? false"
+              :disabled="
+                disabled ||
+                webSourcesUnavailable ||
+                !chosenWebService ||
+                !(context.webSources?.search || context.webSources?.read)
+              "
+              @update:model-value="updateWebSource('enabled', $event)"
+            /><span>{{ t('richText.webEnable') }}</span></label
+          >
+        </section>
+        <slot name="speech" />
+        <slot name="tools" />
+        <p class="hint">{{ t('desktop.mcpEmpty') }}</p>
+      </Popover>
       <Popover
         v-if="menu"
         :anchor="popupAnchor"
@@ -907,7 +1304,7 @@ async function loadVersions() {
         data-testid="composer-add-menu"
       >
         <p class="hint" data-testid="context-usage-detail">
-          {{ t('desktop.contextMeter', contextCount) }}
+          {{ inputT('inputUi.counts', selectionCounts) }}
         </p>
         <Input
           v-model="query"
@@ -931,13 +1328,6 @@ async function loadVersions() {
                 description: String(counts[tab]),
                 testId: 'composer-cat-' + tab,
               })),
-              {
-                value: 'unattended',
-                label: t('desktop.unattended'),
-                description: t('desktop.unattendedOff'),
-                disabled: true,
-                testId: 'composer-cat-unattended',
-              },
             ]"
           />
           <div class="composer-popup-content">
@@ -961,7 +1351,7 @@ async function loadVersions() {
               <FileInput
                 ref="filesInput"
                 multiple
-                accept=".vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html"
+                accept=".vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html,.png,.jpg,.jpeg,.gif,.webp"
                 hidden
                 @change="filesChanged"
               />
@@ -969,9 +1359,9 @@ async function loadVersions() {
                 type="button"
                 variant="secondary"
                 data-testid="upload-local-file"
-                :disabled="disabled"
+                :disabled="disabled || attachmentBusy"
                 @click="filesInput?.click()"
-                >{{ t('composerUi.uploadLocal') }}</Button
+                >{{ inputT('inputUi.localAttachment') }}</Button
               >
               <Button
                 type="button"
@@ -994,25 +1384,6 @@ async function loadVersions() {
                   >
                     {{ version.title }} · {{ version.id.slice(0, 8) }}
                   </option></Select
-                ></label
-              >
-              <slot name="tools" />
-            </template>
-            <template v-else-if="category === 'actions'">
-              <p class="hint" data-testid="actions-empty">{{ t('composerUi.actionsEmpty') }}</p>
-              <label
-                >{{ t('task.goal')
-                }}<Select
-                  :model-value="context.mode"
-                  :disabled="disabled"
-                  @change="
-                    change(
-                      'mode',
-                      ($event.target as HTMLSelectElement).value as TaskContext['mode'],
-                    )
-                  "
-                  ><option value="chat">{{ t('task.discuss') }}</option>
-                  <option value="code">{{ t('task.generate') }}</option></Select
                 ></label
               >
             </template>
@@ -1091,11 +1462,6 @@ async function loadVersions() {
               >
               <p v-if="skillBlocked">{{ t('skill.unavailable') }}</p></template
             >
-            <template v-else-if="category === 'mcp'">
-              <p class="hint" data-testid="resource-empty">
-                {{ t('desktop.mcpEmpty') }}
-              </p>
-            </template>
             <label v-else
               >{{ t('task.guidance')
               }}<Textarea
@@ -1125,6 +1491,31 @@ async function loadVersions() {
 </template>
 
 <style scoped>
+.context-chip-remove {
+  margin-left: 4px;
+}
+.composer-writing {
+  min-width: 0;
+}
+.composer-selection-summary {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+.capability-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.capabilities-menu {
+  display: grid;
+  gap: 12px;
+  width: min(520px, calc(100vw - 32px));
+}
+.capabilities-menu section {
+  display: grid;
+  gap: 8px;
+}
+
 .composer-stack {
   display: grid;
   gap: 8px;
@@ -1270,26 +1661,11 @@ async function loadVersions() {
   min-width: 0;
   max-width: 100%;
 }
-.context-meter {
-  margin-left: auto;
-  white-space: nowrap;
-}
-.context-toolbar > .context-meter {
-  flex: 0 0 32px;
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  padding: 4px;
-}
 .model-menu {
   display: grid;
   gap: 8px;
 }
-.model-setup-link {
-  color: var(--accent);
-  font-size: 12px;
-  padding: 4px 8px;
-}
+
 .model-effort-head {
   display: grid;
   gap: 2px;

@@ -1,0 +1,95 @@
+.eap-rich-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.eap-rich-text p {
+  white-space: normal;
+}
+.eap-rich-text pre {
+  margin: 0;
+  padding: var(--eap-space-3, 12px);
+  overflow: auto;
+  max-height: 32rem;
+  white-space: pre;
+  background: var(--eap-code-bg);
+  color: var(--eap-code-fg);
+}
+.eap-rich-text code {
+  font-family: var(--eap-font-mono, monospace);
+  font-size: 0.9em;
+}
+.eap-rich-text__code {
+  margin-block: 1rem;
+  min-width: 0;
+  border: 1px solid var(--eap-border-color);
+  border-radius: var(--eap-radius-md, 8px);
+  overflow: hidden;
+}
+.eap-rich-text__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--eap-fill-color-light);
+}
+.eap-rich-text__toolbar > span {
+  margin-right: auto;
+}
+.eap-rich-text table {
+  display: block;
+  overflow: auto;
+  max-width: 100%;
+  border-collapse: collapse;
+}
+.eap-rich-text th,
+.eap-rich-text td {
+  border: 1px solid var(--eap-border-color);
+  padding: 0.4rem 0.7rem;
+}
+.eap-rich-text blockquote {
+  margin-inline: 0;
+  border-left: 3px solid var(--eap-border-color);
+  padding-inline: 1rem;
+  color: var(--eap-text-color-secondary);
+}
+.eap-rich-text .katex-display,
+.eap-rich-text__diagram {
+  overflow: auto;
+  max-width: 100%;
+}
+.eap-rich-text__diagram svg {
+  max-width: 100%;
+  height: auto;
+  color: var(--eap-text-color-primary);
+}
+.eap-rich-text__diagram svg text {
+  fill: var(--eap-text-color-primary);
+}
+.eap-rich-text__diagram svg .node rect,
+.eap-rich-text__diagram svg .node polygon,
+.eap-rich-text__diagram svg .node circle {
+  fill: var(--eap-fill-color-light);
+  stroke: var(--eap-border-color);
+}
+.eap-rich-text__diagram svg .flowchart-link,
+.eap-rich-text__diagram svg .edgePath path {
+  fill: none;
+  stroke: var(--eap-text-color-primary);
+}
+.eap-rich-text__diagram svg marker path {
+  fill: var(--eap-text-color-primary);
+}
+.eap-rich-text .hljs-keyword,
+.eap-rich-text .hljs-built_in {
+  color: var(--eap-color-primary);
+}
+.eap-rich-text .hljs-string,
+.eap-rich-text .hljs-comment {
+  color: var(--eap-text-color-secondary);
+}
+.eap-rich-text .eap-rich-text__pending {
+  white-space: pre-wrap;
+  background: transparent;
+}

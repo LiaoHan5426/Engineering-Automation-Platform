@@ -49,7 +49,7 @@ class ChatExecutionStreamTest {
         var events = new ArrayList<ChatExecutionEvent>();
         var app = app();
         var id = app.open("{}").conversationId();
-        var response = app.send(id, "{\"message\":\"hello-stream\",\"toolMode\":\"none\"}", events::add);
+        var response = app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"hello-stream\",\"toolMode\":\"none\"}"), events::add);
         assertFalse(response.answer().isBlank());
         assertTrue(events.stream().anyMatch(event -> event.type().equals("status")));
         assertTrue(events.stream().anyMatch(event -> event.type().equals("answer.delta")));
@@ -68,14 +68,15 @@ class ChatExecutionStreamTest {
         var result = mvc(app).perform(post("/api/ai/conversations/" + id + "/messages")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.TEXT_EVENT_STREAM_VALUE)
-                        .content("{\"message\":\"sse-hi\",\"toolMode\":\"none\"}"))
+                        .content(ChatApplicationTestSupport.request(app, id, "{\"message\":\"sse-hi\",\"toolMode\":\"none\"}")))
                 .andReturn();
         result.getAsyncResult(5000);
         assertEquals(200, result.getResponse().getStatus(), result.getResponse().getContentAsString());
         assertTrue(result.getResponse().getContentType().contains("text/event-stream"));
         assertTrue(result.getResponse().getContentAsString().contains("answer.delta")
                 || result.getResponse().getContentAsString().contains("final"));
-        mvc(app).perform(post("/api/ai/conversations/" + id + "/cancel")
+        var execution = app.graph(id).operations().getLast().executionId();
+        mvc(app).perform(post("/api/ai/conversations/" + id + "/executions/" + execution + "/cancel")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk())
@@ -119,10 +120,10 @@ class ChatExecutionStreamTest {
             return FakeChatModels.text("completed without subscriber");
         });
         var service = new EngineeringChatService(EngineeringAiConfiguration.createClient(ChatClient.builder(fake), memory), handlers, (Path)null, new FileExecutionArtifactStore(root.resolve("detached")));
-        var app = new AiChatApplication(status,new AiConversationRegistry(memory),service,root);
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(status,new AiConversationRegistry(memory),service,root));
         try {
             var id = app.open("{}").conversationId();
-            var turn = app.sendDetached(id, "{\"message\":\"hello\",\"toolMode\":\"none\"}", event -> {throw new IllegalStateException("closed");});
+            var turn = app.sendDetached(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"hello\",\"toolMode\":\"none\"}"), event -> {throw new IllegalStateException("closed");});
             turn.started().get(5,java.util.concurrent.TimeUnit.SECONDS);
             assertTrue(entered.await(5,java.util.concurrent.TimeUnit.SECONDS)); assertFalse(turn.result().isDone());
             release.countDown(); var response=turn.result().get(5,java.util.concurrent.TimeUnit.SECONDS);
@@ -143,11 +144,11 @@ class ChatExecutionStreamTest {
         var status = new AiConnectionStatus(handlers, root, null, "openai", "offline-model", "https://api.openai.com", true);
         var memory = MessageWindowChatMemory.builder().maxMessages(20).build();
         var service = new EngineeringChatService(EngineeringAiConfiguration.createClient(ChatClient.builder(model), memory),handlers,(Path)null,new FileExecutionArtifactStore(root.resolve("streamed")));
-        var app = new AiChatApplication(status,new AiConversationRegistry(memory),service,root);
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(status,new AiConversationRegistry(memory),service,root));
         var deltas = new java.util.concurrent.LinkedBlockingQueue<String>();
         try {
             var id = app.open("{}").conversationId();
-            var turn = app.sendDetached(id,"{\"message\":\"hello\",\"toolMode\":\"none\"}",event->{if(event.type().equals("answer.delta"))deltas.add(event.text());});
+            var turn = app.sendDetached(id, ChatApplicationTestSupport.request(app, id, "{\"message\":\"hello\",\"toolMode\":\"none\"}"),event->{if(event.type().equals("answer.delta"))deltas.add(event.text());});
             turn.started().get(5,java.util.concurrent.TimeUnit.SECONDS);assertTrue(subscribed.await(5,java.util.concurrent.TimeUnit.SECONDS));
             next.tryEmitNext(FakeChatModels.text("first line\n")).orThrow();
             assertEquals("first line\n",deltas.poll(5,java.util.concurrent.TimeUnit.SECONDS));assertFalse(turn.result().isDone());
@@ -177,11 +178,11 @@ class ChatExecutionStreamTest {
                 : FakeChatModels.text("The tool failed."));
         var service = new EngineeringChatService(EngineeringAiConfiguration.createClient(ChatClient.builder(model), memory),
                 handlers, root, new FileExecutionArtifactStore(root.resolve("failed-tool")));
-        var app = new AiChatApplication(status, new AiConversationRegistry(memory), service, root);
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(status, new AiConversationRegistry(memory), service, root));
         try {
             var id = app.open("{}").conversationId();
             var events = new ArrayList<ChatExecutionEvent>();
-            var response = app.send(id, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}", events::add);
+            var response = app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}"), events::add);
             assertEquals("TOOL_FAILED", response.error());
             assertEquals("FAILED", response.status());
             var terminal = events.getLast();
@@ -202,7 +203,7 @@ class ChatExecutionStreamTest {
         var fake = FakeChatModels.scripted(prompt -> FakeChatModels.text("stream-answer"));
         var client = EngineeringAiConfiguration.createClient(ChatClient.builder(fake), memory);
         var chat = new EngineeringChatService(client, handlers, (Path) null, new FileExecutionArtifactStore(root.resolve("artifacts")));
-        return new AiChatApplication(status, new AiConversationRegistry(memory), chat, root, null, new ChatExecutionJournal());
+        return ChatApplicationTestSupport.graph(new AiChatApplication(status, new AiConversationRegistry(memory), chat, root, null, new ChatExecutionJournal()));
     }
 
     MockMvc mvc(AiChatApplication app) {

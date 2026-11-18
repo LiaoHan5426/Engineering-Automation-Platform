@@ -45,20 +45,20 @@ class AiChatApplicationTest {
         var saved = connections.create("desk", "https://127.0.0.1:9/v1", "test-key", true, true, "responses");
         connections.configureModels(saved.id(), List.of(new ModelOption("m", List.of())), List.of("m"), "m");
         var handlers = new CapabilityHandlerRegistry(List.of(handler(new AtomicInteger())));
-        var app = new AiChatApplication(new AiConnectionStatus(handlers, root, root, "none", "", "", false, connections),
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(new AiConnectionStatus(handlers, root, root, "none", "", "", false, connections),
                 new AiConversationRegistry(memory), new EngineeringChatService(null, handlers, root,
-                new FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections);
+                new FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections));
         var id = app.open("{}").conversationId();
         assertEquals("AI_PROTOCOL_TOOLS_UNAVAILABLE", assertThrows(ResponseStatusException.class,
-                () -> app.send(id, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}")).getReason());
+                () -> app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}"))).getReason());
         assertEquals(0, calls.get());
         assertFalse(app.status().tools().get("git_status"));
-        var ungranted = new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections),
+        var ungranted = ChatApplicationTestSupport.graph(new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections),
                 new AiConversationRegistry(memory), new EngineeringChatService(null, handlers, (Path) null,
-                new FileExecutionArtifactStore(root.resolve("ungranted-artifacts"))), root, connections);
+                new FileExecutionArtifactStore(root.resolve("ungranted-artifacts"))), root, connections));
         var ungrantedId = ungranted.open("{}").conversationId();
         assertEquals("AI_PROTOCOL_TOOLS_UNAVAILABLE", assertThrows(ResponseStatusException.class,
-                () -> ungranted.send(ungrantedId, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}")).getReason());
+                () -> ungranted.send(ungrantedId, ChatApplicationTestSupport.request(ungranted, ungrantedId,  "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}"))).getReason());
     }
 
     @Test void explicitWireApiPersistsAndProtocolChangesKeepCatalogButRequireRebinding() throws Exception {
@@ -70,9 +70,9 @@ class AiChatApplicationTest {
             public ChatClient completion(ModelConnectionSnapshot snapshot) { return conversational(snapshot); }
         });
         var handlers = new CapabilityHandlerRegistry(List.of());
-        var app = new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections),
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections),
                 new AiConversationRegistry(memory), new EngineeringChatService(null, handlers, (Path) null,
-                new FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections);
+                new FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections));
         String body = "{\"name\":\"desk\",\"baseUrl\":\"https://127.0.0.1:9/v1\",\"secret\":\"test-key\",\"defaultSelected\":true}";
         var saved = app.saveConnection(null, body);
         connections.configureModels(saved.id(), List.of(new ModelOption("m", List.of("high"))), List.of("m"), "m");
@@ -93,7 +93,7 @@ class AiChatApplicationTest {
                 .readTree(tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(reloaded.list()))
                 .get("items").get(0).get("wireApi").asText());
         assertEquals("TARGET_CHANGE_CONFIRMATION_REQUIRED", assertThrows(ResponseStatusException.class,
-                () -> app.send(id, "{\"message\":\"next\",\"toolMode\":\"none\"}")).getReason());
+                () -> app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"next\",\"toolMode\":\"none\"}"))).getReason());
         assertTrue(app.assign(id, "{\"connectionId\":\"" + saved.id() + "\",\"model\":\"m\",\"confirmTargetChange\":true}").memoryCleared());
         for (String value : List.of("\"Responses\"", "\" responses\"", "\"\"", "null", "true", "4")) {
             mvc(app).perform(post("/api/ai/connections").contentType(MediaType.APPLICATION_JSON)
@@ -150,7 +150,7 @@ class AiChatApplicationTest {
         ChatModel fake = model == null ? null : FakeChatModels.scripted(model::call);
         var client = fake == null ? null : EngineeringAiConfiguration.createClient(ChatClient.builder(fake), memory);
         var chat = new EngineeringChatService(client, handlers, authorized, new FileExecutionArtifactStore(root.resolve("artifacts")));
-        return new AiChatApplication(status, new AiConversationRegistry(memory), chat, root);
+        return ChatApplicationTestSupport.graph(new AiChatApplication(status, new AiConversationRegistry(memory), chat, root));
     }
 
     @Test
@@ -168,8 +168,8 @@ class AiChatApplicationTest {
         org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges",
                 new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString()), null, null, new InMemoryCodeGenerationStore(), new InMemoryCodeProposalStore()));
         var id = app.open("{}").conversationId();
-        var failure = assertThrows(ResponseStatusException.class, () -> app.send(id,
-                "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"Page.vue\"}}"));
+        var failure = assertThrows(ResponseStatusException.class, () -> app.send(id, ChatApplicationTestSupport.request(app, id,
+                "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"Page.vue\"}}")));
         assertEquals("CODE_GENERATION_BASELINE_CHANGED", failure.getReason());
         assertEquals("concurrent user edit", java.nio.file.Files.readString(root.resolve("Page.vue")));
     }
@@ -201,7 +201,7 @@ class AiChatApplicationTest {
             return FakeChatModels.text("invented");
         }, false, null, null);
         var id = app.open("{}").conversationId();
-        var error = assertThrows(ResponseStatusException.class, () -> app.send(id, "{\"message\":\"hi\",\"toolMode\":\"none\"}"));
+        var error = assertThrows(ResponseStatusException.class, () -> app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"hi\",\"toolMode\":\"none\"}")));
         assertEquals(503, error.getStatusCode().value());
         assertEquals("AI_NOT_CONFIGURED", error.getReason());
         assertEquals(0, calls.get());
@@ -222,11 +222,11 @@ class AiChatApplicationTest {
                 "{\"message\":\"hi\",\"toolMode\":\"none\",\"workspace\":\"../outside\"}",
                 "{\"message\":\"   \",\"toolMode\":\"none\"}",
                 "{\"message\":\"hi\",\"toolMode\":\"shell\"}")) {
-            var error = assertThrows(ResponseStatusException.class, () -> app.send(id, body));
+            var error = assertThrows(ResponseStatusException.class, () -> app.send(id, ChatApplicationTestSupport.request(app, id,  body)));
             assertEquals(400, error.getStatusCode().value(), body);
         }
         assertEquals(0, calls.get());
-        assertThrows(ResponseStatusException.class, () -> app.send(UUID.randomUUID(), "{\"message\":\"hi\",\"toolMode\":\"none\"}"));
+        assertThrows(ResponseStatusException.class, () -> app.send(UUID.randomUUID(), ChatApplicationTestSupport.request(app, UUID.randomUUID(),  "{\"message\":\"hi\",\"toolMode\":\"none\"}")));
     }
 
     @Test
@@ -239,10 +239,10 @@ class AiChatApplicationTest {
         }, true, null, calls);
         var id = app.open(null).conversationId();
         var denied = assertThrows(ResponseStatusException.class,
-                () -> app.send(id, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}"));
+                () -> app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}")));
         assertEquals(403, denied.getStatusCode().value());
         assertEquals(0, turns.get());
-        var sent = app.send(id, "{\"message\":\"hello\",\"toolMode\":\"none\"}");
+        var sent = app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"hello\",\"toolMode\":\"none\"}"));
         assertEquals("plain answer", sent.answer());
         assertEquals("NOT_REQUIRED", sent.approval());
         assertEquals("UNVERIFIED", sent.verification());
@@ -261,9 +261,9 @@ class AiChatApplicationTest {
             return FakeChatModels.text("plain");
         }, true, null, new AtomicInteger());
         var first = app.open("{}");
-        app.send(first.conversationId(), "{\"message\":\"private-marker\",\"toolMode\":\"none\"}");
+        app.send(first.conversationId(), ChatApplicationTestSupport.request(app, first.conversationId(),  "{\"message\":\"private-marker\",\"toolMode\":\"none\"}"));
         var second = app.open("{}");
-        var outcome = app.send(second.conversationId(), "{\"message\":\"other\",\"toolMode\":\"none\"}");
+        var outcome = app.send(second.conversationId(), ChatApplicationTestSupport.request(app, second.conversationId(),  "{\"message\":\"other\",\"toolMode\":\"none\"}"));
         assertEquals("plain", outcome.answer());
         assertTrue(seen.get(0).contains("private-marker"));
         assertFalse(seen.get(1).contains("private-marker"));
@@ -284,7 +284,7 @@ class AiChatApplicationTest {
             return FakeChatModels.text("inspected");
         }, true, root, calls);
         var conversation = app.open("{}");
-        var outcome = app.send(conversation.conversationId(), "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}");
+        var outcome = app.send(conversation.conversationId(), ChatApplicationTestSupport.request(app, conversation.conversationId(),  "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}"));
         assertEquals("", outcome.error(), outcome.toString());
         assertEquals("inspected", outcome.answer());
         assertEquals(1, calls.get());
@@ -333,21 +333,21 @@ class AiChatApplicationTest {
         var handlers = new CapabilityHandlerRegistry(List.of());
         var status = new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections);
         var chat = new EngineeringChatService(null, handlers, (java.nio.file.Path) null, new FileExecutionArtifactStore(root.resolve("artifacts")));
-        var app = new AiChatApplication(status, new AiConversationRegistry(memory), chat, root, connections);
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(status, new AiConversationRegistry(memory), chat, root, connections));
         var id = app.open("{}").conversationId();
-        var unsupported = assertThrows(ResponseStatusException.class, () -> app.send(id, "{\"message\":\"reject\",\"toolMode\":\"none\",\"context\":{\"reasoning\":\"high\"}}"));
+        var unsupported = assertThrows(ResponseStatusException.class, () -> app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"reject\",\"toolMode\":\"none\",\"context\":{\"reasoning\":\"high\"}}")));
         assertEquals("REASONING_OPTION_NOT_SUPPORTED", unsupported.getReason());
-        app.send(id, "{\"message\":\"private-marker\",\"toolMode\":\"none\"}");
+        app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"private-marker\",\"toolMode\":\"none\"}"));
         connections.update(saved.id(), "desk", "https://127.0.0.1:9/v1", "changed-secret", true, true);
         connections.configureModels(saved.id(), List.of(new ModelOption("other-model", List.of())), List.of("other-model"), "other-model");
         var rejected = assertThrows(ResponseStatusException.class,
-                () -> app.send(id, "{\"message\":\"next\",\"toolMode\":\"none\"}"));
+                () -> app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"next\",\"toolMode\":\"none\"}")));
         assertEquals("TARGET_CHANGE_CONFIRMATION_REQUIRED", rejected.getReason());
         assertEquals(1, calls.get());
         var assigned = app.assign(id, "{\"connectionId\":\"" + saved.id() + "\",\"model\":\"other-model\",\"confirmTargetChange\":true}");
         assertTrue(assigned.memoryCleared());
         assertFalse(assigned.toString().contains("sk-local-test-secret"));
-        app.send(id, "{\"message\":\"after\",\"toolMode\":\"none\"}");
+        app.send(id, ChatApplicationTestSupport.request(app, id,  "{\"message\":\"after\",\"toolMode\":\"none\"}"));
         assertEquals(2, calls.get());
         assertFalse(seen.get(1).contains("private-marker"));
         assertEquals("available", app.status().state());

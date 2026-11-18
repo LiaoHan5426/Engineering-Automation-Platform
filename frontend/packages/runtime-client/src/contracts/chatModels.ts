@@ -103,7 +103,11 @@ export type ChatGptLoginState = {
   error: string
 }
 
-export type ModelOption = { id: string; reasoningEfforts: Array<'low' | 'medium' | 'high'> }
+export type ModelOption = {
+  supportsImageInput?: boolean
+  id: string
+  reasoningEfforts: Array<'low' | 'medium' | 'high'>
+}
 
 export type ModelSelection = {
   models: ModelOption[]
@@ -194,7 +198,27 @@ export type ContextBudgetObservation = {
   notes: string[]
 }
 
+export type WebSourceService = { serverId: string; search: boolean; read: boolean }
+export type WebSourceSelection = {
+  enabled: boolean
+  serverId: string
+  search: boolean
+  read: boolean
+}
+export type WebSource = {
+  id: string
+  title: string
+  url: string
+  text: string
+  fullText: boolean
+  serverId: string
+  tool: string
+  executionId: string
+}
+
 export type AiMessageResult = {
+  webSources?: WebSource[]
+  plan?: import('./chatPlan').ChatPlanSnapshot | null
   errorMessage?: string
   errorLanguage?: string
   skillContext?: SkillContext | null
@@ -216,7 +240,12 @@ export type AiMessageResult = {
 
 export type KnowledgeExpertRef = { id: string; revision: number }
 
+export type AttachmentRef = { id: string; name: string; mime: string; size: number; sha256: string }
+export type TransientAttachment = AttachmentRef & { base64: string }
+
 export type TaskContext = {
+  webSources?: WebSourceSelection
+  attachmentRefs?: AttachmentRef[]
   componentPaths?: string[]
   skillRef?: SkillRef
   skillResourcePaths?: string[]

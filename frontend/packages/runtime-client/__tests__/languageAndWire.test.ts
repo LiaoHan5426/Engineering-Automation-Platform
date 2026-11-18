@@ -19,6 +19,35 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+const request = {
+  operationId: 'operation',
+  expectedRevision: 0,
+  kind: 'send' as const,
+  parentMessageId: null,
+  targetMessageId: null,
+  message: 'message',
+  toolMode: 'none' as const,
+}
+function accepted(executionId: string) {
+  return (
+    'data: ' +
+    JSON.stringify({
+      eventId: 'accepted',
+      executionId,
+      conversationId: 'conversation',
+      sequence: 0,
+      type: 'accepted',
+      protocolVersion: '1',
+      occurredAt: new Date().toISOString(),
+      text: '',
+      code: '',
+      status: 'RUNNING',
+      payload: { operationId: request.operationId, executionId },
+    }) +
+    '\n\n'
+  )
+}
+
 it('retains the request language when the UI switches while an SSE response is pending', async () => {
   let language: 'zh-CN' | 'en-US' = 'en-US'
   configureRuntimeLanguage(() => language)
@@ -32,11 +61,12 @@ it('retains the request language when the UI switches while an SSE response is p
         }),
     ),
   )
-  const pending = createChatApi('http://local/api').sendAiMessage('conversation', 'message', 'none')
+  const pending = createChatApi('http://local/api').sendAiMessage('conversation', request)
   language = 'zh-CN'
   release(
     new Response(
-      'data: ' +
+      accepted('run') +
+        'data: ' +
         JSON.stringify({
           eventId: 'e',
           executionId: 'run',
@@ -115,13 +145,18 @@ it('shares the current language between supplied Axios transports and SSE fetch'
   }
   const fetcher = vi.fn(
     async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      new Response('event: final\ndata: ' + JSON.stringify(event) + '\n\n', {
-        headers: { 'Content-Type': 'text/event-stream', 'Content-Language': 'zh-CN' },
-      }),
+      new Response(
+        accepted('execution') + 'event: final\ndata: ' + JSON.stringify(event) + '\n\n',
+        {
+          headers: { 'Content-Type': 'text/event-stream', 'Content-Language': 'zh-CN' },
+        },
+      ),
   )
   vi.stubGlobal('fetch', fetcher)
-  const result = await api.sendAiMessage('conversation', 'message', 'none')
+  const result = await api.sendAiMessage('conversation', request)
   expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ headers: { 'Accept-Language': 'zh-CN' } })
+  expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual(request)
+  expect(String(fetcher.mock.calls[0]?.[0])).toBe('/ai/conversations/conversation/messages')
   expect(result.error).toBe('AI_PROVIDER_ERROR')
   expect(result.errorMessage).toBe('模型服务不可用')
   expect(result.errorLanguage).toBe('zh-CN')

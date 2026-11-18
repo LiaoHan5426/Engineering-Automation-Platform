@@ -27,17 +27,17 @@ class ExpertKnowledgeChatTest {
         ReflectionTestUtils.setField(app, "expertKnowledge", f.service);
         var id = app.open("{}").conversationId();
         try (var pool = java.util.concurrent.Executors.newSingleThreadExecutor()) {
-            var active = pool.submit(() -> app.send(id, SEND));
+            var active = pool.submit(() -> app.send(id, ChatApplicationTestSupport.request(app, id,  SEND)));
             assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
             try {
-                var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> app.send(id, PLAIN));
+                var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> app.send(id, ChatApplicationTestSupport.request(app, id,  PLAIN)));
                 assertEquals("CONVERSATION_BUSY", error.getReason());
                 assertEquals("CONVERSATION_BUSY", assertThrows(org.springframework.web.server.ResponseStatusException.class,
                         () -> app.deleteConversation(id)).getReason());
             } finally { release.countDown(); }
             assertEquals("", active.get(10, java.util.concurrent.TimeUnit.SECONDS).error());
         }
-        app.send(id, PLAIN);
+        app.send(id, ChatApplicationTestSupport.request(app, id,  PLAIN));
         assertEquals(2, seen.size());
         assertFalse(seen.getLast().contains("concurrent-secret"));
         assertFalse(seen.getLast().contains("concurrent-derived"));
@@ -52,7 +52,7 @@ class ExpertKnowledgeChatTest {
         assertEquals(true, app.status().tools().get("git_status"));
         var id = app.open("{}").conversationId();
         h.mvc(app).perform(post("/api/ai/conversations/" + id + "/messages").contentType(MediaType.APPLICATION_JSON)
-                .content(SEND.replace("\"none\"", "\"git_status\"")))
+                .content(ChatApplicationTestSupport.request(app, id, SEND.replace("\"none\"", "\"git_status\""))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("EXPERT_CONTEXT_MODE_UNSUPPORTED"))
                 .andExpect(jsonPath("$.knowledgeMemoryCleared").value(true));
@@ -70,7 +70,7 @@ class ExpertKnowledgeChatTest {
         for (String request : List.of(SEND,
                 SEND.replace("\"knowledgeExpertRef\"", "\"mode\":\"code\",\"knowledgeExpertRef\""),
                 SEND.replace("\"revision\":2", "\"revision\":2,\"grants\":[\"forged\"]"))) {
-            assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> app.send(id, request));
+            assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> app.send(id, ChatApplicationTestSupport.request(app, id,  request)));
         }
         assertEquals(0, calls.get());
     }
@@ -88,7 +88,7 @@ class ExpertKnowledgeChatTest {
                 SEND.replace("\"toolMode\":\"none\"", "\"toolMode\":null"),
                 SEND.replace("marker", " ").replace("\"none\"", "\"git_status\""))) {
             for (String candidate : List.of(request, request.replace("\"revision\":2", "\"revision\":3"))) {
-                var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> app.send(id, candidate));
+                var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> app.send(id, ChatApplicationTestSupport.request(app, id,  candidate)));
                 assertEquals("INVALID_CHAT_REQUEST", error.getReason());
                 assertEquals(true, error.getBody().getProperties().get("knowledgeMemoryCleared"));
             }
@@ -97,7 +97,7 @@ class ExpertKnowledgeChatTest {
                 "{\"message\":\"\",\"toolMode\":\"git_status\",\"context\":{\"knowledgeExpertRef\":null}}",
                 SEND.replace("marker", " ").replace("\"knowledgeExpertRef\"", "\"mode\":\"code\",\"knowledgeExpertRef\""))) {
             assertEquals("INVALID_EXPERT_CONTEXT", assertThrows(org.springframework.web.server.ResponseStatusException.class,
-                    () -> app.send(id, request)).getReason());
+                    () -> app.send(id, ChatApplicationTestSupport.request(app, id,  request))).getReason());
         }
         for (String query : List.of("\" \"", "1")) {
             assertEquals("INVALID_EXPERT_CONTEXT", assertThrows(org.springframework.web.server.ResponseStatusException.class,
@@ -121,7 +121,7 @@ class ExpertKnowledgeChatTest {
             var app = h.app(p -> { seen.add(p.toString()); return FakeChatModels.text("secret-derived"); }, true, root, null);
             ReflectionTestUtils.setField(app, "expertKnowledge", f.service);
             var id = app.open("{}").conversationId();
-            app.send(id, SEND);
+            app.send(id, ChatApplicationTestSupport.request(app, id,  SEND));
             String request = SEND;
             switch (refusal) {
                 case "revoked" -> when(f.experts.knowledgeGrants("expert-a")).thenReturn(List.of());
@@ -134,13 +134,13 @@ class ExpertKnowledgeChatTest {
                 case "git" -> request = SEND.replace("\"none\"", "\"git_status\"");
                 case "database" -> when(f.definitions.lockForKnowledge("expert-a")).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private-db-detail"));
             }
-            h.mvc(app).perform(post("/api/ai/conversations/" + id + "/messages").contentType(MediaType.APPLICATION_JSON).content(request))
+            h.mvc(app).perform(post("/api/ai/conversations/" + id + "/messages").contentType(MediaType.APPLICATION_JSON).content(ChatApplicationTestSupport.request(app, id, request)))
                     .andExpect(status().is(org.hamcrest.Matchers.greaterThanOrEqualTo(400))).andExpect(jsonPath("$.knowledgeMemoryCleared").value(true));
             assertEquals(1, seen.size(), refusal);
             var conversations = (AiConversationRegistry) ReflectionTestUtils.getField(app, "conversations");
             var memory = (org.springframework.ai.chat.memory.ChatMemory) ReflectionTestUtils.getField(conversations, "memory");
             assertTrue(memory.get(EngineeringChatService.memoryKey(AiConversationRegistry.PRINCIPAL, id)).isEmpty(), refusal);
-            app.send(id, PLAIN);
+            app.send(id, ChatApplicationTestSupport.request(app, id,  PLAIN));
             assertFalse(seen.getLast().contains("secret-old"), refusal);
             assertFalse(seen.getLast().contains("secret-derived"), refusal);
         }
@@ -158,13 +158,13 @@ class ExpertKnowledgeChatTest {
         assertTrue(seen.isEmpty());
         when(f.knowledge.searchAuthorized(anyString(), anyInt(), anyList())).thenReturn(List.of(evidence("fresh-secret")));
         var id = app.open("{}").conversationId();
-        var withKnowledge = app.send(id, SEND);
+        var withKnowledge = app.send(id, ChatApplicationTestSupport.request(app, id,  SEND));
         assertEquals("fresh-secret", withKnowledge.knowledgeContext().references().getFirst().excerpt());
         assertTrue(withKnowledge.knowledgeMemoryCleared());
         assertTrue(seen.getFirst().getUserMessage().getText().contains("fresh-secret"));
         assertFalse(seen.getFirst().getSystemMessage().getText().contains("fresh-secret"));
         assertFalse(seen.getFirst().toString().contains("old-secret"));
-        var plain = app.send(id, PLAIN);
+        var plain = app.send(id, ChatApplicationTestSupport.request(app, id,  PLAIN));
         assertTrue(plain.knowledgeMemoryCleared());
         assertNull(plain.knowledgeContext());
         assertFalse(seen.getLast().toString().contains("fresh-secret"));

@@ -1,0 +1,1038 @@
+{
+  "head": "579c0d59a2f131715f5b79c3455dad81bc74d7ef",
+  "phase": "before",
+  "sources": [
+    {
+      "path": "frontend/apps/web/src/App.vue",
+      "sha256": "10a661682dc3056b88d783e548e68742899872513948f618658ab0a28536f2be"
+    },
+    {
+      "path": "frontend/apps/web/src/work-pages.css",
+      "sha256": "8019045b9f7c48990ae0403bb7209423a2272acbda23dd26c4a0a98e77edf6f0"
+    }
+  ],
+  "results": [
+    {
+      "viewport": {
+        "width": 1918,
+        "height": 914
+      },
+      "states": [
+        {
+          "state": "default-composer",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [
+              {
+                "summary": "网页来源 · 未开启",
+                "open": false
+              },
+              {
+                "summary": "语音",
+                "open": false
+              },
+              {
+                "summary": "查看将发送的内容",
+                "open": false
+              }
+            ],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 567,
+                "clientHeight": 567,
+                "scrollHeight": 567
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 792,
+                "y": 705,
+                "width": 115.59375,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"outgoing-preview\"]": {
+                "x": 975.359375,
+                "y": 714,
+                "width": 107.03125,
+                "height": 19.5,
+                "clientHeight": 20,
+                "scrollHeight": 20
+              },
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "web-options",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [
+              {
+                "summary": "网页来源 · 未开启",
+                "open": true
+              },
+              {
+                "summary": "语音",
+                "open": false
+              },
+              {
+                "summary": "查看将发送的内容",
+                "open": false
+              }
+            ],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 347.734375,
+                "clientHeight": 348,
+                "scrollHeight": 544
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 472.734375,
+                "width": 980,
+                "height": 413.265625,
+                "clientHeight": 411,
+                "scrollHeight": 411
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 626,
+                "y": 523.734375,
+                "width": 946,
+                "height": 177.265625,
+                "clientHeight": 177,
+                "scrollHeight": 177
+              },
+              "[data-testid=\"outgoing-preview\"]": {
+                "x": 679.765625,
+                "y": 714,
+                "width": 107.03125,
+                "height": 19.5,
+                "clientHeight": 20,
+                "scrollHeight": 20
+              },
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "speech-options",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "details": [
+              {
+                "summary": "网页来源 · 未开启",
+                "open": false
+              },
+              {
+                "summary": "语音",
+                "open": true
+              },
+              {
+                "summary": "查看将发送的内容",
+                "open": false
+              }
+            ],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 446.8125,
+                "clientHeight": 447,
+                "scrollHeight": 544
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 571.8125,
+                "width": 980,
+                "height": 314.1875,
+                "clientHeight": 312,
+                "scrollHeight": 312
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 48,
+                "width": 1622,
+                "height": 858,
+                "clientHeight": 858,
+                "scrollHeight": 858
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 792,
+                "y": 584.8125,
+                "width": 115.59375,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"outgoing-preview\"]": {
+                "x": 626,
+                "y": 723,
+                "width": 107.03125,
+                "height": 19.5,
+                "clientHeight": 20,
+                "scrollHeight": 20
+              },
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "first-pending",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 34px 832px",
+            "noticeParent": "shell-notices",
+            "details": [
+              {
+                "summary": "网页来源 · 未开启",
+                "open": false
+              },
+              {
+                "summary": "语音",
+                "open": false
+              },
+              {
+                "summary": "查看将发送的内容",
+                "open": false
+              }
+            ],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 82,
+                "width": 1918,
+                "height": 832,
+                "clientHeight": 832,
+                "scrollHeight": 832
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 34
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 151,
+                "width": 1622,
+                "height": 533,
+                "clientHeight": 533,
+                "scrollHeight": 544
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 288,
+                "y": 82,
+                "width": 1622,
+                "height": 824,
+                "clientHeight": 824,
+                "scrollHeight": 824
+              },
+              ".composer-draft": {
+                "x": 626,
+                "y": 750.5,
+                "width": 946,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 792,
+                "y": 705,
+                "width": 115.59375,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"outgoing-preview\"]": {
+                "x": 975.359375,
+                "y": 714,
+                "width": 107.03125,
+                "height": 19.5,
+                "clientHeight": 20,
+                "scrollHeight": 20
+              },
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        }
+      ],
+      "blocked": [],
+      "errors": [],
+      "firstSendNewConversation": true,
+      "backend": false,
+      "realProvider": false
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "states": [
+        {
+          "state": "default-composer",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [
+              {
+                "summary": "网页来源 · 未开启",
+                "open": false
+              },
+              {
+                "summary": "语音",
+                "open": false
+              },
+              {
+                "summary": "查看将发送的内容",
+                "open": false
+              }
+            ],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 489,
+                "clientHeight": 489,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 800.5,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 89,
+                "y": 731.5,
+                "width": 115.59375,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"outgoing-preview\"]": {
+                "x": 89,
+                "y": 773,
+                "width": 107.03125,
+                "height": 19.5,
+                "clientHeight": 20,
+                "scrollHeight": 20
+              },
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "web-options",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [
+              {
+                "summary": "网页来源 · 未开启",
+                "open": true
+              },
+              {
+                "summary": "语音",
+                "open": false
+              },
+              {
+                "summary": "查看将发送的内容",
+                "open": false
+              }
+            ],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 348.5,
+                "clientHeight": 349,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 540,
+                "width": 302,
+                "height": 440,
+                "clientHeight": 438,
+                "scrollHeight": 475
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 966.265625,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 968.015625,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 837.265625,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 89,
+                "y": 591,
+                "width": 268,
+                "height": 196.765625,
+                "clientHeight": 197,
+                "scrollHeight": 197
+              },
+              "[data-testid=\"outgoing-preview\"]": {
+                "x": 142.765625,
+                "y": 800.765625,
+                "width": 107.03125,
+                "height": 19.5,
+                "clientHeight": 20,
+                "scrollHeight": 20
+              },
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "speech-options",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "details": [
+              {
+                "summary": "网页来源 · 未开启",
+                "open": false
+              },
+              {
+                "summary": "语音",
+                "open": true
+              },
+              {
+                "summary": "查看将发送的内容",
+                "open": false
+              }
+            ],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 348.5,
+                "clientHeight": 349,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 540,
+                "width": 302,
+                "height": 440,
+                "clientHeight": 438,
+                "scrollHeight": 438
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.6875,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.4375,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 56,
+                "width": 318,
+                "height": 936,
+                "clientHeight": 936,
+                "scrollHeight": 936
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 800.6875,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 89,
+                "y": 591,
+                "width": 115.59375,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"outgoing-preview\"]": {
+                "x": 89,
+                "y": 773.1875,
+                "width": 107.03125,
+                "height": 19.5,
+                "clientHeight": 20,
+                "scrollHeight": 20
+              },
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        },
+        {
+          "state": "first-pending",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 52px 892px",
+            "noticeParent": "shell-notices",
+            "details": [
+              {
+                "summary": "网页来源 · 未开启",
+                "open": false
+              },
+              {
+                "summary": "语音",
+                "open": false
+              },
+              {
+                "summary": "查看将发送的内容",
+                "open": false
+              }
+            ],
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 108,
+                "width": 390,
+                "height": 892,
+                "clientHeight": 892,
+                "scrollHeight": 892
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 52,
+                "clientHeight": 52,
+                "scrollHeight": 52
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 235.5,
+                "width": 318,
+                "height": 437,
+                "clientHeight": 437,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null,
+              "[data-testid=\"chat-workspace\"]": {
+                "x": 64,
+                "y": 108,
+                "width": 318,
+                "height": 884,
+                "clientHeight": 884,
+                "scrollHeight": 884
+              },
+              ".composer-draft": {
+                "x": 89,
+                "y": 800.5,
+                "width": 268,
+                "height": 71,
+                "clientHeight": 71,
+                "scrollHeight": 71
+              },
+              ".composer-context": null,
+              "[data-testid=\"web-source-options\"]": {
+                "x": 89,
+                "y": 731.5,
+                "width": 115.59375,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"outgoing-preview\"]": {
+                "x": 89,
+                "y": 773,
+                "width": 107.03125,
+                "height": 19.5,
+                "clientHeight": 20,
+                "scrollHeight": 20
+              },
+              "[data-testid=\"pending-receipt\"]": null,
+              "[data-testid=\"turn-progress\"]": null
+            }
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        }
+      ],
+      "blocked": [],
+      "errors": [],
+      "firstSendNewConversation": true,
+      "backend": false,
+      "realProvider": false
+    }
+  ]
+}

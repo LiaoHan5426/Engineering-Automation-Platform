@@ -1,19 +1,26 @@
 import { expect, it } from 'vite-plus/test'
 import { createChatApi } from '@eap/runtime-client'
-import { replyJson, sseFrame, startChatHttpFixture } from '../../chatHttpFixture'
+import {
+  graphRequest,
+  acceptedFrame,
+  replyJson,
+  sseFrame,
+  startChatHttpFixture,
+} from '../../chatHttpFixture'
 
 const FRAME_LIMIT = 1_048_576 // Decoded UTF-16 code units, including metadata, excluding separator.
 
 it('rejects an unknown wire state without fabricating business UNKNOWN', async () => {
   const fixture = await startChatHttpFixture((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.write(acceptedFrame())
     response.end(
       sseFrame('final', 1).replace('"status":"SUCCEEDED"', '"status":"ILLEGAL_WIRE_STATE"'),
     )
   })
   try {
     await expect(
-      createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none'),
+      createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest()),
     ).rejects.toMatchObject({ response: { data: { code: 'AI_RESPONSE_INVALID' } } })
   } finally {
     await fixture.close()
@@ -30,6 +37,7 @@ it.each(['callback', 'malformed'] as const)(
     const fixture = await startChatHttpFixture((_request, response) => {
       response.on('close', closed)
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      response.write(acceptedFrame())
       response.write(
         failure === 'callback' ? sseFrame('answer.delta', 1) : 'data: private-body\n\n',
       )
@@ -38,18 +46,12 @@ it.each(['callback', 'malformed'] as const)(
     const timeout = setTimeout(() => controller.abort(), 1000)
     const sentinel = new Error('CALLER_FAILED')
     try {
-      const pending = createChatApi(fixture.baseURL).sendAiMessage(
-        'c1',
-        'draft',
-        'none',
-        undefined,
-        {
-          signal: controller.signal,
-          onEvent: () => {
-            throw sentinel
-          },
+      const pending = createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest(), {
+        signal: controller.signal,
+        onEvent: () => {
+          if (failure === 'callback') throw sentinel
         },
-      )
+      })
       if (failure === 'callback') await expect(pending).rejects.toBe(sentinel)
       else await expect(pending).rejects.toMatchObject({ message: 'AI_RESPONSE_INVALID' })
       await connectionClosed
@@ -69,19 +71,20 @@ it('does not complete partial text when the HTTP connection fails', async () => 
       response.destroy()
     }
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.write(acceptedFrame())
     response.write(sseFrame('answer.delta', 1))
   })
   try {
     const events: string[] = []
     await expect(
-      createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none', undefined, {
+      createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest(), {
         onEvent: (event) => {
           events.push(event.type)
-          failConnection()
+          if (event.type === 'answer.delta') failConnection()
         },
       }),
     ).rejects.toBeInstanceOf(Error)
-    expect(events).toEqual(['answer.delta'])
+    expect(events).toEqual(['accepted', 'answer.delta'])
   } finally {
     await fixture.close()
   }
@@ -98,6 +101,7 @@ it.each([
 ] as const)('preserves %s final with sparse or null payload', async (status, code, payload) => {
   const fixture = await startChatHttpFixture((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.write(acceptedFrame())
     response.end(
       sseFrame('answer.delta', 1) +
         sseFrame('final', 2, payload)
@@ -107,7 +111,7 @@ it.each([
   })
   try {
     await expect(
-      createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none'),
+      createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest()),
     ).resolves.toMatchObject({
       status,
       error: code,
@@ -122,14 +126,15 @@ it.each([
 it('forwards unknown event types without requiring a known domain payload schema', async () => {
   const fixture = await startChatHttpFixture((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.write(acceptedFrame())
     response.end(sseFrame('future.event', 1, ['opaque']) + sseFrame('final', 2, null))
   })
   try {
     const events: string[] = []
-    await createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none', undefined, {
+    await createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest(), {
       onEvent: (event) => events.push(event.type),
     })
-    expect(events).toEqual(['future.event', 'final'])
+    expect(events).toEqual(['accepted', 'future.event', 'final'])
   } finally {
     await fixture.close()
   }
@@ -140,13 +145,14 @@ it.each(['', '\n\n'])(
   async (separator) => {
     const fixture = await startChatHttpFixture((_request, response) => {
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      response.write(acceptedFrame())
       response.end(
         ':' + 'x'.repeat(FRAME_LIMIT) + separator + (separator ? sseFrame('final', 1) : ''),
       )
     })
     try {
       await expect(
-        createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none'),
+        createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest()),
       ).rejects.toMatchObject({
         message: 'AI_RESPONSE_TOO_LARGE',
         response: { status: 502, data: { code: 'AI_RESPONSE_TOO_LARGE' } },
@@ -160,6 +166,7 @@ it.each(['', '\n\n'])(
 it('accepts the exact frame limit without treating total stream length as the limit', async () => {
   const fixture = await startChatHttpFixture(async (_request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.write(acceptedFrame())
     response.write(':' + 'x'.repeat(FRAME_LIMIT - 1))
     for (const character of '\r\n\r\n') {
       response.write(character)
@@ -169,7 +176,7 @@ it('accepts the exact frame limit without treating total stream length as the li
   })
   try {
     await expect(
-      createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none'),
+      createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest()),
     ).resolves.toMatchObject({
       status: 'SUCCEEDED',
     })
@@ -192,12 +199,13 @@ it.each([
 ])('rejects malformed consumed data before a later successful final (%#)', async (malformed) => {
   const fixture = await startChatHttpFixture((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.write(acceptedFrame())
     response.end(sseFrame('answer.delta', 1) + malformed + sseFrame('final', 3))
   })
   try {
     const events: string[] = []
     const failure = await createChatApi(fixture.baseURL)
-      .sendAiMessage('c1', 'draft', 'none', undefined, {
+      .sendAiMessage('c1', graphRequest(), {
         onEvent: (event) => events.push(event.type),
       })
       .catch((error: unknown) => error)
@@ -206,7 +214,7 @@ it.each([
       response: { status: 502, data: { code: 'AI_RESPONSE_INVALID' } },
     })
     expect(JSON.stringify(failure)).not.toContain('private-body')
-    expect(events).toEqual(['answer.delta'])
+    expect(events).toEqual(['accepted', 'answer.delta'])
   } finally {
     await fixture.close()
   }
@@ -220,6 +228,7 @@ it('settles at final and releases an open response without consuming later event
   const fixture = await startChatHttpFixture((_request, response) => {
     response.on('close', closed)
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.write(acceptedFrame())
     response.write(sseFrame('final', 1) + sseFrame('answer.delta', 2))
     // Keep this response open: final, not HTTP EOF, is the terminal contract.
   })
@@ -227,18 +236,12 @@ it('settles at final and releases an open response without consuming later event
   const timeout = setTimeout(() => controller.abort(), 1000)
   try {
     const events: string[] = []
-    const result = await createChatApi(fixture.baseURL).sendAiMessage(
-      'c1',
-      'draft',
-      'none',
-      undefined,
-      {
-        signal: controller.signal,
-        onEvent: (event) => events.push(event.type),
-      },
-    )
+    const result = await createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest(), {
+      signal: controller.signal,
+      onEvent: (event) => events.push(event.type),
+    })
     expect(result.status).toBe('SUCCEEDED')
-    expect(events).toEqual(['final'])
+    expect(events).toEqual(['accepted', 'final'])
     await connectionClosed
     expect(controller.signal.aborted).toBe(false)
   } finally {
@@ -257,6 +260,7 @@ it('reads CRLF frames with multiline JSON across line and UTF-8 chunk boundaries
   const unicode = bytes.indexOf(Buffer.from('边'))
   const fixture = await startChatHttpFixture(async (_request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8' })
+    response.write(acceptedFrame())
     for (const chunk of [
       bytes.subarray(0, unicode + 1),
       bytes.subarray(unicode + 1, unicode + 2),
@@ -270,23 +274,17 @@ it('reads CRLF frames with multiline JSON across line and UTF-8 chunk boundaries
   })
   try {
     const events: string[] = []
-    const result = await createChatApi(fixture.baseURL).sendAiMessage(
-      'c1',
-      'draft',
-      'none',
-      undefined,
-      {
-        onEvent: (event) => events.push(event.type),
-      },
-    )
+    const result = await createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest(), {
+      onEvent: (event) => events.push(event.type),
+    })
     expect(result.answer).toBe('边界🙂')
-    expect(events).toEqual(['answer.delta', 'final'])
+    expect(events).toEqual(['accepted', 'answer.delta', 'final'])
     expect(fixture.requests).toMatchObject([
       {
         method: 'POST',
         url: '/ai/conversations/c1/messages',
         headers: { accept: 'text/event-stream', 'content-type': 'application/json' },
-        data: { message: 'draft', toolMode: 'none' },
+        data: graphRequest(),
       },
     ])
   } finally {
@@ -312,13 +310,11 @@ it('preserves an authorization-reference conflict without treating JSON as a suc
       knowledgeExpertRef: expertRef,
     }
     await expect(
-      createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none', context),
+      createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest('draft', context)),
     ).rejects.toMatchObject({
       response: { status: 409, data: { code: 'EXPERT_CONTEXT_STALE', revision: 8 } },
     })
-    expect(fixture.requests.map(({ data }) => data)).toEqual([
-      { message: 'draft', toolMode: 'none', context },
-    ])
+    expect(fixture.requests.map(({ data }) => data)).toEqual([graphRequest('draft', context)])
   } finally {
     await fixture.close()
   }
@@ -329,18 +325,19 @@ it.each(['', sseFrame('final', 2).trimEnd()])(
   async (trailing) => {
     const fixture = await startChatHttpFixture((_request, response) => {
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      response.write(acceptedFrame())
       response.end(sseFrame('answer.delta', 1) + trailing)
     })
     try {
       const events: string[] = []
       await expect(
-        createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none', undefined, {
+        createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest(), {
           onEvent: (event) => events.push(event.type),
         }),
       ).rejects.toMatchObject({
         response: { status: 502, data: { code: 'AI_RESPONSE_INCOMPLETE' } },
       })
-      expect(events).toEqual(['answer.delta'])
+      expect(events).toEqual(['accepted', 'answer.delta'])
     } finally {
       await fixture.close()
     }
@@ -350,6 +347,7 @@ it.each(['', sseFrame('final', 2).trimEnd()])(
 it('forwards the caller AbortSignal to the actual fetch stream after a visible delta', async () => {
   const fixture = await startChatHttpFixture((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.write(acceptedFrame())
     response.write(sseFrame('answer.delta', 1))
     // Deliberately no final frame: the caller cancels this owned fixture stream.
   })
@@ -357,16 +355,54 @@ it('forwards the caller AbortSignal to the actual fetch stream after a visible d
     const controller = new AbortController()
     const events: string[] = []
     await expect(
-      createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none', undefined, {
+      createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest(), {
         signal: controller.signal,
         onEvent: (event) => {
           events.push(event.type)
-          controller.abort()
+          if (event.type === 'answer.delta') controller.abort()
         },
       }),
     ).rejects.toMatchObject({ name: 'AbortError' })
-    expect(events).toEqual(['answer.delta'])
+    expect(events).toEqual(['accepted', 'answer.delta'])
     expect(fixture.requests).toHaveLength(1)
+  } finally {
+    await fixture.close()
+  }
+})
+
+it('binds accepted to the request operation and conversation before consuming execution deltas or final', async () => {
+  const fixture = await startChatHttpFixture((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.end(
+      sseFrame('answer.delta', 900).replace('simulated answer', 'unbound text') +
+        sseFrame('final', 901, { answer: 'unbound final' }) +
+        acceptedFrame().replace(graphRequest().operationId, 'foreign-operation') +
+        acceptedFrame().replace(
+          '"conversationId":"c1"',
+          '"conversationId":"foreign-conversation"',
+        ) +
+        acceptedFrame() +
+        sseFrame('answer.delta', 999)
+          .replaceAll('fixture-exec', 'foreign-execution')
+          .replace('simulated answer', 'foreign text') +
+        sseFrame('answer.delta', 1) +
+        sseFrame('final', 2),
+    )
+  })
+  try {
+    const events: string[] = []
+    const answer = await createChatApi(fixture.baseURL).sendAiMessage('c1', graphRequest(), {
+      onEvent: (event) => {
+        events.push(event.type)
+      },
+    })
+    expect(answer).toMatchObject({
+      executionId: 'fixture-exec',
+      answer: 'simulated answer',
+      status: 'SUCCEEDED',
+    })
+    expect(events).toEqual(['accepted', 'answer.delta', 'final'])
+    expect(fixture.requests[0]!.data).toEqual(graphRequest())
   } finally {
     await fixture.close()
   }

@@ -1,0 +1,4 @@
+{
+  "accepted": "export const inject = ['slots', 'locale', 'shortcuts']\nexport function apply(ctx) {}\n",
+  "candidate": "export const inject = ['slots', 'locale', 'shortcuts', 'remote']\nexport function apply(ctx) {}\nexport const host = true\n"
+}

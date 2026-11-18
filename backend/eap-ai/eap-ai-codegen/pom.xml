@@ -25,6 +25,11 @@
         </dependency>
         <dependency>
             <groupId>com.lh</groupId>
+            <artifactId>eap-engine-mcp</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lh</groupId>
             <artifactId>eap-engine-local</artifactId>
             <version>${project.version}</version>
         </dependency>

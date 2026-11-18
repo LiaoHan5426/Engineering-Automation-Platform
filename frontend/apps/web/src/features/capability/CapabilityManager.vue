@@ -26,6 +26,8 @@ import {
   versionStatusTone,
 } from './trustedToolBindingView'
 import CliProgramManager from './CliProgramManager.vue'
+import McpOperationBindingsEditor from './McpOperationBindingsEditor.vue'
+const operationServer = ref('')
 import TrustedGitExecutionPanel from './TrustedGitExecutionPanel.vue'
 import SourceWriteReview from '../../components/SourceWriteReview.vue'
 import { i18n } from '../../lib/i18n'
@@ -381,6 +383,11 @@ async function submitServer() {
 </script>
 
 <template>
+  <McpOperationBindingsEditor
+    v-if="operationServer"
+    :server-id="operationServer"
+    @close="operationServer = ''"
+  />
   <div class="page-head">
     <p class="eyebrow">CAPABILITIES</p>
     <h1>能力目录</h1>
@@ -1008,6 +1015,14 @@ async function submitServer() {
           </Button>
           <Button variant="ghost" @click="runServerProbe(server)">探测</Button>
           <Button variant="ghost" @click="editServer(server)">编辑</Button>
+          <Button
+            variant="secondary"
+            data-testid="mcp-chat-service-config"
+            @click="operationServer = server.id"
+            >{{
+              i18n.global.locale.value === 'zh-CN' ? '聊天服务配置' : 'Chat service configuration'
+            }}</Button
+          >
           <Button
             variant="ghost"
             @click="

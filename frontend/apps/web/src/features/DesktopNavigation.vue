@@ -30,7 +30,7 @@ const props = withDefaults(
     activeView: string
     pages: { id: string; name: string }[]
     boardEnabled?: boolean
-    canNavigate?: () => boolean
+    canNavigate?: (onDiscard?: () => void) => boolean
   }>(),
   { boardEnabled: true },
 )
@@ -219,7 +219,7 @@ const conversations = computed(
   () => chatBinding.value?.history.filter((item) => item.archived === showArchived.value) ?? [],
 )
 function open(id: string) {
-  if (props.canNavigate && !props.canNavigate()) return
+  if (props.canNavigate && !props.canNavigate(() => open(id))) return
   lastView.set(area.value, id)
   emit('navigate', id)
   workbench.sidebarOpen = false
@@ -228,7 +228,7 @@ function sessionMode(): 'code' | 'work' {
   return workbench.workMode === 'work' ? 'work' : 'code'
 }
 function returnToSourceSession() {
-  if (props.canNavigate && !props.canNavigate()) return
+  if (props.canNavigate && !props.canNavigate(() => returnToSourceSession())) return
   // App records Work chat as "work"; returning must not create/select a session.
   const origin = workbench.origin
   emit(
@@ -242,6 +242,7 @@ function returnToSourceSession() {
   workbench.sidebarOpen = false
 }
 function startChat(mode: 'code' | 'work') {
+  if (props.canNavigate && !props.canNavigate(() => startChat(mode))) return
   workbench.workMode = mode
   if (chatBinding.value) chatBinding.value.create()
   else workbench.pendingNewChat = true
@@ -250,17 +251,20 @@ function startChat(mode: 'code' | 'work') {
 /** frame-064: the group menu starts a draft while keeping that group selected. */
 function startChatInProject(projectId: string, event?: Event) {
   event?.stopPropagation()
+  if (props.canNavigate && !props.canNavigate(() => startChatInProject(projectId))) return
   workbench.selectedProjectId = projectId
   expandedProjects.value = { ...expandedProjects.value, [projectId]: true }
   startChat(sessionMode())
 }
 /** frame-064: free-chat entry clears the group so the draft stays unbound. */
 function startFreeChat() {
+  if (props.canNavigate && !props.canNavigate(startFreeChat)) return
   workbench.selectedProjectId = null
   startChat(sessionMode())
 }
 /** frame-048/192: soft free-chat entry that seeds a read-only summary draft. */
 function startTodayJournal() {
+  if (props.canNavigate && !props.canNavigate(startTodayJournal)) return
   workbench.pendingDraft = t('desktop.todayJournalDraft')
   startFreeChat()
 }
@@ -318,15 +322,16 @@ function sessionStamp(value?: string) {
   })
 }
 function openExpertTasks() {
-  if (!props.canNavigate || props.canNavigate()) window.location.hash = 'experts?view=tasks'
+  if (props.canNavigate && !props.canNavigate(openExpertTasks)) return
+  window.location.hash = 'experts?view=tasks'
 }
 function openExperts() {
-  if (props.canNavigate && !props.canNavigate()) return
+  if (props.canNavigate && !props.canNavigate(() => openExperts())) return
   open('experts')
   window.location.hash = 'experts'
 }
 function select(next: Area) {
-  if (props.canNavigate && !props.canNavigate()) return
+  if (props.canNavigate && !props.canNavigate(() => select(next))) return
   area.value = next
   if (next === 'code' || next === 'work') workbench.workMode = next
   const previous = lastView.get(next)
@@ -349,6 +354,7 @@ function select(next: Area) {
   open(previous && settingsIds.includes(previous) ? previous : 'model-settings')
 }
 function chooseConversation(id: string) {
+  if (props.canNavigate && !props.canNavigate(() => chooseConversation(id))) return
   openMenuId.value = null
   chatBinding.value?.select(id)
   open('chat')

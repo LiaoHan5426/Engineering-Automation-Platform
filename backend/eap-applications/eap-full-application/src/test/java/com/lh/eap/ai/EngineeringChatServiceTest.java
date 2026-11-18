@@ -303,7 +303,8 @@ class EngineeringChatServiceTest {
             var app = fixture.app(p -> FakeChatModels.text(proposal(source)), true, root, null);
             org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges", changes);
             var id = app.open("{}").conversationId();
-            var response = app.send(id, "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"fixture.js\"}}");
+            var response = app.send(id, ChatApplicationTestSupport.request(app, id,
+                    "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"fixture.js\"}}"));
             if (source.contains("fixture-secret")) {
                 assertEquals("INVALID_CODE_PROPOSAL", response.error());
                 assertNull(response.proposal());

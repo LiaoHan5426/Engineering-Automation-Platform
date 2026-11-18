@@ -1,3 +1,4 @@
+import { withChatGraph } from './graphApi.fixture'
 import { describe, expect, it } from 'vite-plus/test'
 import {
   contextBudgetFromError,
@@ -45,22 +46,24 @@ describe('context budget view', () => {
   })
 
   it('maps CONTEXT_BUDGET_EXCEEDED with observation on the session', async () => {
-    const session = createChatSession({
-      aiStatus: async () => status(),
-      openAiConversation: async () => ({
-        conversationId: 'c1',
-        workspaceLabel: 'ws',
-        memory: 'note',
-      }),
-      sendAiMessage: async () => {
-        throw Object.assign(new Error('CONTEXT_BUDGET_EXCEEDED'), {
-          response: {
-            status: 400,
-            data: { code: 'CONTEXT_BUDGET_EXCEEDED', contextBudget: budget },
-          },
-        })
-      },
-    } satisfies ChatApi)
+    const session = createChatSession(
+      withChatGraph({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({
+          conversationId: 'c1',
+          workspaceLabel: 'ws',
+          memory: 'note',
+        }),
+        sendAiMessage: async () => {
+          throw Object.assign(new Error('CONTEXT_BUDGET_EXCEEDED'), {
+            response: {
+              status: 400,
+              data: { code: 'CONTEXT_BUDGET_EXCEEDED', contextBudget: budget },
+            },
+          })
+        },
+      } satisfies Omit<ChatApi, 'chatGraph' | 'chatOperation' | 'cancelAiExecution'>),
+    )
     await session.openConversation()
     session.draft.value = 'hello'
     await session.send()
@@ -72,26 +75,28 @@ describe('context budget view', () => {
   })
 
   it('keeps successful contextBudget on the assistant turn', async () => {
-    const session = createChatSession({
-      aiStatus: async () => status(),
-      openAiConversation: async () => ({
-        conversationId: 'c2',
-        workspaceLabel: 'ws',
-        memory: 'note',
-      }),
-      sendAiMessage: async () => ({
-        executionId: 'e1',
-        answer: 'ok',
-        error: '',
-        status: 'SUCCEEDED',
-        approval: 'NOT_REQUIRED',
-        verification: 'UNVERIFIED',
-        toolEvents: [],
-        artifactError: '',
-        artifacts: [],
-        contextBudget: budget,
-      }),
-    } satisfies ChatApi)
+    const session = createChatSession(
+      withChatGraph({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({
+          conversationId: 'c2',
+          workspaceLabel: 'ws',
+          memory: 'note',
+        }),
+        sendAiMessage: async () => ({
+          executionId: 'e1',
+          answer: 'ok',
+          error: '',
+          status: 'SUCCEEDED',
+          approval: 'NOT_REQUIRED',
+          verification: 'UNVERIFIED',
+          toolEvents: [],
+          artifactError: '',
+          artifacts: [],
+          contextBudget: budget,
+        }),
+      } satisfies Omit<ChatApi, 'chatGraph' | 'chatOperation' | 'cancelAiExecution'>),
+    )
     await session.openConversation()
     session.draft.value = 'hi'
     await session.send()

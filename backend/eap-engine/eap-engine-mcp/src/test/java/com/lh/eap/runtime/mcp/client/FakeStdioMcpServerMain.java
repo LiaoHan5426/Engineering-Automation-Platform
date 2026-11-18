@@ -18,7 +18,7 @@ public final class FakeStdioMcpServerMain {
             switch (args[0]) {
                 case "partial" -> { System.out.print("{"); System.out.flush(); Thread.sleep(60000); return; }
                 case "stderr" -> { System.err.write(new byte[2 * 1024 * 1024]); System.err.flush(); }
-                case "oversize" -> { System.out.write(new byte[2 * 1024 * 1024]); System.out.flush(); Thread.sleep(60000); return; }
+                case "oversize" -> { System.out.write(new byte[StdioMcpTransport.MAX_FRAME_BYTES + 1]); System.out.flush(); Thread.sleep(60000); return; }
                 case "tree" -> {
                     var child = new ProcessBuilder(ProcessHandle.current().info().command().orElseThrow(), "-cp", System.getProperty("java.class.path"), FakeStdioMcpServerMain.class.getName(), "partial").redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
                     System.out.println(child.pid()); System.out.flush(); Thread.sleep(60000); return;

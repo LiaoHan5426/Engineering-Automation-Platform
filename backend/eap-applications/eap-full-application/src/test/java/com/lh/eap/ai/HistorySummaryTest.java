@@ -28,6 +28,7 @@ class HistorySummaryTest {
     ModelConnections connections;
     AiChatApplication app;
     UUID id, connection;
+    final UUID summaryOperation = UUID.randomUUID();
     String key;
     @BeforeEach void setup() {
         registry = new AiConversationRegistry(memory);
@@ -39,7 +40,10 @@ class HistorySummaryTest {
                 return ChatClient.builder(FakeChatModels.scripted(prompt -> {
                     calls.incrementAndGet(); material.set(prompt.toString());
                     if (revokeDuringCall.get()) connections.setEnabled(connection, false);
-                    if (cancelDuringCall.get()) registry.cancel(id);
+                    if (cancelDuringCall.get()) {
+                        assertEquals(false, app.cancelSummary(id, UUID.randomUUID()).get("cancelled"));
+                        assertEquals(true, app.cancelSummary(id, summaryOperation).get("cancelled"));
+                    }
                     return FakeChatModels.text(answer.get());
                 })).build();
             }
@@ -48,8 +52,8 @@ class HistorySummaryTest {
         connection = saved.id();
         connections.configureModels(connection, List.of(new ModelOption("summary-model", List.of())), List.of("summary-model"), "summary-model");
         var handlers = new CapabilityHandlerRegistry(List.of());
-        app = new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, null), registry,
-                new EngineeringChatService(null, handlers, (Path)null, new FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections);
+        app = ChatApplicationTestSupport.graph(new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, null), registry,
+                new EngineeringChatService(null, handlers, (Path)null, new FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections));
         id = app.open("{}").conversationId();
         key = ChatClients.memoryKey(AiConversationRegistry.PRINCIPAL, id);
         memory.add(key, new UserMessage("Deliver the page; checks have not run."));
@@ -57,7 +61,7 @@ class HistorySummaryTest {
     @Test void returnsAnUntrustedPreviewWithoutMutatingOriginalMemoryOrTaskState() {
         var before = List.copyOf(memory.get(key));
         var task = registry.workingMemory(id);
-        var result = app.summarizeHistory(id);
+        var result = app.summarizeHistory(id, "{\"operationId\":\"" + summaryOperation + "\"}");
         assertEquals(answer.get(), result.text());
         assertEquals("summary-model", result.model());
         assertEquals(1, calls.get());
@@ -69,34 +73,34 @@ class HistorySummaryTest {
     @Test void sensitiveAndOversizedHistoryAreRejectedBeforeAnyModelCall() {
         registry.exclusive(id, () -> registry.clearContextMemory(id, true));
         memory.add(key, new UserMessage("protected derived answer"));
-        assertEquals("HISTORY_SUMMARY_SENSITIVE", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id)).getReason());
+        assertEquals("HISTORY_SUMMARY_SENSITIVE", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id, "{\"operationId\":\"" + summaryOperation + "\"}")).getReason());
         assertEquals(0, calls.get());
         var other = app.open("{}").conversationId();
         memory.add(ChatClients.memoryKey(AiConversationRegistry.PRINCIPAL, other), new UserMessage("x".repeat(65000)));
-        assertEquals("CONTEXT_BUDGET_EXCEEDED", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(other)).getReason());
+        assertEquals("CONTEXT_BUDGET_EXCEEDED", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(other, "{\"operationId\":\"" + summaryOperation + "\"}")).getReason());
         assertEquals(0, calls.get());
     }
     @Test void rejectsBusyAndInvalidOutputWithoutClearingHistory() {
         registry.exclusive(id, () -> {
-            assertEquals("CONVERSATION_BUSY", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id)).getReason());
+            assertEquals("CONVERSATION_BUSY", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id, "{\"operationId\":\"" + summaryOperation + "\"}")).getReason());
             return null;
         });
         answer.set("x".repeat(8001));
-        assertEquals("AI_RESPONSE_OUTPUT_LIMIT", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id)).getReason());
+        assertEquals("AI_RESPONSE_OUTPUT_LIMIT", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id, "{\"operationId\":\"" + summaryOperation + "\"}")).getReason());
         assertEquals(1, memory.get(key).size());
         connections.setEnabled(connection, false);
-        assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id));
+        assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id, "{\"operationId\":\"" + summaryOperation + "\"}"));
         assertEquals(1, calls.get());
     }
     @Test void doesNotReturnAPreviewAfterItsConnectionWasRevokedDuringGeneration() {
         revokeDuringCall.set(true);
-        assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id));
+        assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id, "{\"operationId\":\"" + summaryOperation + "\"}"));
         assertEquals(1, calls.get());
         assertEquals(1, memory.get(key).size());
     }
     @Test void cancellationDiscardsThePreviewAndLeavesTheOriginalWindowIntact() {
         cancelDuringCall.set(true);
-        assertEquals("AI_CANCELLED", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id)).getReason());
+        assertEquals("AI_CANCELLED", assertThrows(ResponseStatusException.class, () -> app.summarizeHistory(id, "{\"operationId\":\"" + summaryOperation + "\"}")).getReason());
         assertFalse(Thread.currentThread().isInterrupted());
         assertEquals(1, memory.get(key).size());
     }

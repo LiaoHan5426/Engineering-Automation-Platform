@@ -5,6 +5,7 @@ import { runtimeApi, type TaskContext } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import { workbench } from '../../../src/features/shell/workbench'
 import TaskComposer from '../../../src/features/chat/TaskComposer.vue'
+import { Collapse } from '@eap/ui'
 
 let app: App, host: HTMLDivElement
 afterEach(() => {
@@ -71,6 +72,14 @@ async function mount(initial = empty()) {
           },
           {
             draft: () => h('textarea', { value: draft.value, 'data-testid': 'draft' }),
+            speech: () =>
+              h(Collapse, { summary: 'Speech', 'data-testid': 'speech-options' }, () =>
+                h('input', { 'data-testid': 'speech-draft' }),
+              ),
+            details: () =>
+              h(Collapse, { summary: 'Outgoing', 'data-testid': 'outgoing-options' }, () =>
+                h('pre', draft.value),
+              ),
             send: () => h('button', { type: 'submit', 'data-testid': 'layout-send' }, 'Send'),
             status: () => h('p', { 'data-testid': 'layout-status' }, 'Choose a model'),
           },
@@ -96,13 +105,7 @@ it('keeps model and send together and places status outside the wrapping control
 
 it('uses shared decorative icons for the composer controls', async () => {
   await mount()
-  for (const id of [
-    'composer-add',
-    'execution-mode',
-    'approval-policy',
-    'context-meter',
-    'model-picker',
-  ]) {
+  for (const id of ['composer-add', 'execution-mode', 'approval-policy', 'model-picker']) {
     const icon = host.querySelector(`[data-testid="${id}"] svg.eap-icon`)
     expect(icon, id).not.toBeNull()
     expect(icon!.getAttribute('aria-hidden')).toBe('true')
@@ -117,21 +120,26 @@ it('shows model setup instead of reasoning controls when no model is selected', 
   expect(document.querySelector('.effort-row')).toBeNull()
 })
 
-it('keeps context usage informational and adds attachments through a single entry', async () => {
-  await mount()
-  const meter = host.querySelector('[data-testid="context-meter"]') as HTMLElement
-  expect(meter.querySelector('svg')).not.toBeNull()
-  expect(meter.getAttribute('aria-valuenow')).toBeNull()
-  expect(meter.getAttribute('aria-label')).toContain('不统计 token')
-  expect(meter.closest('button')).toBeNull()
-  meter.click()
-  await nextTick()
-  expect(document.querySelector('[data-testid="composer-add-menu"]')).toBeNull()
+it('prioritizes writing and reviews context without sending or changing the draft', async () => {
+  const { draft, context } = await mount()
+  expect(
+    host
+      .querySelector('[data-testid="composer-writing"]')!
+      .contains(host.querySelector('[data-testid="draft"]')),
+  ).toBe(true)
+  expect(host.querySelector('[data-testid="web-source-options"]')).toBeNull()
+  expect(host.querySelector('[data-testid="outgoing-options"]')).toBeNull()
+  await click('context-review')
+  expect(document.querySelector('[data-testid="context-review-dialog"]')).not.toBeNull()
+  expect(document.querySelector('[data-testid="outgoing-options"]')).not.toBeNull()
+  await click('context-review-close')
+  expect(draft.value).toBe('keep draft')
+  expect(context.value).toEqual(empty())
   await click('composer-add')
   expect(document.querySelector('[data-testid="context-usage-detail"]')?.textContent).toContain(
-    '文件 0/6',
+    '附件 0',
   )
-  expect(document.querySelector('[data-testid="composer-add-menu"]')).not.toBeNull()
+  expect(document.querySelector('[data-testid="composer-cat-mcp"]')).toBeNull()
 })
 
 it('explains unavailable execution modes while allowing real approval changes', async () => {
@@ -163,11 +171,13 @@ it.each(['knowledge', 'skill'] as const)(
     const { context, disabled, draft } = await mount({ ...empty(), ...selected })
     const chip = button(kind + '-remove')
     expect(chip.closest('.context-chips')).not.toBeNull()
-    expect(chip.classList.contains('eap-tag')).toBe(true)
+    expect(chip.closest('.eap-tag')).not.toBeNull()
     expect(chip.getAttribute('aria-label')).toContain(
       i18n.global.t(kind === 'knowledge' ? 'knowledgeContext.remove' : 'skill.remove'),
     )
-    expect(chip.textContent).toContain(kind === 'knowledge' ? 'saved · r4' : 'guide · 1.0.0 · r2')
+    expect(chip.closest('.eap-tag')!.textContent).toContain(
+      kind === 'knowledge' ? 'saved · r4' : 'guide · 1.0.0 · r2',
+    )
     expect(host.textContent).not.toContain(i18n.global.t('knowledgeContext.limit'))
     expect(host.textContent).not.toContain(i18n.global.t('skill.boundary'))
     disabled.value = true
@@ -177,7 +187,11 @@ it.each(['knowledge', 'skill'] as const)(
     expect(context.value).toEqual({ ...empty(), ...selected })
     disabled.value = false
     await nextTick()
-    await click(kind + '-remove')
+    chip.closest('.eap-tag')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(context.value).toEqual({ ...empty(), ...selected })
+    chip.click()
+    await nextTick()
     expect(context.value).toEqual(empty())
     expect(draft.value).toBe('keep draft')
     expect(host.querySelector('.context-chips')).toBeNull()
@@ -372,4 +386,20 @@ it('keeps an empty composer compact and exposes knowledge only through + experts
   await click('knowledge-cancel')
   expect(context.value).toEqual(empty())
   expect(draft.value).toBe('keep draft')
+})
+
+it('opens voice on demand and preserves the draft and context across closing and reopening', async () => {
+  const { context, draft } = await mount()
+  expect(host.querySelector('[data-testid="speech-options"]')).toBeNull()
+  await click('capabilities-open')
+  expect(host.querySelector('[data-testid="speech-options"]')).not.toBeNull()
+  const panel = host.querySelector('[data-testid="capabilities-panel"]')!
+  panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await nextTick()
+  expect(host.querySelector('[data-testid="capabilities-panel"]')).toBeNull()
+  await click('capabilities-open')
+  expect(host.querySelector('[data-testid="speech-options"]')).not.toBeNull()
+  expect(draft.value).toBe('keep draft')
+  expect(context.value).toEqual(empty())
+  expect(button('layout-send').disabled).toBe(false)
 })

@@ -68,8 +68,15 @@ export function createMockHandler() {
     res.setHeader('Content-Language', language)
     // This namespace never proxies to Java or any external model service.
     try {
-      const body = await readJson(req, 262144)
+      const body = await readJson(
+        req,
+        /\/ai\/conversations\/[^/]+\/messages$/.test(req.url ?? '') ||
+          /\/ai\/speech\/(transcriptions|synthesis)$/.test(req.url ?? '')
+          ? 24 * 1024 * 1024
+          : 262144,
+      )
       const url = new URL(req.url ?? '/', 'http://mock.local')
+      if (url.pathname.startsWith('/ai/speech/')) res.setHeader('Cache-Control', 'no-store')
       if (url.searchParams.has('connectionId'))
         body.connectionId = url.searchParams.get('connectionId')
       const reply = await backend.handle(req.method ?? 'GET', url.pathname + url.search, body)
@@ -88,7 +95,22 @@ export function createMockHandler() {
         }
         const executionId = payload.executionId || 'mock-exec'
         const conversationId = url.pathname.split('/')[3] ?? ''
+        const operation = await backend.handle(
+          'GET',
+          `/ai/conversations/${conversationId}/operations/${encodeURIComponent(String(body.operationId))}`,
+          {},
+        )
         const frames = [
+          {
+            type: 'accepted',
+            sequence: 0,
+            status: ChatExecutionStatus.RUNNING,
+            text: '',
+            code: '',
+            executionId,
+            conversationId,
+            payload: operation.data,
+          },
           {
             type: 'status',
             sequence: 1,
@@ -121,6 +143,26 @@ export function createMockHandler() {
               : '',
           },
         ]
+        const planReply = await backend.handle(
+          'GET',
+          `/ai/conversations/${conversationId}/executions/${executionId}/plan`,
+          {},
+        )
+        if (planReply.status === 200 && planReply.data) {
+          frames.splice(1, 0, {
+            type: 'plan.updated',
+            sequence: 2,
+            status: ChatExecutionStatus.RUNNING,
+            text: '',
+            code: '',
+            executionId,
+            conversationId,
+            payload: planReply.data,
+          } as (typeof frames)[number])
+          frames.forEach((frame, index) => {
+            frame.sequence = index + 1
+          })
+        }
         res.statusCode = 200
         res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
         res.setHeader('Cache-Control', 'no-cache')

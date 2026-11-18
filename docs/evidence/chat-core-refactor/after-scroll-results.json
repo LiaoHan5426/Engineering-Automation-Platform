@@ -1,0 +1,274 @@
+{
+  "sourceHash": "81425dd3b6463f5e55dadf3c20681a4c57453d8ddf23c03a1be9e9bc73a74322",
+  "startedAt": "2026-11-14T13:55:11.128Z",
+  "consoleTrace": [],
+  "fixture": "60 valid linear graph nodes, same actual app",
+  "pauseAndReturn": true,
+  "bottomFollowDuringMermaidGrowth": true,
+  "pausedSourceExpansionPreservesAnchor": true,
+  "pausedBefore": {
+    "text": "History row 21\nReadable content line.\nReadable content line.\nReadable content line.\nReadable content line.\n复制重新生成更多转为任务草稿",
+    "offset": -172
+  },
+  "pausedAfter": {
+    "text": "History row 21\nReadable content line.\nReadable content line.\nReadable content line.\nReadable content line.\n复制重新生成更多转为任务草稿",
+    "offset": -172
+  },
+  "hostileMarkupSanitized": true,
+  "prependRetainsReadingAnchor": true,
+  "offsetDrift": 0.15625,
+  "before": {
+    "id": "d7020000-0000-4000-8000-000000000021",
+    "text": "History row 20\n\nReadable content line.\nReadable content line.\nReadable content line.\nReadable content line.\n复制编辑提问更多",
+    "offset": 26
+  },
+  "after": {
+    "id": "d7020000-0000-4000-8000-000000000021",
+    "text": "History row 20\n\nReadable content line.\nReadable content line.\nReadable content line.\nReadable content line.\n复制编辑提问更多",
+    "offset": 25.84375
+  },
+  "firstVisibleAfter": {
+    "text": "History row 19\nReadable content line.\nReadable content line.\nReadable content line.\nReadable content line.\n复制重新生成更多转为任务草稿",
+    "offset": -205.140625
+  },
+  "feedTrace": [
+    {
+      "event": "before-prepend",
+      "time": 1359,
+      "top": 500,
+      "height": 10166,
+      "anchorOffset": -424,
+      "count": 40
+    },
+    {
+      "event": "log-resize",
+      "time": 1359.2999999970198,
+      "top": 500,
+      "height": 10166,
+      "anchorOffset": -424,
+      "count": 40
+    },
+    {
+      "event": "native-scroll",
+      "time": 1377.5,
+      "top": 5153,
+      "height": 15269,
+      "anchorOffset": 26.4375,
+      "count": 60
+    },
+    {
+      "event": "log-resize",
+      "time": 1378.0999999940395,
+      "top": 5153,
+      "height": 15269,
+      "anchorOffset": 26.4375,
+      "count": 60
+    },
+    {
+      "event": "native-scroll",
+      "time": 1379.8999999910593,
+      "top": 5153,
+      "height": 15269,
+      "anchorOffset": 26.4375,
+      "count": 60
+    },
+    {
+      "event": "log-resize",
+      "time": 1450.2999999970198,
+      "top": 5126,
+      "height": 15242,
+      "anchorOffset": 26.078125,
+      "count": 60
+    },
+    {
+      "event": "native-scroll",
+      "time": 1461.699999988079,
+      "top": 5126,
+      "height": 14995,
+      "anchorOffset": -220.15625,
+      "count": 60
+    },
+    {
+      "event": "log-resize",
+      "time": 1461.7999999970198,
+      "top": 4880,
+      "height": 14995,
+      "anchorOffset": 25.84375,
+      "count": 60
+    },
+    {
+      "event": "native-scroll",
+      "time": 1477.5,
+      "top": 4880,
+      "height": 14995,
+      "anchorOffset": 25.84375,
+      "count": 60
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/ai/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/connections"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capabilities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases"
+    },
+    {
+      "method": "GET",
+      "path": "/api/experts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scenarios"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/connections"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capabilities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases"
+    },
+    {
+      "method": "GET",
+      "path": "/api/experts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scenarios"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/connections"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capabilities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases"
+    },
+    {
+      "method": "GET",
+      "path": "/api/experts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scenarios"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/connections"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capabilities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases"
+    },
+    {
+      "method": "GET",
+      "path": "/api/experts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scenarios"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+    }
+  ],
+  "blocked": [],
+  "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+  "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+}

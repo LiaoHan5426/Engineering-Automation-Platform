@@ -18,12 +18,12 @@ class WorkingMemoryApiTest {
     void putWorkingMemoryRoundTripAndRejectsUnknownFields() {
         var memory = MessageWindowChatMemory.builder().maxMessages(20).build();
         var handlers = new CapabilityHandlerRegistry(List.of());
-        var app = new AiChatApplication(
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(
                 new AiConnectionStatus(handlers, root, null, "none", "", "", false, null),
                 new AiConversationRegistry(memory),
                 new EngineeringChatService(null, handlers, (Path) null,
                         new FileExecutionArtifactStore(root.resolve("artifacts"))),
-                root);
+                root));
         var opened = app.open("{}");
         var snapshot = app.putWorkingMemory(opened.conversationId(),
                 "{\"expectedUpdatedAt\":\"1970-01-01T00:00:00Z\",\"goal\":\"交付登录\",\"constraints\":[\"复用组件\"],\"facts\":[{\"kind\":\"knowledge\",\"id\":\"e1\",\"revisionOrDigest\":\"2\"}],\"evidenceRefs\":[\"run:1\"],\"dependencyKeys\":[\"knowledge:e1:2\"]}");

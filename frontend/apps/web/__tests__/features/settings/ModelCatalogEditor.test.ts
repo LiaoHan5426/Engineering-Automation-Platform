@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, type App } from 'vue'
 import { runtimeApi, type ModelConnection } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
-import ModelCatalogEditor from '../../../src/features/settings/ModelCatalogEditor.vue'
+import ModelCatalogEditor from '../../../src/components/ModelCatalogEditor.vue'
 let app: App
 let root: HTMLDivElement
 afterEach(() => {
@@ -33,7 +33,9 @@ async function flush() {
 async function mount() {
   root = document.createElement('div')
   document.body.append(root)
-  app = createApp({ render: () => h(ModelCatalogEditor, { connection }) })
+  app = createApp({
+    render: () => h(ModelCatalogEditor, { connection, readback: async () => true }),
+  })
   app.use(i18n).mount(root)
   await flush()
 }

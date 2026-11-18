@@ -43,6 +43,38 @@ afterEach(() => {
   root?.remove()
 })
 
+it('forwards the chat leave guard and its discard continuation without invoking navigation early', async () => {
+  let continuation: (() => void) | undefined
+  let allowed = false
+  const guard = vi.fn((onDiscard?: () => void) => {
+    continuation = onDiscard
+    return allowed
+  })
+  const guardedChat = defineComponent({
+    setup(_, { expose }) {
+      expose({ guardLeave: guard })
+      return () => h('section', 'guarded chat')
+    },
+  })
+  const host = createPluginHost({ getItem: () => null, setItem: () => {} })
+  host.setEnabled('chat', true)
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp(PluginSlot, { viewId: 'chat', host, chatView: guardedChat })
+  app.use(i18n)
+  const slot = app.mount(root) as unknown as {
+    guardLeave: (id: string, onDiscard?: () => void) => boolean
+  }
+  const navigate = vi.fn()
+  expect(slot.guardLeave('chat', navigate)).toBe(false)
+  expect(navigate).not.toHaveBeenCalled()
+  allowed = true
+  continuation?.()
+  expect(navigate).toHaveBeenCalledTimes(1)
+  expect(slot.guardLeave('chat')).toBe(true)
+  expect(slot.guardLeave('model-settings')).toBe(true)
+})
+
 it('retains independent drafts and an in-flight response across areas, and releases disabled plugins', async () => {
   pending = new Promise((resolve) => {
     finish = resolve

@@ -37,7 +37,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
         var id = app.open("{}").conversationId(); chatId = id;
         String request = JsonMapper.builder().build().writeValueAsString(Map.of("message", "edit", "toolMode", "none", "context",
                 Map.of("mode", "code", "targetPath", "Page.vue", "taskRef", Map.of("projectId", project, "taskId", taskId.toString(), "revision", task.revision()))));
-        var proposal = new TransactionTemplate(manager).execute(tx -> { var result = app.send(id, request).proposal(); tx.setRollbackOnly(); return result; });
+        var proposal = new TransactionTemplate(manager).execute(tx -> { var result = app.send(id, ChatApplicationTestSupport.request(app, id,  request)).proposal(); tx.setRollbackOnly(); return result; });
         assertEquals(taskId.toString(), JsonMapper.builder().build().valueToTree(proposal).path("generation").path("taskBinding").path("taskId").asString());
         assertFalse(tasks.list(project).getFirst().executionActive());
         var applied = app.apply(id, proposal.id(), "{\"confirmed\":true}");
@@ -156,7 +156,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
             String request = JsonMapper.builder().build().writeValueAsString(Map.of("message", "edit", "toolMode", "none", "context",
                     Map.of("mode", "code", "targetPath", "Page.vue", "prototypeVersionId", version.id().toString(),
                             "taskRef", Map.of("projectId", project, "taskId", taskId.toString(), "revision", selected.revision()))));
-            assertEquals(ref, app.send(chatId, request).proposal().generation().taskBinding());
+            assertEquals(ref, app.send(chatId, ChatApplicationTestSupport.request(app, chatId,  request)).proposal().generation().taskBinding());
         } finally {
             cleanupTask(); taskId = null;
             jdbc.update("DELETE FROM eap.prototype_version WHERE id=?", version.id());

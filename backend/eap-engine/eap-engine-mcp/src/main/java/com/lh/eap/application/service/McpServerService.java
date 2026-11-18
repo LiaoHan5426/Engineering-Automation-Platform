@@ -55,6 +55,30 @@ public class McpServerService {
         this.usage = usage;
     }
 
+    public Map<String,Object> operationBindings(String id) {
+        if(registry.find(id).isEmpty())throw new NoSuchElementException(McpErrors.MCP_SERVER_NOT_FOUND.code());
+        var config=registry.operationBindings(id);
+        return Map.of("revision",config.revision(),"bindings",config.bindings().stream().map(com.lh.eap.runtime.mcp.client.McpOperationBinding::wire).toList());
+    }
+
+    @Transactional
+    public Map<String,Object> saveOperationBindings(String id, long expectedRevision, Object raw) {
+        if(expectedRevision<0)throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
+        var bindings=com.lh.eap.runtime.mcp.client.McpOperationBinding.parseList(raw);
+        var locked=jdbc.queryForList("SELECT id FROM eap.mcp_server WHERE id=? FOR UPDATE",id);
+        if(locked.isEmpty())throw new NoSuchElementException(McpErrors.MCP_SERVER_NOT_FOUND.code());
+        var server=registry.find(id).orElseThrow();
+        for(var binding:bindings) if(binding.approved() && (!server.usable() || !server.tools().contains(binding.tool())
+                || !registry.grants(binding.expertId()).contains(McpServerRegistry.capabilityId(id,binding.tool()))))
+            throw new IllegalArgumentException(McpErrors.MCP_TOOL_NOT_AUTHORIZED.code());
+        var serialized=tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(bindings.stream().map(com.lh.eap.runtime.mcp.client.McpOperationBinding::wire).toList());
+        int updated=jdbc.update("UPDATE eap.mcp_server SET operation_bindings=?::jsonb,binding_revision=binding_revision+1,binding_endpoint=endpoint,binding_transport=transport WHERE id=? AND binding_revision=?",
+                serialized,id,expectedRevision);
+        if(updated!=1)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                com.lh.eap.error.ToolErrors.TOOL_BINDING_CHANGED.code());
+        return operationBindings(id);
+    }
+
     /** Read/modify/write belongs to one service transaction, including non-HTTP callers. */
     @Transactional
     public Map<String, Object> activate(String id, Boolean enabled, Boolean trusted) {
@@ -170,7 +194,9 @@ public class McpServerService {
                         + "VALUES (?,?,?,?,?,?,?::jsonb,now()) "
                         + "ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, transport=EXCLUDED.transport, "
                         + "endpoint=EXCLUDED.endpoint, trusted=EXCLUDED.trusted, enabled=EXCLUDED.enabled, "
-                        + "tools=EXCLUDED.tools, updated_at=now()",
+                        + "binding_revision=eap.mcp_server.binding_revision + CASE WHEN eap.mcp_server.endpoint IS DISTINCT FROM EXCLUDED.endpoint "
+                         + "OR eap.mcp_server.transport IS DISTINCT FROM EXCLUDED.transport OR eap.mcp_server.tools IS DISTINCT FROM EXCLUDED.tools THEN 1 ELSE 0 END, "
+                         + "tools=EXCLUDED.tools, updated_at=now()",
                 serverId, label, channel, location, trusted, enabled, json);
     }
 

@@ -1,3 +1,4 @@
+import { withChatGraph } from './graphApi.fixture'
 import { expect, it, vi } from 'vite-plus/test'
 import { createChatSession } from '../../../src/features/chat/chatSession'
 import type { ModelConnection } from '@eap/runtime-client'
@@ -7,11 +8,13 @@ it.each(['api-key', 'chatgpt-plan'])(
   async (kind) => {
     const send = vi.fn()
     const open = vi.fn()
-    const session = createChatSession({
-      aiStatus: vi.fn(),
-      openAiConversation: open,
-      sendAiMessage: send,
-    })
+    const session = createChatSession(
+      withChatGraph({
+        aiStatus: vi.fn(),
+        openAiConversation: open,
+        sendAiMessage: send,
+      }),
+    )
     session.connections.value = [
       {
         id: 'responses',
@@ -34,13 +37,15 @@ it.each(['api-key', 'chatgpt-plan'])(
 )
 
 it('maps a server protocol denial to an actionable failure rather than target change', async () => {
-  const session = createChatSession({
-    aiStatus: vi.fn(),
-    openAiConversation: async () => ({ conversationId: 'c', workspaceLabel: '', memory: '' }),
-    sendAiMessage: async () => {
-      throw { response: { status: 409, data: { code: 'AI_PROTOCOL_TOOLS_UNAVAILABLE' } } }
-    },
-  })
+  const session = createChatSession(
+    withChatGraph({
+      aiStatus: vi.fn(),
+      openAiConversation: async () => ({ conversationId: 'c', workspaceLabel: '', memory: '' }),
+      sendAiMessage: async () => {
+        throw { response: { status: 409, data: { code: 'AI_PROTOCOL_TOOLS_UNAVAILABLE' } } }
+      },
+    }),
+  )
   await session.openConversation()
   session.draft.value = 'retain'
   await session.send()

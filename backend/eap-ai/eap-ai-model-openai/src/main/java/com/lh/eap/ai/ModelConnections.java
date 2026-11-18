@@ -243,6 +243,11 @@ public final class ModelConnections {
         } catch (IOException failure) { throw new IllegalStateException(ChatGptAuthErrors.CHATGPT_HOST_STORE_FAILED.code()); }
     }
 
+    /** Never cached: tool iteration can hold originals only within this request. */
+    public ChatClient transientChatClient(ModelConnectionSnapshot snapshot) {
+        return clients.transientConversation(snapshot);
+    }
+
     public ChatClient chatClient(ModelConnectionSnapshot snapshot) {
         var selected = CHATGPT_KIND.equals(snapshot.kind) ? requireModel(snapshot.id, snapshot.model) : snapshot;
         return chatClients.computeIfAbsent(cacheKey(selected), key -> clients.conversational(selected));
@@ -274,6 +279,15 @@ public final class ModelConnections {
         }
     }
 
+    /** Capability is an explicit operator declaration, never inferred from a model name or discovery. */
+    public boolean supportsImageInput(UUID id, String model) {
+        synchronized (lock) {
+            var row = find(read(), id);
+            return !CHATGPT_KIND.equals(row.kind) && models(row).stream()
+                    .anyMatch(option -> option.id().equals(model) && option.supportsImageInput());
+        }
+    }
+
     public boolean supportsReasoning(UUID id, String model, String effort) {
         synchronized (lock) {
             if ("default".equals(effort)) return true;
@@ -295,6 +309,7 @@ public final class ModelConnections {
             for (var option : options) {
                 if (option == null || !ids.add(requireText(option.id(), 120)) || !option.id().equals(option.id().trim())
                         || option.id().chars().anyMatch(Character::isISOControl)
+                        || (CHATGPT_KIND.equals(row.kind) && option.supportsImageInput())
                         || option.reasoningEfforts().size() > 3
                         || !Set.of("low", "medium", "high").containsAll(option.reasoningEfforts()))
                     throw status(HttpStatus.BAD_REQUEST, ModelErrors.INVALID_MODEL_SELECTION.code());

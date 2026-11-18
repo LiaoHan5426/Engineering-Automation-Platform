@@ -4,6 +4,7 @@ export * from './boardReview.ts'
 export * from './boardTask.ts'
 export * from './boardVerification.ts'
 export * from './chatExecution.ts'
+export * from './chatPlan.ts'
 export * from './cliExecution.ts'
 export * from './codeProposal.ts'
 export * from './sourceDependency.ts'
@@ -64,3 +65,12 @@ export * from './prototypeInteraction.ts'
 
 export * from './taskMode'
 export { AiToolMode } from './aiToolMode'
+
+export * from './chatGraph'
+
+export * from '../errors/chatGraphErrors'
+
+export * from './mcpOperationBindings'
+export * from './speech'
+
+export * from '../errors/speechErrors'
