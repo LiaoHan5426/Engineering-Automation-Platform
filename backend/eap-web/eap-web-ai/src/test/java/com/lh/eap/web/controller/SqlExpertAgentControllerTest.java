@@ -1,6 +1,7 @@
 package com.lh.eap.web.controller;
 
 import com.lh.eap.ai.SqlExpertAgentService;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -37,6 +38,38 @@ class SqlExpertAgentControllerTest {
                 .andExpect(jsonPath("$.cancelRequested").value(true));
         verify(service).cancel("reviewer", id);
     }
+    @Test void resolveUnknownAcceptsOnlyTheNoteAndPassesItToTheService() throws Exception {
+        var service = mock(SqlExpertAgentService.class);
+        var approvals = mock(com.lh.eap.application.service.ExpertAgentApprovalService.class);
+        var id = UUID.randomUUID();
+        var note = "Checked the durable file and review record manually.";
+        when(approvals.resolveUnknown(eq("sql"), eq(id), eq(note)))
+                .thenReturn(Map.of("state", "closed-unconfirmed"));
+        var mvc = MockMvcBuilders.standaloneSetup(new SqlExpertAgentController(service, approvals)).build();
+        mvc.perform(post("/api/experts/sql/agent-runs/" + id + "/resolve-unknown")
+                        .contentType("application/json").content("{\"note\":\"" + note + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("closed-unconfirmed"));
+        verify(approvals).resolveUnknown("sql", id, note);
+    }
+
+    @Test void resolveUnknownRejectsExtraFieldsAndNonStringNotes() throws Exception {
+        var service = mock(SqlExpertAgentService.class);
+        var approvals = mock(com.lh.eap.application.service.ExpertAgentApprovalService.class);
+        var id = UUID.randomUUID();
+        var mvc = MockMvcBuilders.standaloneSetup(new SqlExpertAgentController(service, approvals)).build();
+        var url = "/api/experts/sql/agent-runs/" + id + "/resolve-unknown";
+        mvc.perform(post(url).contentType("application/json")
+                        .content("{\"note\":\"checked the record\",\"operator\":\"someone\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(url).contentType("application/json").content("{\"note\":42}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(url).contentType("application/json").content("{}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(url)).andExpect(status().isBadRequest());
+        verifyNoInteractions(approvals);
+    }
+
     @Test void malformedExecutionIdentityNeverStartsWork() throws Exception {
         var service = mock(SqlExpertAgentService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new SqlExpertAgentController(service)).build();
