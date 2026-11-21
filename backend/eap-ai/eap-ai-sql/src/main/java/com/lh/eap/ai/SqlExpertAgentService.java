@@ -12,7 +12,7 @@ import com.lh.eap.common.SensitiveData;
 import com.lh.eap.core.*;
 import com.lh.eap.domain.model.*;
 import com.lh.eap.runtime.handler.*;
-import com.lh.eap.sql.DatabaseEvidenceInput;
+import com.lh.eap.domain.model.DatabaseEvidenceInput;
 import jakarta.annotation.PreDestroy;
 import java.nio.file.Path;
 import java.time.Duration;

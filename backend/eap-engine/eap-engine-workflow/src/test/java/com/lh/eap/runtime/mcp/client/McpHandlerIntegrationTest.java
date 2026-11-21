@@ -22,7 +22,7 @@ class McpHandlerIntegrationTest {
    catch(java.io.IOException failure){throw new IllegalStateException(failure);}
   });
   var handler=new McpReadonlyHandler(registry,client);var execution=UUID.randomUUID();sessions.beginExecution(execution,"expert");
-  var context=new CapabilityContext(new ExpertManifest.Step("read","read",capability,true),null,"","","expert",execution,List.of(),new HashMap<>(),new HashMap<>(),new ArrayList<>(),new ArrayList<>(),List.of(),Path.of(""), com.lh.eap.rules.SqlFactVocabulary.FACTS_BY_KEY.keySet());
+  var context=new CapabilityContext(new ExpertManifest.Step("read","read",capability,true),null,"","","expert",execution,List.of(),new HashMap<>(),new HashMap<>(),new ArrayList<>(),new ArrayList<>(),List.of(),Path.of(""), Set.of());
   try {
    assertThrows(SecurityException.class,()->handler.handle(context));assertTrue(transports.isEmpty());
    when(registry.grants("expert")).thenReturn(List.of(capability));

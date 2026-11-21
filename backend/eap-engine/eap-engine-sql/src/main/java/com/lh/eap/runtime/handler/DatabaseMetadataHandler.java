@@ -1,5 +1,5 @@
 package com.lh.eap.runtime.handler;
-import com.lh.eap.sql.DatabaseEvidenceInput;
+import com.lh.eap.domain.model.DatabaseEvidenceInput;
 
 import com.lh.eap.core.DatabaseGrantQuery;
 import com.lh.eap.domain.model.CapabilityContext;

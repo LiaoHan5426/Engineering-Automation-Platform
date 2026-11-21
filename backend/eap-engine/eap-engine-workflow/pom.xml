@@ -27,11 +27,6 @@
         </dependency>
         <dependency>
             <groupId>com.lh</groupId>
-            <artifactId>eap-engine-sql</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.lh</groupId>
             <artifactId>eap-engine-knowledge</artifactId>
             <version>${project.version}</version>
         </dependency>

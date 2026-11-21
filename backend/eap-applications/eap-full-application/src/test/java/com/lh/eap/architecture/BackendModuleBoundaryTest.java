@@ -103,6 +103,20 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void orchestrationDoesNotCompileAgainstSqlImplementationModule() throws Exception {
+        // The orchestration input port (DatabaseEvidenceInput) lives in core; no SQL implementation
+        // type should leak back into workflow, or the dependency edge this slice removed returns.
+        String pom = Files.readString(backend.resolve("eap-engine/eap-engine-workflow/pom.xml"));
+        assertFalse(pom.contains("<artifactId>eap-engine-sql</artifactId>"),
+                "workflow must not declare a compile dependency on the SQL implementation module");
+        try (var sources = Files.walk(backend.resolve("eap-engine/eap-engine-workflow/src"))) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String text = Files.readString(source);
+                assertFalse(text.contains("import com.lh.eap.sql."), source + " imports the SQL implementation package");
+            }
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");

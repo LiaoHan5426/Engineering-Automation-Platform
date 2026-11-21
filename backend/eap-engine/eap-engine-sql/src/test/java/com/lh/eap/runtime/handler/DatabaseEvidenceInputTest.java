@@ -3,7 +3,7 @@ package com.lh.eap.runtime.handler;
 import com.lh.eap.core.DatabaseGrantQuery;
 import com.lh.eap.domain.model.*;
 import com.lh.eap.rules.SqlFactVocabulary;
-import com.lh.eap.sql.DatabaseEvidenceInput;
+import com.lh.eap.domain.model.DatabaseEvidenceInput;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
