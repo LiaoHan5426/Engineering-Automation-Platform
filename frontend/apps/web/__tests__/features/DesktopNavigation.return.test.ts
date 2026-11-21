@@ -13,12 +13,15 @@ vi.mock('../../src/features/chat/ChatWorkspace.vue', () => ({
   default: { template: '<section data-testid="source-chat" />' },
 }))
 vi.mock('../../src/features/settings/ModelSettings.vue', () => ({
+  __esModule: true,
   default: { template: '<section />' },
 }))
 vi.mock('../../src/features/rule/RuleManager.vue', () => ({
+  __esModule: true,
   default: { template: '<section />' },
 }))
 vi.mock('../../src/features/shell/ProjectBoard.vue', () => ({
+  __esModule: true,
   default: { template: '<section data-testid="source-board" />' },
 }))
 vi.mock('grapesjs', () => {
@@ -100,14 +103,23 @@ async function mountSource(hash = 'work') {
   window.history.replaceState(null, '', `/#${hash}`)
   app = createApp(Shell).use(i18n)
   app.mount(root)
-  await nextTick()
+  await settle()
 }
 
+// Views are async components; wait for the target control to actually appear
+// instead of assuming a fixed number of microtask ticks.
 async function click(selector: string) {
-  const button = root.querySelector<HTMLButtonElement>(selector)
-  expect(button, `Required control: ${selector}`).not.toBeNull()
+  let button: HTMLButtonElement | null = null
+  await vi.waitFor(() => {
+    button = root.querySelector<HTMLButtonElement>(selector)
+    expect(button, `Required control: ${selector}`).not.toBeNull()
+  })
   button!.click()
-  await nextTick()
+  await settle()
+}
+
+async function settle() {
+  for (let i = 0; i < 8; i++) await nextTick()
 }
 
 function expectSourceIntact(mode = 'work') {

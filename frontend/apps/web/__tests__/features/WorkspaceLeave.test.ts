@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
-import { createApp, nextTick, type App } from 'vue'
+import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 import { runtimeApi } from '@eap/runtime-client'
 import Shell from '../../src/App.vue'
 import { i18n } from '../../src/lib/i18n'
@@ -8,23 +8,21 @@ const state = vi.hoisted(() => ({ dirty: true, resume: undefined as (() => void)
 vi.mock('../../src/features/chat/ChatWorkspace.vue', () => ({
   default: { template: '<section />' },
 }))
-vi.mock('../../src/features/shell/ProjectBoard.vue', async () => {
-  const { defineComponent, h } = await import('vue')
-  return {
-    default: defineComponent({
-      setup(_, { expose }) {
-        expose({
-          guardLeave: (resume: () => void) => {
-            if (!state.dirty) return true
-            state.resume = resume
-            return false
-          },
-        })
-        return () => h('section', { 'data-testid': 'guarded-board' })
-      },
-    }),
-  }
-})
+vi.mock('../../src/features/shell/ProjectBoard.vue', () => ({
+  __esModule: true,
+  default: defineComponent({
+    setup(_, { expose }) {
+      expose({
+        guardLeave: (resume: () => void) => {
+          if (!state.dirty) return true
+          state.resume = resume
+          return false
+        },
+      })
+      return () => h('section', { 'data-testid': 'guarded-board' })
+    },
+  }),
+}))
 let app: App | undefined
 let root: HTMLElement | undefined
 const flush = async () => {
@@ -58,7 +56,10 @@ it('keeps the complete board location on rejected hash navigation and resumes th
   app = createApp(Shell)
   app.use(i18n).mount(root)
   await flush()
-  expect(root.querySelector('[data-testid="guarded-board"]')).not.toBeNull()
+  // The board view is now a defineAsyncComponent; wait for its mock to resolve.
+  await vi.waitFor(() =>
+    expect(root!.querySelector('[data-testid="guarded-board"]')).not.toBeNull(),
+  )
   window.history.replaceState(null, '', '/#appearance')
   window.dispatchEvent(new Event('hashchange'))
   await flush()
