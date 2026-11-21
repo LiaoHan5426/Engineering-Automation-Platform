@@ -25,6 +25,7 @@
     "stylelint": "stylelint \"**/*.{css,vue}\"",
     "stylelint:fix": "stylelint \"**/*.{css,vue}\" --fix",
     "clean": "node ./scripts/clean.mjs",
+    "check:first-load": "node ./scripts/check-first-load.mjs",
     "dev:mock-server": "pnpm --filter @eap/backend-mock dev"
   },
   "devDependencies": {

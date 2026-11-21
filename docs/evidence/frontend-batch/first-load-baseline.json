@@ -1,0 +1,57 @@
+{
+  "dist": "frontend/apps/web/dist",
+  "entry": "index-BHMzVVsZ.js",
+  "firstLoadBytes": 1724543,
+  "firstLoadLimit": 2097152,
+  "firstLoad": [
+    {
+      "name": "index-BHMzVVsZ.js",
+      "bytes": 1303273
+    },
+    {
+      "name": "rolldown-runtime-XKyaHtl9.js",
+      "bytes": 726
+    },
+    {
+      "name": "vue-i18n-DTJFHfVB.js",
+      "bytes": 329244
+    },
+    {
+      "name": "src-CuKY-WWR.js",
+      "bytes": 91300
+    }
+  ],
+  "editorLazyChunks": [
+    {
+      "name": "ts.worker-DvEKW8Yk.js",
+      "bytes": 6927783
+    },
+    {
+      "name": "editor.api-sFZOxEpA.js",
+      "bytes": 2735517
+    },
+    {
+      "name": "vs-0vScP_qD.js",
+      "bytes": 1295251
+    },
+    {
+      "name": "css.worker-DwfUZ3fB.js",
+      "bytes": 1078238
+    },
+    {
+      "name": "grapes-DApPuhm8.js",
+      "bytes": 1070197
+    },
+    {
+      "name": "html.worker-D9ugpX4y.js",
+      "bytes": 743371
+    },
+    {
+      "name": "json.worker-CV9fqkUp.js",
+      "bytes": 433120
+    }
+  ],
+  "editorInFirstLoad": [],
+  "ok": true,
+  "failures": []
+}
