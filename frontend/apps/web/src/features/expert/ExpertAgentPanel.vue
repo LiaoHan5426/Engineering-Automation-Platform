@@ -11,7 +11,7 @@ import {
   type ExpertAgentInput,
   type ExpertAgentResult,
 } from '@eap/runtime-client'
-import { Button, ConfirmBox, Feedback, Input, Select, Textarea } from '@eap/ui'
+import { Button, Checkbox, ConfirmBox, Dialog, Feedback, Input, Select, Textarea } from '@eap/ui'
 import ExpertTaskInspector from './ExpertTaskInspector.vue'
 import ProposalDiffView from '../../components/ProposalDiffView.vue'
 import { errorMessage } from '../../lib/presentation'
@@ -81,7 +81,7 @@ function openReview() {
   })
 }
 function guardLeave() {
-  if (busy.value || confirmation.value) return false
+  if (busy.value || confirmation.value || resolving.value) return false
   if (
     props.mode === 'start' &&
     [sql.value, question.value, target.value, database.value, plan.value].some((value) =>
@@ -214,6 +214,50 @@ function prepareSubmit() {
 function prepareReview(approve: boolean) {
   captured.value = detail.value
   confirmation.value = approve ? 'approve' : 'deny'
+}
+const resolving = ref(false)
+const resolveNote = ref('')
+const resolveAck = ref(false)
+const resolveBusy = ref(false)
+const resolveError = ref('')
+const resolveDone = ref('')
+const resolveValid = computed(
+  () =>
+    resolveNote.value.trim().length >= 10 &&
+    resolveNote.value.trim().length <= 2000 &&
+    resolveAck.value,
+)
+function openResolve() {
+  resolving.value = true
+  resolveNote.value = ''
+  resolveAck.value = false
+  resolveError.value = ''
+  resolveDone.value = ''
+}
+function cancelResolve() {
+  resolving.value = false
+  resolveNote.value = ''
+  resolveAck.value = false
+  resolveError.value = ''
+}
+async function submitResolve() {
+  if (!resolveValid.value || resolveBusy.value || !detail.value) return
+  resolveBusy.value = true
+  resolveError.value = ''
+  try {
+    await runtimeApi.resolveExpertAgentUnknown(
+      props.expertId,
+      detail.value.run.id,
+      resolveNote.value.trim(),
+    )
+    cancelResolve()
+    resolveDone.value = t('expertAgent.resolveUnknownDone')
+    await refresh()
+  } catch (error) {
+    resolveError.value = errorMessage(error)
+  } finally {
+    resolveBusy.value = false
+  }
 }
 async function confirm() {
   const action = confirmation.value
@@ -391,6 +435,28 @@ onMounted(() => {
         :message="t('expertAgent.unknown')"
       />
       <Feedback v-if="detail.run.state === 'applied'" :message="t('expertAgent.applied')" />
+      <Feedback v-if="resolveDone" :message="resolveDone" />
+      <Button
+        v-if="mode === 'task' && detail.run.state === 'unknown'"
+        data-testid="agent-resolve-unknown"
+        :disabled="busy"
+        @click="openResolve"
+        >{{ t('expertAgent.resolveUnknown') }}</Button
+      >
+      <section
+        v-if="detail.resolution?.resolution_note"
+        class="task-summary-section"
+        data-testid="agent-resolution"
+      >
+        <h3>{{ t('expertAgent.resolveUnknown') }}</h3>
+        <p>{{ t('expertAgent.resolutionNote') }}: {{ detail.resolution.resolution_note }}</p>
+        <p>
+          {{ t('expertAgent.resolutionOperator') }}: {{ detail.resolution.resolution_operator }}
+        </p>
+        <p>
+          {{ t('expertAgent.resolutionTime') }}: {{ displayTime(detail.resolution.resolved_at) }}
+        </p>
+      </section>
       <Button v-if="cancellable" data-testid="agent-cancel" :disabled="busy" @click="cancel">{{
         t('expertAgent.cancel')
       }}</Button>
@@ -480,6 +546,51 @@ onMounted(() => {
       :observations="observations"
       @close="inspector = null"
     />
+    <Dialog
+      v-if="resolving"
+      :title="t('expertAgent.resolveUnknown')"
+      :busy="resolveBusy"
+      size="sm"
+      data-testid="agent-resolve-dialog"
+      @close="cancelResolve"
+    >
+      <p>{{ t('expertAgent.resolveUnknownHint') }}</p>
+      <p>
+        <code>{{ detail?.run.id }}</code>
+      </p>
+      <label
+        >{{ t('expertAgent.resolveUnknownNote') }}
+        <Textarea
+          v-model="resolveNote"
+          :maxlength="2000"
+          :disabled="resolveBusy"
+          data-testid="agent-resolve-note"
+        />
+      </label>
+      <label>
+        <Checkbox v-model="resolveAck" :disabled="resolveBusy" data-testid="agent-resolve-ack" />{{
+          t('expertAgent.resolveUnknownAck')
+        }}
+      </label>
+      <Feedback
+        v-if="resolveAck && resolveNote.trim().length > 0 && !resolveValid"
+        tone="error"
+        :message="t('expertAgent.resolveUnknownRequire')"
+      />
+      <Feedback v-if="resolveError" tone="error" :message="resolveError" />
+      <div class="agent-actions">
+        <Button
+          size="sm"
+          :disabled="!resolveValid || resolveBusy"
+          data-testid="agent-resolve-confirm"
+          @click="submitResolve"
+          >{{ t('expertAgent.resolveUnknownConfirm') }}</Button
+        >
+        <Button size="sm" :disabled="resolveBusy" @click="cancelResolve">{{
+          t('expertAgent.resolveUnknownCancel')
+        }}</Button>
+      </div>
+    </Dialog>
     <ConfirmBox
       v-if="confirmation"
       :title="confirmationTitle"

@@ -45,6 +45,11 @@ export type ExpertAgentDetail = {
     decided_at: string | null
   }
   candidate?: CodeProposalState
+  resolution?: {
+    resolution_note: string | null
+    resolution_operator: string | null
+    resolved_at: string | null
+  }
 }
 export type ExpertAgentResult = {
   status?: string
@@ -82,5 +87,9 @@ export function createExpertAgentApi(client: RequestClient) {
       id: string,
       review: { proposalId: string; digest: string; approve: boolean },
     ) => client.post<ExpertAgentDetail>(path(expert, id) + '/approval', review).then((r) => r.data),
+    resolveExpertAgentUnknown: (expert: string, id: string, note: string) =>
+      client
+        .post<ExpertAgentDetail>(path(expert, id) + '/resolve-unknown', { note })
+        .then((r) => r.data),
   }
 }

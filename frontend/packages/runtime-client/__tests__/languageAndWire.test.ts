@@ -15,6 +15,9 @@ import {
   MissionExecutionStatus,
   isMissionExecutionStatus,
   isMissionExecutionStatusBlocking,
+  ExpertAgentState,
+  isExpertAgentState,
+  isExpertAgentStateBlocking,
 } from '../src/contracts/index'
 
 afterEach(() => {
@@ -71,6 +74,12 @@ it('rejects malformed states without converting them into business uncertainty',
   expect(isMissionExecutionStatus(MissionExecutionStatus.CLOSED_UNCONFIRMED)).toBe(true)
   expect(isMissionExecutionStatusBlocking(MissionExecutionStatus.UNKNOWN)).toBe(true)
   expect(isMissionExecutionStatusBlocking(MissionExecutionStatus.CLOSED_UNCONFIRMED)).toBe(false)
+  // SQL-expert UNKNOWN is likewise an observation; manual closure is its own non-blocking value.
+  expect(isExpertAgentState(ExpertAgentState.UNKNOWN)).toBe(true)
+  expect(isExpertAgentState(ExpertAgentState.CLOSED_UNCONFIRMED)).toBe(true)
+  expect(isExpertAgentState('CLOSED_UNCONFIRMED')).toBe(false)
+  expect(isExpertAgentStateBlocking(ExpertAgentState.UNKNOWN)).toBe(true)
+  expect(isExpertAgentStateBlocking(ExpertAgentState.CLOSED_UNCONFIRMED)).toBe(false)
   const record = { status: 'not-a-state' }
   expect(() => validateToolExecution(record)).toThrow('INVALID_TOOL_EXECUTION_STATUS')
   expect(record.status).toBe('not-a-state')

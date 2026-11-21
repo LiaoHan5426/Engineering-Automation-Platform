@@ -46,6 +46,18 @@ export const expertAgentMessages = {
     unverified: '候选及分析结论未验证；写入成功不代表 SQL 正确或性能提升。',
     blocked: '当前状态或审批有效期不允许写入，请刷新查看最新结果。',
     unknown: '写入结果未知。请人工核对文件与持久记录，不要重复应用此候选。',
+    resolveUnknown: '核对并解除未知执行',
+    resolveUnknownHint:
+      '人工核对文件与持久记录后解除本次执行的待处理状态。不会重新写入文件、不执行 SQL、不续跑原任务；如仍需尝试请新建任务。',
+    resolveUnknownNote: '核对说明（10–2000 字）',
+    resolveUnknownAck: '我已核对文件与持久记录，理解解除不代表写入成功。',
+    resolveUnknownRequire: '请填写 10–2000 字核对说明并勾选确认。',
+    resolveUnknownConfirm: '确认解除',
+    resolveUnknownCancel: '取消',
+    resolveUnknownDone: '已记录人工核对并解除本次执行；原任务不会续跑。',
+    resolutionNote: '核对说明',
+    resolutionOperator: '操作者',
+    resolutionTime: '解除时间',
     observations: '已保存的取证记录',
     applied: '文件已写入，未执行 SQL。',
     agentEditor: '这是 Agent 定义，请在上方后台任务面板运行；固定流程编辑器不会覆盖它。',
@@ -65,6 +77,7 @@ export const expertAgentMessages = {
       denied: '已拒绝',
       expired: '已过期',
       unknown: '结果未知',
+      'closed-unconfirmed': '已人工核对解除',
     },
   },
   'en-US': {
@@ -122,6 +135,20 @@ export const expertAgentMessages = {
     blocked: 'The current state or expiry prevents a write. Refresh to check the latest result.',
     unknown:
       'The write outcome is unknown. Inspect the file and durable record manually; do not reapply this candidate.',
+    resolveUnknown: 'Resolve unknown execution',
+    resolveUnknownHint:
+      'Resolve this run after manually checking the file and durable record. It will not rewrite the file, execute SQL or resume the original run. Submit a new task if another attempt is needed.',
+    resolveUnknownNote: 'Evidence note (10-2000 characters)',
+    resolveUnknownAck:
+      'I checked the file and durable record. I understand this is not a write-success claim.',
+    resolveUnknownRequire: 'Provide a 10-2000 character evidence note and confirm the checkbox.',
+    resolveUnknownConfirm: 'Confirm resolution',
+    resolveUnknownCancel: 'Cancel',
+    resolveUnknownDone:
+      'Manual review recorded and this run resolved. The original run is not resumed.',
+    resolutionNote: 'Evidence note',
+    resolutionOperator: 'Operator',
+    resolutionTime: 'Resolved at',
     observations: 'Saved evidence',
     applied: 'File written; SQL was not executed.',
     agentEditor:
@@ -142,6 +169,7 @@ export const expertAgentMessages = {
       denied: 'Rejected',
       expired: 'Expired',
       unknown: 'Unknown outcome',
+      'closed-unconfirmed': 'Manually resolved',
     },
   },
 }

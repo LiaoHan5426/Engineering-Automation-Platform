@@ -453,3 +453,48 @@ it('refreshes active details in the background without inserting loading content
   expect(state.detail.value?.run.state).toBe('completed')
   expect(runtimeApi.expertAgentRun).toHaveBeenCalledTimes(count)
 })
+
+it('resolves an unknown write only after an evidence note and explicit acknowledgement', async () => {
+  saved.run.state = 'unknown'
+  const note = 'Checked the durable file and the review record.'
+  vi.spyOn(runtimeApi, 'resolveExpertAgentUnknown').mockImplementation(
+    async (_expert, _id, value) => {
+      saved.run.state = 'closed-unconfirmed'
+      saved.resolution = {
+        resolution_note: value,
+        resolution_operator: 'local-operator',
+        resolved_at: '2026-11-21T12:00:00Z',
+      }
+      return structuredClone(saved)
+    },
+  )
+  await mount('task')
+  await vi.waitFor(() => expect(button('agent-resolve-unknown')).not.toBeNull())
+  button('agent-resolve-unknown').click()
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid="agent-resolve-dialog"]')).not.toBeNull(),
+  )
+  const confirm = button('agent-resolve-confirm')
+  expect(confirm.disabled).toBe(true)
+  const text = document.querySelector<HTMLTextAreaElement>('[data-testid="agent-resolve-note"]')!
+  const ack = document.querySelector<HTMLInputElement>('[data-testid="agent-resolve-ack"]')!
+  text.value = 'too short'
+  text.dispatchEvent(new Event('input', { bubbles: true }))
+  ack.checked = true
+  ack.dispatchEvent(new Event('change', { bubbles: true }))
+  await nextTick()
+  expect(confirm.disabled).toBe(true)
+  expect(runtimeApi.resolveExpertAgentUnknown).not.toHaveBeenCalled()
+
+  text.value = note
+  text.dispatchEvent(new Event('input', { bubbles: true }))
+  await nextTick()
+  expect(confirm.disabled).toBe(false)
+  confirm.click()
+  await vi.waitFor(() =>
+    expect(runtimeApi.resolveExpertAgentUnknown).toHaveBeenCalledWith('reviewer', 'run-1', note),
+  )
+  await vi.waitFor(() => expect(host.textContent).toContain('已人工核对解除'))
+  expect(host.querySelector('[data-testid="agent-resolution"]')?.textContent).toContain(note)
+  expect(document.querySelector('[data-testid="agent-resolve-dialog"]')).toBeNull()
+})

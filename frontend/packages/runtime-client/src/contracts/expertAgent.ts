@@ -14,6 +14,8 @@ export const ExpertAgentState = {
   DENIED: 'denied',
   EXPIRED: 'expired',
   UNKNOWN: 'unknown',
+  /** Human evidence review closed an unknown run; not a file-write claim. */
+  CLOSED_UNCONFIRMED: 'closed-unconfirmed',
 } as const
 export type ExpertAgentState = (typeof ExpertAgentState)[keyof typeof ExpertAgentState]
 export const expertAgentStateValues: readonly ExpertAgentState[] = Object.values(ExpertAgentState)
