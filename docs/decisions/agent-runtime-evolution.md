@@ -393,7 +393,7 @@ applyDurable校验全部基线、暂存、再检、逐个替换、全读回与�
 - `ExpertManifest`将步骤、连线、规则包与资源声明绑在一个Expert对象上；`experts/sql-expert.json`固定串行parse→knowledge→schema→indexes→explain。它能表达专业检查流程，却不能根据观察决定补充哪种证据、追问用户或提前形成结论。
 - `ExpertExecutionService.Request`包含sql/databaseId/explainPlan等SQL专用字段，执行服务随后把SQL分析、规则判定、知识引用、模型建议合成一个结果。通用服务即使换成接口，产品输入与完成语义仍偏SQL。
 - 第三轮的`ExpertAnalysisPolicy`是调度器与领域分析的接口，不是Agent行为接口；执行服务现已支持由宿主按专家解析分析策略，完整产品默认仍显式选择SQL兼容策略；现已提供manifest中的版本化专业分析行为绑定；仍不代表不同Agent决策模式。
-- `ExpertExecutionService.execute`的90秒事务范围包含能力与模型执行；任务结果在执行末尾保存。它不是脱离请求持续运行、可恢复和逐步审批的Agent运行机制。给这个方法增加循环会扩大长事务和未知结果问题。
+- `ExpertExecutionService.execute`原在90秒REPEATABLE_READ事务内运行能力与模型；该长事务已于2026-11-21拆为短只读快照、无事务图执行、短写事务提交前复检三段（见[旧DAG短事务边界](legacy-dag-transaction-boundary.md)），任务结果仍在执行末尾一次保存。它不是脱离请求持续运行、可恢复和逐步审批的Agent运行机制；分段并不把它变成后台任务，给它增加循环仍会放大模型/工具未知结果问题。
 - `SqlExpertService`当前只在确定性分析后决定是否请求模型建议。`eap-api`的`Expert<I,O>.analyze`在当前后端主源码中没有实现接线；不能用接口名称宣称已有统一Agent运行时。
 
 ### 11.2 建议职责
