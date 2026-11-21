@@ -76,9 +76,9 @@ class BackendModuleBoundaryTest {
             }
         }
         try (var migrations = Files.list(Path.of("src/main/resources/db/migration"))) {
-            // V2 = CT-02 message graph; V3 = CT-01 execution log; V4 = Mission UNKNOWN resolution.
-            // V1 baseline is untouched.
-            assertEquals(List.of("V1__initial_schema.sql", "V2__chat_message_graph.sql", "V3__chat_execution_log.sql", "V4__mission_unknown_resolution.sql"),
+            // V2 = CT-02 message graph; V3 = CT-01 execution log; V4 = Mission UNKNOWN resolution;
+            // V5 = SQL expert UNKNOWN resolution. V1 baseline is untouched.
+            assertEquals(List.of("V1__initial_schema.sql", "V2__chat_message_graph.sql", "V3__chat_execution_log.sql", "V4__mission_unknown_resolution.sql", "V5__expert_agent_unknown_resolution.sql"),
                     migrations.filter(Files::isRegularFile)
                             .map(path -> path.getFileName().toString()).sorted().toList());
         }

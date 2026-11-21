@@ -16,6 +16,10 @@ class DomainWireAndMessagesTest {
         assertFalse(ToolExecutionStatus.CLOSED_UNKNOWN.blocking());assertTrue(CodeProposalStatus.UNKNOWN.blocking());
         assertTrue(BoardVerificationStatus.UNKNOWN.blocking());assertFalse(BoardVerificationStatus.PASSED.blocking());
         assertEquals("awaiting-approval",ExpertAgentState.AWAITING_APPROVAL.wire());
+        assertTrue(ExpertAgentState.UNKNOWN.blocking());assertFalse(ExpertAgentState.UNKNOWN.active());
+        assertEquals("closed-unconfirmed",ExpertAgentState.CLOSED_UNCONFIRMED.wire());
+        assertFalse(ExpertAgentState.CLOSED_UNCONFIRMED.blocking());assertFalse(ExpertAgentState.CLOSED_UNCONFIRMED.active());
+        assertThrows(IllegalArgumentException.class,()->ExpertAgentState.fromWire("CLOSED_UNCONFIRMED"));
         assertEquals("running",BoardTaskColumn.RUNNING.wire());
         assertEquals("INTERRUPTED",MissionExecutionStatus.INTERRUPTED.wire());
         assertEquals("CLOSED_UNCONFIRMED",MissionExecutionStatus.CLOSED_UNCONFIRMED.wire());

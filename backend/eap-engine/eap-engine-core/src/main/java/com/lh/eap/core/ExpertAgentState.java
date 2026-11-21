@@ -20,7 +20,9 @@ public enum ExpertAgentState implements WireValue {
     APPLIED("applied"),
     DENIED("denied"),
     EXPIRED("expired"),
-    UNKNOWN("unknown");
+    UNKNOWN("unknown"),
+    /** Human evidence review closed an unknown run; NOT a file-write or SQL-execution claim. */
+    CLOSED_UNCONFIRMED("closed-unconfirmed");
 
     private final String value;
     ExpertAgentState(String value) { this.value = value; }

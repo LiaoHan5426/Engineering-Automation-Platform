@@ -28,6 +28,9 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
     private final ExpertAgentAccess access;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
+    private volatile Boolean resolutionColumns;
+    private static final int NOTE_MIN = 10;
+    private static final int NOTE_MAX = 2000;
 
     public ExpertAgentApprovalService(CodeChangeService changes, ExpertAgentJournal journal, ExpertAgentAccess access,
                                       JdbcTemplate jdbc, PlatformTransactionManager manager) {
@@ -85,8 +88,53 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
             }
             result.put("candidate", candidate);
         }
+        // Rolling deployment: V5 may not have reached this database yet. Never fail a read
+        // because audit columns are absent; the resolution endpoint refuses explicitly instead.
+        if (hasResolutionColumns()) {
+            result.put("resolution", jdbc.queryForMap(
+                    "SELECT resolution_note,resolution_operator,resolved_at FROM eap.expert_agent_run WHERE task_id=?", id));
+        }
         return result;
     }
+
+    /**
+     * Human evidence review of an unknown SQL-expert write. Only closes the run/task projection;
+     * it never replays the model, re-applies the proposal or claims the file was written.
+     */
+    public Map<String,Object> resolveUnknown(String expert, UUID id, String note) {
+        journal.get(expert, id); // 404 when the run is absent or belongs to another expert
+        if (note == null || note.isBlank()) throw badRequest(AgentErrors.AGENT_INPUT_INVALID.code());
+        var trimmed = note.trim();
+        if (trimmed.length() < NOTE_MIN || trimmed.length() > NOTE_MAX)
+            throw badRequest(AgentErrors.AGENT_INPUT_INVALID.code());
+        if (!hasResolutionColumns()) throw conflict(AgentErrors.AGENT_UNKNOWN_NOT_RESOLVABLE.code());
+        tx.executeWithoutResult(status -> {
+            int changed = jdbc.update("""
+                    UPDATE eap.expert_agent_run
+                       SET state=?,resolution_note=?,resolution_operator=?,resolved_at=now(),updated_at=now()
+                     WHERE task_id=? AND expert_id=? AND state=?
+                    """, ExpertAgentState.CLOSED_UNCONFIRMED.wire(), trimmed, PRINCIPAL,
+                    id, expert, ExpertAgentState.UNKNOWN.wire());
+            if (changed != 1) throw conflict(AgentErrors.AGENT_UNKNOWN_NOT_RESOLVABLE.code());
+            jdbc.update("UPDATE eap.task SET status=?,decision='needs-review' WHERE id=?",
+                    ExpertAgentState.CLOSED_UNCONFIRMED.wire(), id);
+        });
+        return inspect(expert, id);
+    }
+
+    private boolean hasResolutionColumns() {
+        Boolean cached = resolutionColumns;
+        if (cached != null) return cached;
+        Boolean present = jdbc.queryForObject("""
+                SELECT count(*) = 3 FROM information_schema.columns
+                 WHERE table_schema='eap' AND table_name='expert_agent_run'
+                   AND column_name IN ('resolution_note','resolution_operator','resolved_at')
+                """, Boolean.class);
+        boolean value = Boolean.TRUE.equals(present);
+        resolutionColumns = value;
+        return value;
+    }
+
     public Map<String,Object> review(String expert, UUID id, Review review) {
         Objects.requireNonNull(review);
         journal.recoverExpired();
@@ -152,4 +200,5 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
         catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
     private static ResponseStatusException conflict(String code) { return new ResponseStatusException(HttpStatus.CONFLICT, code); }
+    private static ResponseStatusException badRequest(String code) { return new ResponseStatusException(HttpStatus.BAD_REQUEST, code); }
 }
