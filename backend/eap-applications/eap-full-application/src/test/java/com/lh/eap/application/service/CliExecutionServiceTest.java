@@ -51,14 +51,21 @@ class CliExecutionServiceTest {
     @Test void windowsJunctionCannotEscapeAuthorizedRoot() throws Exception {
         var allowed=Files.createDirectory(root.resolve("allowed"));
         var outside=Files.createDirectory(root.resolve("outside"));
-        var junction=allowed.resolve("escape");
-        var command=new ProcessBuilder("cmd.exe","/d","/c","mklink","/J",junction.toString(),outside.toString()).start();
-        assertTrue(command.waitFor(5,java.util.concurrent.TimeUnit.SECONDS));assertEquals(0,command.exitValue());
+        var alias=allowed.resolve("escape");
+        if (System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win")) {
+            var command=new ProcessBuilder("cmd.exe","/d","/c","mklink","/J",alias.toString(),outside.toString()).start();
+            assertTrue(command.waitFor(5,java.util.concurrent.TimeUnit.SECONDS));assertEquals(0,command.exitValue());
+        } else {
+            try { Files.createSymbolicLink(alias, outside); }
+            catch (java.io.IOException | UnsupportedOperationException unavailable) {
+                org.junit.jupiter.api.Assumptions.abort("OS does not permit directory symlink fixture");
+            }
+        }
         try {
             var service=new CliExecutionService((c,d,a)->{throw new AssertionError("Must reject junction");});
             var p=new Policy(allowed,"unused",List.of(),Set.of(),Set.of(),true,false);
-            assertEquals("DIRECTORY_DENIED",service.execute(request(junction,List.of(),Map.of(),Approval.NOT_REQUIRED),p).error());
-        } finally { Files.delete(junction); }
+            assertEquals("DIRECTORY_DENIED",service.execute(request(alias,List.of(),Map.of(),Approval.NOT_REQUIRED),p).error());
+        } finally { Files.delete(alias); }
     }
     @Test void nativeEnvironmentIsNotInheritedAndWorkingDirectoryIsReal() throws Exception {
         var source=root.resolve("Probe.java");
