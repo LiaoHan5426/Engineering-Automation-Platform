@@ -1,20 +1,29 @@
 <script setup lang="ts">
 import { defineAsyncComponent, computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
-import CapabilityManager from './features/capability/CapabilityManager.vue'
-import ExpertManager from './features/expert/ExpertManager.vue'
-import KnowledgeManager from './features/knowledge/KnowledgeManager.vue'
-import DatabaseManager from './features/database/DatabaseManager.vue'
-import RuleManager from './features/rule/RuleManager.vue'
-import ModelSettings from './features/settings/ModelSettings.vue'
+
+// Management pages are not part of the first paint (the default view is chat).
+// Keep them out of the entry chunk; each loads only when its view is activated.
+const CapabilityManager = defineAsyncComponent(
+  () => import('./features/capability/CapabilityManager.vue'),
+)
+const ExpertManager = defineAsyncComponent(() => import('./features/expert/ExpertManager.vue'))
+const KnowledgeManager = defineAsyncComponent(
+  () => import('./features/knowledge/KnowledgeManager.vue'),
+)
+const DatabaseManager = defineAsyncComponent(
+  () => import('./features/database/DatabaseManager.vue'),
+)
+const RuleManager = defineAsyncComponent(() => import('./features/rule/RuleManager.vue'))
+const ModelSettings = defineAsyncComponent(() => import('./features/settings/ModelSettings.vue'))
 const SkillManager = defineAsyncComponent(() => import('./features/settings/SkillManager.vue'))
 const AppearanceSettings = defineAsyncComponent(
   () => import('./features/settings/AppearanceSettings.vue'),
 )
-import PluginCenter from './features/plugins/PluginCenter.vue'
+const PluginCenter = defineAsyncComponent(() => import('./features/plugins/PluginCenter.vue'))
+const ScenarioWorkspace = defineAsyncComponent(() => import('./features/ScenarioWorkspace.vue'))
+const ProjectBoard = defineAsyncComponent(() => import('./features/shell/ProjectBoard.vue'))
+const ExpertCatalog = defineAsyncComponent(() => import('./features/shell/ExpertCatalog.vue'))
 import DesktopNavigation from './features/DesktopNavigation.vue'
-import ScenarioWorkspace from './features/ScenarioWorkspace.vue'
-import ProjectBoard from './features/shell/ProjectBoard.vue'
-import ExpertCatalog from './features/shell/ExpertCatalog.vue'
 import {
   chatBinding,
   projectLabel,
