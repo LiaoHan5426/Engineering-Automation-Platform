@@ -12,6 +12,9 @@ import {
   isBoardVerificationStatus,
   isBoardVerificationCheckStatus,
   validateToolExecution,
+  MissionExecutionStatus,
+  isMissionExecutionStatus,
+  isMissionExecutionStatusBlocking,
 } from '../src/contracts/index'
 
 afterEach(() => {
@@ -63,6 +66,11 @@ it('rejects malformed states without converting them into business uncertainty',
   expect(isCodeProposalStatus('unknown')).toBe(false)
   expect(isBoardVerificationStatus('TIMED_OUT')).toBe(false)
   expect(isBoardVerificationCheckStatus('TIMED_OUT')).toBe(true)
+  // Mission UNKNOWN is an observation that blocks; human resolution is a distinct, non-blocking wire value.
+  expect(isMissionExecutionStatus(MissionExecutionStatus.UNKNOWN)).toBe(true)
+  expect(isMissionExecutionStatus(MissionExecutionStatus.CLOSED_UNCONFIRMED)).toBe(true)
+  expect(isMissionExecutionStatusBlocking(MissionExecutionStatus.UNKNOWN)).toBe(true)
+  expect(isMissionExecutionStatusBlocking(MissionExecutionStatus.CLOSED_UNCONFIRMED)).toBe(false)
   const record = { status: 'not-a-state' }
   expect(() => validateToolExecution(record)).toThrow('INVALID_TOOL_EXECUTION_STATUS')
   expect(record.status).toBe('not-a-state')

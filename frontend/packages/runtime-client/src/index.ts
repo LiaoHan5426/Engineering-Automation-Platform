@@ -750,6 +750,18 @@ export const runtimeApi = {
         { timeout: 60_000 },
       )
       .then((response) => response.data),
+  /** Human evidence review of an unknown run; closes it without claiming process exit. */
+  resolveMissionUnknown: (missionId: string, executionId: string, note: string) =>
+    client
+      .post<MissionExecutionRecord>(
+        '/missions/' +
+          encodeURIComponent(missionId) +
+          '/executions/' +
+          encodeURIComponent(executionId) +
+          '/resolve-unknown',
+        { note },
+      )
+      .then((response) => response.data),
   analyzeSql: (
     sql: string,
     question = '',

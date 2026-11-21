@@ -5,7 +5,17 @@ import { isMissionExecutionStatusActive } from '@eap/runtime-client'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isRequestError } from '@eap/request'
-import { Button, Badge, Collapse, ConfirmBox, Select } from '@eap/ui'
+import {
+  Button,
+  Badge,
+  Collapse,
+  ConfirmBox,
+  Dialog,
+  Textarea,
+  Checkbox,
+  Feedback,
+  Select,
+} from '@eap/ui'
 import {
   runtimeApi,
   type BoardRunPage,
@@ -28,6 +38,13 @@ const page = ref<BoardRunPage | null>(null),
   confirming = ref(false),
   note = ref('')
 const pending = ref<BoardRunStart | null>(null)
+const resolving = ref<BoardRun | null>(null)
+const resolveNote = ref('')
+const resolveAck = ref(false)
+const resolveBusy = ref(false)
+const resolveValid = computed(
+  () => resolveNote.value.trim().length >= 10 && resolveNote.value.trim().length <= 2000 && resolveAck.value,
+)
 const viewing = ref<{ id: string; contentHash: string } | null>(null)
 const reviewing = ref<BoardRun | null>(null)
 const verifying = ref<BoardRun | null>(null)
@@ -127,6 +144,33 @@ function requestStart() {
   if (!canStart.value) return
   confirming.value = true
 }
+function openResolve(run: BoardRun) {
+  resolving.value = run
+  resolveNote.value = ''
+  resolveAck.value = false
+  note.value = ''
+}
+function cancelResolve() {
+  resolving.value = null
+  resolveNote.value = ''
+  resolveAck.value = false
+}
+async function submitResolve() {
+  const run = resolving.value
+  if (!run || !resolveValid.value || resolveBusy.value) return
+  resolveBusy.value = true
+  try {
+    await runtimeApi.resolveMissionUnknown(props.task.id, run.execution.id, resolveNote.value.trim())
+    cancelResolve()
+    note.value = t('boardRun.resolveUnknownDone')
+    emit('changed')
+    await refresh(true)
+  } catch (error) {
+    note.value = errorText(error)
+  } finally {
+    resolveBusy.value = false
+  }
+}
 async function start() {
   confirming.value = false
   if (starting.value || !page.value || (props.disabled && !pending.value)) return
@@ -180,6 +224,9 @@ watch(
     generation++
     stopPolling()
     viewing.value = null
+    resolving.value = null
+    resolveNote.value = ''
+    resolveAck.value = false
     reviewing.value = null
     verifying.value = null
     delivering.value = null
@@ -275,6 +322,14 @@ onBeforeUnmount(() => {
       <p v-if="run.execution.unconfirmedReason" role="alert">
         {{ run.execution.unconfirmedReason }} · {{ t('boardRun.unknownHint') }}
       </p>
+      <Feedback
+        v-if="run.execution.resolution"
+        tone="warning"
+        data-testid="board-run-resolution"
+      >
+        {{ t('boardRun.resolution') }} · {{ run.execution.resolution.note }} ·
+        {{ run.execution.resolution.operator }}
+      </Feedback>
       <p>{{ t('boardRun.workspace') }}：{{ run.execution.workspacePath }}</p>
       <p v-if="run.execution.exitCode != null">
         {{ t('boardRun.exitCode') }}：{{ run.execution.exitCode }} ·
@@ -284,6 +339,13 @@ onBeforeUnmount(() => {
         {{ t('boardRun.notAccepted') }}
       </p>
       <div class="board-run__actions">
+        <Button
+          v-if="run.execution.unconfirmedReason"
+          size="sm"
+          data-testid="board-run-resolve-unknown"
+          @click="openResolve(run)"
+          >{{ t('boardRun.resolveUnknown') }}</Button
+        >
         <Button size="sm" data-testid="board-run-review" @click="reviewing = run">{{
           t('boardReview.open')
         }}</Button
@@ -385,6 +447,48 @@ onBeforeUnmount(() => {
       @confirm="start"
       @cancel="confirming = false"
     />
+    <Dialog
+      v-if="resolving"
+      :title="t('boardRun.resolveUnknown')"
+      :busy="resolveBusy"
+      size="sm"
+      data-testid="board-run-resolve-dialog"
+      @close="cancelResolve"
+    >
+      <p>{{ t('boardRun.resolveUnknownHint') }}</p>
+      <p><code>{{ resolving.execution.id }}</code></p>
+      <label
+        >{{ t('boardRun.resolveUnknownNote') }}
+        <Textarea
+          v-model="resolveNote"
+          :maxlength="2000"
+          :disabled="resolveBusy"
+          data-testid="board-run-resolve-note"
+        />
+      </label>
+      <label>
+        <Checkbox
+          v-model="resolveAck"
+          :disabled="resolveBusy"
+          data-testid="board-run-resolve-ack"
+        />{{ t('boardRun.resolveUnknownAck') }}
+      </label>
+      <Feedback v-if="resolveAck && resolveNote.trim().length > 0 && !resolveValid" tone="error">{{
+        t('boardRun.resolveUnknownRequire')
+      }}</Feedback>
+      <div class="board-run__actions">
+        <Button
+          size="sm"
+          :disabled="!resolveValid || resolveBusy"
+          data-testid="board-run-resolve-confirm"
+          @click="submitResolve"
+          >{{ t('boardRun.resolveUnknownConfirm') }}</Button
+        >
+        <Button size="sm" :disabled="resolveBusy" @click="cancelResolve">{{
+          t('boardRun.resolveUnknownCancel')
+        }}</Button>
+      </div>
+    </Dialog>
   </section>
 </template>
 <style scoped>

@@ -9,6 +9,7 @@ export const MissionExecutionStatus = {
   CANCELLED: 'CANCELLED',
   INTERRUPTED: 'INTERRUPTED',
   UNKNOWN: 'UNKNOWN',
+  CLOSED_UNCONFIRMED: 'CLOSED_UNCONFIRMED',
 } as const
 export type MissionExecutionStatus =
   (typeof MissionExecutionStatus)[keyof typeof MissionExecutionStatus]

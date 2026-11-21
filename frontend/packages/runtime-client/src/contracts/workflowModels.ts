@@ -33,6 +33,13 @@ export type MissionExecutionRecord = {
   unconfirmedReason?: string | null
   approval: 'NOT_REQUIRED'
   cancelRequested?: boolean
+  /** Present when an unknown run was closed by human evidence review (never a process-exit claim). */
+  resolution?: {
+    executionId: string
+    note: string
+    operator: string
+    resolvedAt?: string | null
+  } | null
 }
 
 export type PrototypeVersionRecord = {
