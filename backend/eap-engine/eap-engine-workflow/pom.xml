@@ -15,24 +15,12 @@
         </dependency>
         <dependency>
             <groupId>com.lh</groupId>
-            <artifactId>eap-engine-mcp</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.lh</groupId>
             <artifactId>eap-engine-delivery</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.lh</groupId>
             <artifactId>eap-engine-knowledge</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.lh</groupId>
-            <artifactId>eap-engine-mcp</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

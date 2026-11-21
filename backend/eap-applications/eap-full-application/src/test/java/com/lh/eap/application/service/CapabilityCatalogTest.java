@@ -31,8 +31,6 @@ class CapabilityCatalogTest {
         try (var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
             context.registerBean(CapabilityHandlerRegistry.class, CapabilityCatalogTest::registry);
             context.registerBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class));
-            context.registerBean(com.lh.eap.persistence.mapper.McpServerRegistry.class,
-                    () -> mock(com.lh.eap.persistence.mapper.McpServerRegistry.class));
             context.registerBean(com.lh.eap.persistence.mapper.CliProgramMapper.class,
                     () -> mock(com.lh.eap.persistence.mapper.CliProgramMapper.class));
             context.registerBean(CliProgramService.class, () -> mock(CliProgramService.class));
@@ -40,7 +38,7 @@ class CapabilityCatalogTest {
             context.registerBean(com.lh.eap.persistence.mapper.CapabilityUsage.class,
                     () -> mock(com.lh.eap.persistence.mapper.CapabilityUsage.class));
             context.registerBean(CapabilitySettings.class, () -> mock(CapabilitySettings.class));
-            context.registerBean(McpServerService.class, () -> mock(McpServerService.class));
+            context.registerBean(com.lh.eap.core.McpCatalogQuery.class, com.lh.eap.core.McpCatalogQuery::empty);
             context.register(CapabilityCatalog.class);
             assertDoesNotThrow(context::refresh);
             assertNotNull(context.getBean(CapabilityCatalog.class));

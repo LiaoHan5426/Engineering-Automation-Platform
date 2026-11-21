@@ -103,16 +103,23 @@ class BackendModuleBoundaryTest {
         }
     }
 
-    @Test void orchestrationDoesNotCompileAgainstSqlImplementationModule() throws Exception {
-        // The orchestration input port (DatabaseEvidenceInput) lives in core; no SQL implementation
-        // type should leak back into workflow, or the dependency edge this slice removed returns.
+    @Test void orchestrationDoesNotCompileAgainstSqlOrMcpImplementationModules() throws Exception {
+        // Input port (DatabaseEvidenceInput) and MCP catalog port (McpCatalogQuery) live in core;
+        // no SQL/MCP implementation type should leak back into workflow, or a removed edge returns.
         String pom = Files.readString(backend.resolve("eap-engine/eap-engine-workflow/pom.xml"));
         assertFalse(pom.contains("<artifactId>eap-engine-sql</artifactId>"),
                 "workflow must not declare a compile dependency on the SQL implementation module");
+        assertFalse(pom.contains("<artifactId>eap-engine-mcp</artifactId>"),
+                "workflow must not declare a compile dependency on the MCP implementation module");
         try (var sources = Files.walk(backend.resolve("eap-engine/eap-engine-workflow/src"))) {
             for (var source : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
                 String text = Files.readString(source);
                 assertFalse(text.contains("import com.lh.eap.sql."), source + " imports the SQL implementation package");
+                for (String forbidden : List.of("import com.lh.eap.runtime.mcp.",
+                        "import com.lh.eap.persistence.mapper.McpServerRegistry",
+                        "import com.lh.eap.application.service.McpServerService")) {
+                    assertFalse(text.contains(forbidden), source + " imports " + forbidden);
+                }
             }
         }
     }

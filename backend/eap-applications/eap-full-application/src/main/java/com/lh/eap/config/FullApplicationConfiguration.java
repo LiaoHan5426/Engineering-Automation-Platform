@@ -28,6 +28,7 @@ import com.lh.eap.application.service.BoardVerificationService;
 import com.lh.eap.application.service.BoardVerificationSource;
 import com.lh.eap.application.service.CapabilityCatalog;
 import com.lh.eap.application.service.CapabilitySettings;
+import com.lh.eap.application.service.McpCatalogQueryAdapter;
 import com.lh.eap.application.service.CliProgramService;
 import com.lh.eap.application.service.DatabaseProfileService;
 import com.lh.eap.application.service.ExpertAgentApprovalService;
@@ -185,6 +186,7 @@ import org.springframework.context.annotation.Import;
     BoardVerificationService.class,
     BoardVerificationSource.class,
     CapabilityCatalog.class,
+    McpCatalogQueryAdapter.class,
     CapabilitySettings.class,
     JdbcCliChannelStore.class,
     CliProgramService.class,

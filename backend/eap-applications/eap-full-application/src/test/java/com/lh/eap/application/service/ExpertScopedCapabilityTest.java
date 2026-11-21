@@ -85,6 +85,12 @@ class ExpertScopedCapabilityTest {
         return new McpServerRegistry(jdbc);
     }
 
+    /** Wrap the registry in the catalog's read-only MCP port; only capability views are read here. */
+    private static com.lh.eap.core.McpCatalogQuery mcpCatalog(McpServerRegistry registry) {
+        return new McpCatalogQueryAdapter(registry,
+                new McpServerService(mock(JdbcTemplate.class), registry, mock(com.lh.eap.core.CapabilityUsageQuery.class)));
+    }
+
     private static Set<String> effectiveVocabulary(McpServerRegistry servers) {
         var known = new LinkedHashSet<>(ExpertGraph.CAPABILITIES);
         known.addAll(servers.capabilityIds());
@@ -158,7 +164,7 @@ class ExpertScopedCapabilityTest {
     @Test void theCatalogNeverReportsAnExpertScopedCapabilityAsGloballyRunnable() {
         var sessions = new McpSessionRegistry();
         var catalog = new CapabilityCatalog(registryWith(new FakeMcpToolHandler(sessions)),
-                mock(JdbcTemplate.class), serverRegistry(true)).catalog();
+                mock(JdbcTemplate.class), mcpCatalog(serverRegistry(true))).catalog();
         var items = (List<Map<String, Object>>) catalog.get("items");
         var scoped = items.stream().filter(item -> FakeMcpToolHandler.CAPABILITY.equals(item.get("name")))
                 .findFirst().orElseThrow();

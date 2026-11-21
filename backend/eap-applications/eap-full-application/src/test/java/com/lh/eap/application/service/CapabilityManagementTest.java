@@ -106,7 +106,7 @@ class CapabilityManagementTest {
         var jdbc = jdbcWhere("capability_setting", List.of(settingRow("database.explain", false)));
         var usage = new CapabilityUsage(jdbc);
         var settings = new CapabilitySettings(jdbc, usage);
-        var catalog = new CapabilityCatalog(registry(jdbc, settings), jdbc, new McpServerRegistry(jdbc),
+        var catalog = new CapabilityCatalog(registry(jdbc, settings), jdbc, mcpCatalog(jdbc),
                 new CliChannels(new JdbcCliChannelStore(jdbc)), usage).catalog();
 
         var item = itemNamed(catalog, "database.explain");
@@ -190,7 +190,7 @@ class CapabilityManagementTest {
         var jdbc = jdbcWhere("capability_setting", List.of(settingRow("sql.parse", false)));
         var usage = new CapabilityUsage(jdbc);
         var catalog = new CapabilityCatalog(registry(jdbc, new CapabilitySettings(jdbc, usage)), jdbc,
-                new McpServerRegistry(jdbc), new CliChannels(new JdbcCliChannelStore(jdbc)), usage).catalog();
+                mcpCatalog(jdbc), new CliChannels(new JdbcCliChannelStore(jdbc)), usage).catalog();
 
         @SuppressWarnings("unchecked") var availability = (Map<String, Object>) kindOf(kindList(catalog), "command").get("availability");
         assertEquals(5, availability.get("total"));
@@ -290,6 +290,11 @@ class CapabilityManagementTest {
     private static McpServerService mcpService(JdbcTemplate jdbc) {
         var usage = new CapabilityUsage(jdbc);
         return new McpServerService(jdbc, new McpServerRegistry(jdbc), usage);
+    }
+
+    /** The catalog's read-only MCP view, backed by the real registry/service over the same jdbc stub. */
+    private static com.lh.eap.core.McpCatalogQuery mcpCatalog(JdbcTemplate jdbc) {
+        return new McpCatalogQueryAdapter(new McpServerRegistry(jdbc), mcpService(jdbc));
     }
 
     /** A server id and a tool name both become part of a capability id, so both are validated now. */
@@ -406,7 +411,7 @@ class CapabilityManagementTest {
                 .thenReturn(List.of(serverRow));
         var usage = new CapabilityUsage(jdbc);
         var catalog = new CapabilityCatalog(registry(jdbc, new CapabilitySettings(jdbc, usage)), jdbc,
-                new McpServerRegistry(jdbc), new CliChannels(new JdbcCliChannelStore(jdbc)), usage).catalog();
+                mcpCatalog(jdbc), new CliChannels(new JdbcCliChannelStore(jdbc)), usage).catalog();
 
         var item = itemNamed(catalog, "mcp.files.search");
         assertEquals(false, item.get("registered"), "没有处理器时必须承认");

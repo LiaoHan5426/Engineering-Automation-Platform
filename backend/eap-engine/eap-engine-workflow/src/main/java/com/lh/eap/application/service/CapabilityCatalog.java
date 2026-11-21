@@ -1,9 +1,8 @@
 package com.lh.eap.application.service;
+import com.lh.eap.core.McpCatalogQuery;
 import com.lh.eap.domain.model.CliOperation;
 import com.lh.eap.persistence.mapper.CliProgramMapper;
-import com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpMatrix;
 
-import com.lh.eap.persistence.mapper.McpServerRegistry;
 import com.lh.eap.persistence.mapper.CapabilityUsage;
 import com.lh.eap.domain.model.CapabilityAvailability;
 import com.lh.eap.domain.model.CapabilityDescriptor;
@@ -41,8 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class CapabilityCatalog {
     private final CapabilityHandlerRegistry handlers;
     private final JdbcTemplate jdbc;
-    private final McpServerRegistry mcpServers;
-    private final McpServerService mcp;
+    private final McpCatalogQuery mcpCatalog;
     private final CliChannels cliChannels;
     private final CapabilitySettings settings;
     private final CapabilityUsage usage;
@@ -54,44 +52,43 @@ public class CapabilityCatalog {
         this.cliPrograms = mapper; this.cliProgramService = service;
     }
 
+    /** Convenience for compositions/tests with no MCP module: an honest empty MCP catalog. */
     public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc) {
-        this(handlers, jdbc, new McpServerRegistry(jdbc), new CliChannels(new JdbcCliChannelStore(jdbc)),
+        this(handlers, jdbc, McpCatalogQuery.empty(), new CliChannels(new JdbcCliChannelStore(jdbc)),
                 new CapabilityUsage(jdbc));
     }
 
-    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpServerRegistry mcpServers) {
-        this(handlers, jdbc, mcpServers, new CliChannels(new JdbcCliChannelStore(jdbc)), new CapabilityUsage(jdbc));
+    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpCatalogQuery mcpCatalog) {
+        this(handlers, jdbc, mcpCatalog, new CliChannels(new JdbcCliChannelStore(jdbc)), new CapabilityUsage(jdbc));
     }
 
-    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpServerRegistry mcpServers,
+    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpCatalogQuery mcpCatalog,
                       CliChannels cliChannels, CapabilityUsage usage) {
         this.handlers = handlers;
         this.jdbc = jdbc;
-        this.mcpServers = mcpServers;
+        this.mcpCatalog = mcpCatalog;
         this.cliChannels = cliChannels;
         this.usage = usage;
         this.settings = new CapabilitySettings(jdbc, usage);
-        this.mcp = new McpServerService(jdbc, mcpServers, usage);
     }
 
     /** Production uses the configured beans, including custom stores and transaction proxies. */
     @Autowired
-    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpServerRegistry mcpServers,
-            CliChannels cliChannels, CapabilityUsage usage, CapabilitySettings settings, McpServerService mcp) {
+    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpCatalogQuery mcpCatalog,
+            CliChannels cliChannels, CapabilityUsage usage, CapabilitySettings settings) {
         this.handlers = handlers;
         this.jdbc = jdbc;
-        this.mcpServers = mcpServers;
+        this.mcpCatalog = mcpCatalog;
         this.cliChannels = cliChannels;
         this.usage = usage;
         this.settings = settings;
-        this.mcp = mcp;
     }
 
     public Map<String, Object> catalog() {
         var usageSnapshot = usage.usage();
-        var grants = mcpServers.grantsByCapability();
+        var grants = mcpCatalog.grantsByCapability();
         var storedSettings = settings.all();
-        var serverViews = mcp.list();
+        var serverViews = mcpCatalog.serverViews();
         var items = new ArrayList<Map<String, Object>>();
         var counts = new LinkedHashMap<String, Integer>();
         for (var handler : handlers.all()) {
@@ -108,7 +105,7 @@ public class CapabilityCatalog {
             var serverId = String.valueOf(server.get("id"));
             var tools = strings(server.get("tools"));
             for (var tool : tools) {
-                var capability = McpServerRegistry.capabilityId(serverId, tool);
+                var capability = McpCatalogQuery.capabilityId(serverId, tool);
                 if (items.stream().anyMatch(entry -> capability.equals(entry.get("name")))) continue;
                 items.add(declaredMcpItem(capability, serverId, server, storedSettings, grants, usageSnapshot));
                 counts.merge(CapabilityKind.MCP.id(), 1, Integer::sum);
@@ -161,9 +158,9 @@ public class CapabilityCatalog {
         result.put("disabledPlatform", new ArrayList<>(platformDisabled));
         result.put("expertScoped", new ArrayList<>(handlers.expertScopedNames()));
         result.put("platformScoped", new ArrayList<>(handlers.platformNames()));
-        result.put("expertScopedVocabulary", new ArrayList<>(mcpServers.capabilityIds()));
+        result.put("expertScopedVocabulary", new ArrayList<>(mcpCatalog.capabilityIds()));
         result.put("mcpServers", serverViews);
-        result.put("mcpProductionMatrix", OfficialReadonlyMcpMatrix.views());
+        result.put("mcpProductionMatrix", mcpCatalog.productionMatrix());
         result.put("mcpTools", serverViews.stream().map(server -> {
             var entry = new LinkedHashMap<String, Object>();
             entry.put("id", server.get("id"));

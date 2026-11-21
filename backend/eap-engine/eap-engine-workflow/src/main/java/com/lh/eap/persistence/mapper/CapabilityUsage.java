@@ -2,7 +2,6 @@ package com.lh.eap.persistence.mapper;
 import com.lh.eap.core.CapabilityUsageQuery;
 
 import com.lh.eap.application.service.CapabilitySettings;
-import com.lh.eap.application.service.McpServerService;
 import com.lh.eap.domain.model.ExpertManifest;
 
 import java.util.*;
@@ -18,8 +17,8 @@ import org.springframework.stereotype.Service;
  * action because of a draft nobody ever enabled.
  *
  * <p>Extracted from the catalog because two other places need the same answer and must not drift from
- * it: {@link CapabilitySettings} refuses to disable a capability an enabled expert runs, and
- * {@code McpServerService} refuses to delete a server whose tools an enabled expert was granted.
+ * it: {@link CapabilitySettings} refuses to disable a capability an enabled expert runs, and the
+ * MCP management service refuses to delete a server whose tools an enabled expert was granted.
  */
 @Service
 public class CapabilityUsage implements CapabilityUsageQuery {
