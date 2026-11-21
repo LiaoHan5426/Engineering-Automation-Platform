@@ -47,7 +47,7 @@
 ## 5. 与既有合同的关系
 
 - 前端 `eventProjector` 仍按 `executionId+sequence` 去重；跨重启回放复用同一快照协议，无需新端点或新字段。
-- "UNKNOWN 只核对、不重放、不自动重试"的既有规则原样适用；本决定不提供 SQL/源码交付 UNKNOWN 的自动解除。
+- "UNKNOWN 只核对、不重放、不自动重试"的既有规则原样适用；本决定不提供 SQL/源码交付 UNKNOWN 的自动解除。SQL 专家与 Mission 的**人工**核对解除各自按[SQL 专家决策](sql-expert-unknown-manual-resolution.md)与[Mission 决策](mission-unknown-manual-resolution.md)独立实施，均不重放、不续跑。
 - 工作区恢复、模型上下文、跨重启进程接管等缺口不在本决定关闭范围，仍按 [规划台账](../planning-status.md#待推进问题与关闭条件)分别验收。
 
 ## 6. 验证口径
