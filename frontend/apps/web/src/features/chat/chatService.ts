@@ -13,5 +13,6 @@ export function chatStorage(storage: Storage) {
   return {
     getItem: (value: string) => storage.getItem(key(value)),
     setItem: (value: string, data: string) => storage.setItem(key(value), data),
+    removeItem: (value: string) => storage.removeItem(key(value)),
   }
 }

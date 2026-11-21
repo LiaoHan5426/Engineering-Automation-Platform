@@ -34,6 +34,9 @@ function setup(saved = 'null') {
     openAiConversation: vi.fn(async () => conversation),
     aiConversation: vi.fn(async () => conversation),
     sendAiMessage: vi.fn(async () => finalResult),
+    // Sent messages are authoritative on the server graph; tests project an empty graph
+    // so reload/select follows the same path as the real API.
+    conversationGraph: vi.fn(async (id: string) => ({ conversationId: id, path: [], all: [] })),
   }
   return { api, storage, session: createChatSession(api, storage), saved: () => JSON.parse(value) }
 }
@@ -56,7 +59,7 @@ it('reads and parses startup history once, then restores the scratch draft and c
   expect(session.draft.value).toBe('edited after restoration')
 })
 
-it('coalesces streamed deltas, keeps draft writes immediate, and flushes the final outcome without persisting translated messages', async () => {
+it('coalesces streamed deltas, keeps draft writes immediate, and never persists server-owned transcripts locally', async () => {
   vi.useFakeTimers()
   const { session, api, storage, saved } = setup()
   await session.openConversation()
@@ -87,15 +90,17 @@ it('coalesces streamed deltas, keeps draft writes immediate, and flushes the fin
   expect(storage.setItem).not.toHaveBeenCalled()
   await vi.advanceTimersByTimeAsync(150)
   expect(storage.setItem).toHaveBeenCalledTimes(1)
-  expect(saved().transcripts.one[1].text).toHaveLength(100)
+  expect(saved().transcripts).toEqual({})
   finish({ ...finalResult, errorMessage: 'localized', errorLanguage: 'en-US' })
   await pending
-  expect(saved().transcripts.one[1]).toMatchObject({
+  expect(session.turns.value[1]).toMatchObject({
     text: 'complete',
     status: 'SUCCEEDED',
     executionId: 'run',
+    errorMessage: 'localized',
+    errorLanguage: 'en-US',
   })
-  expect(saved().transcripts.one[1]).not.toHaveProperty('errorMessage')
+  expect(saved().transcripts).toEqual({})
   expect(saved().items[0].draft).toBe('')
   const writes = storage.setItem.mock.calls.length
   await vi.advanceTimersByTimeAsync(500)

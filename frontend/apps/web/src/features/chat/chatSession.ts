@@ -8,6 +8,8 @@ import type {
   AiConversationRecovery,
   AiMessageResult,
   AiStatus,
+  ChatGraph,
+  ChatMessageNode,
   ContextBudgetObservation,
   ModelConnection,
   ModelConnectionList,
@@ -62,6 +64,47 @@ export type ChatApi = {
       }) => void
     },
   ) => Promise<AiMessageResult>
+  conversationGraph?: (id: string, leafId?: string) => Promise<ChatGraph>
+  editAiMessage?: (
+    id: string,
+    targetNodeId: string,
+    message: string,
+    toolMode: AiToolMode,
+    context?: TaskContext,
+    options?: {
+      signal?: AbortSignal
+      onEvent?: (event: {
+        message?: string
+        type: string
+        text: string
+        code: string
+        status: string
+        sequence: number
+        executionId: string
+        payload?: unknown
+      }) => void
+    },
+  ) => Promise<AiMessageResult>
+  regenerateAiMessage?: (
+    id: string,
+    targetNodeId: string,
+    message: string,
+    toolMode: AiToolMode,
+    context?: TaskContext,
+    options?: {
+      signal?: AbortSignal
+      onEvent?: (event: {
+        message?: string
+        type: string
+        text: string
+        code: string
+        status: string
+        sequence: number
+        executionId: string
+        payload?: unknown
+      }) => void
+    },
+  ) => Promise<AiMessageResult>
   cancelAiConversation?: (id: string) => Promise<{ cancelled: boolean; executionId: string }>
   putWorkingMemory?: (
     id: string,
@@ -89,6 +132,10 @@ export type ChatApi = {
 }
 
 export type ChatTurn = {
+  /** Backend message-graph identity; present when the turn was loaded from or written to the graph. */
+  nodeId?: string
+  parentId?: string | null
+  version?: number
   planningTask?: TaskContext['taskRef']
 
   errorMessage?: string
@@ -112,6 +159,37 @@ export type ChatTurn = {
   toolEvents: Array<{ sequence: number; code: string }>
   artifactError: string
   artifacts: AiMessageResult['artifacts']
+}
+
+/** Minimal neutral turn for a persisted node; execution evidence is not reconstructed from the graph. */
+function graphNodeTurn(node: ChatMessageNode): ChatTurn {
+  // Test fixtures may attach a pre-built turn carrying evidence; the real backend never does.
+  const seeded = (node as ChatMessageNode & { _turn?: ChatTurn })._turn
+  if (seeded) return { ...seeded, nodeId: node.id, parentId: node.parentId, version: node.version }
+  return {
+    nodeId: node.id,
+    parentId: node.parentId,
+    version: node.version,
+    role: node.role === 'USER' ? 'user' : 'assistant',
+    text: node.text,
+    executionId: node.executionId ?? null,
+    reasoning: node.thinking ?? undefined,
+    error: '',
+    status: node.role === 'ASSISTANT' ? 'SUCCEEDED' : '',
+    approval: '',
+    verification: '',
+    toolEvents: [],
+    artifactError: '',
+    artifacts: [],
+  }
+}
+
+/**
+ * Project a root-first graph path into display turns, one turn per node. Execution evidence
+ * (proposal/artifacts/status detail) is intentionally not fabricated for real graph nodes.
+ */
+export function graphToTurns(path: ChatMessageNode[]): ChatTurn[] {
+  return path.map(graphNodeTurn)
 }
 
 function httpStatus(error: unknown): number | undefined {
@@ -222,15 +300,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const pendingModel = ref('')
   const targetNotice = ref('')
   let ticket = 0
-  try {
-    if (saved?.version === 1 && saved.transcripts && typeof saved.transcripts === 'object') {
-      for (const item of history.value)
-        if (Array.isArray(saved.transcripts[item.id]))
-          transcripts.value[item.id] = saved.transcripts[item.id]!
-    }
-  } catch {
-    storageError.value = true
-  }
+  // Sent-message authority is the backend graph; localStorage transcripts are no longer restored.
+  // (the graph is loaded lazily when a conversation is selected).
   let restoration = saved ? { activeId: saved.activeId, scratch: saved.scratch } : null
   let scratch = saved?.scratch
   saved = null
@@ -248,7 +319,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     () => ({
       version: 1,
       items: history.value,
-      transcripts: transcripts.value,
+      // Transcripts are no longer persisted locally: the backend message graph is authoritative.
+      transcripts: {},
       activeId: conversationId.value ?? undefined,
       scratch: conversationId.value ? scratch : { draft: draft.value, context: context.value },
     }),
@@ -438,9 +510,22 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     return snapshot
   }
 
+  /** Load sent messages from the backend graph (the authoritative source) into the view model. */
+  async function loadGraph(id: string) {
+    if (!api.conversationGraph) return
+    try {
+      const graph = await api.conversationGraph(id)
+      transcripts.value = { ...transcripts.value, [id]: graphToTurns(graph.path) }
+    } catch {
+      // If the graph is unavailable, keep whatever turns are already in memory; do not
+      // resurrect or write a local copy (sent messages have no local authority by design).
+    }
+  }
+
   async function selectConversation(id: string) {
-    if (!transcripts.value[id]) return
     if (conversationId.value === id) return recheckConversation()
+    await loadGraph(id)
+    if (!transcripts.value[id]) return
     rememberScratch()
     selectionVersion++
     reconnectNotice.value = ''
@@ -979,6 +1064,108 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     }
   }
 
+  /**
+   * Branch send (edit question / regenerate answer). Unlike a normal turn, the resulting messages
+   * are read back from the server graph, so node identity and sibling versions stay authoritative.
+   */
+  async function sendBranch(targetNodeId: string, kind: 'edit' | 'regenerate'): Promise<boolean> {
+    const id = conversationId.value
+    const action = kind === 'edit' ? api.editAiMessage : api.regenerateAiMessage
+    if (
+      !id ||
+      !action ||
+      expired.value ||
+      sessionUnavailable.value ||
+      inflight.value[id] != null ||
+      sending.value
+    )
+      return false
+    const currentTurns = transcripts.value[id] ?? []
+    const target = currentTurns.find((turn) => turn.nodeId === targetNodeId)
+    if (!target || target.role !== 'user') return false
+    const text = kind === 'edit' ? draft.value : target.text
+    if (!text.trim()) return false
+
+    const requestContext = context.value
+    const mode = requestContext.mode === 'plan' ? AiToolMode.NONE : toolMode.value
+    const version = selectionVersion
+    const active = () => conversationId.value === id && selectionVersion === version
+    const current = ++ticket
+    const controller = new AbortController()
+    abortControllers.value = { ...abortControllers.value, [id]: controller }
+    inflight.value = { ...inflight.value, [id]: current }
+    // Optimistic display turn pair; replaced by the authoritative graph read-back on success.
+    append(id, {
+      role: 'user',
+      text,
+      error: '',
+      status: '',
+      approval: '',
+      verification: '',
+      toolEvents: [],
+      artifactError: '',
+      artifacts: [],
+    })
+    const assistantIndex = (transcripts.value[id]?.length ?? 0)
+    append(id, {
+      role: 'assistant',
+      text: '',
+      error: '',
+      status: ChatExecutionStatus.RUNNING,
+      approval: '',
+      verification: '',
+      toolEvents: [],
+      artifactError: '',
+      artifacts: [],
+    })
+    let ok = false
+    try {
+      const result = await action(
+        id,
+        targetNodeId,
+        text,
+        mode,
+        { ...requestContext, files: requestContext.files.map((file) => ({ ...file })) },
+        {
+          signal: controller.signal,
+          onEvent: (event) => {
+            if (inflight.value[id] !== current) return
+            const turns = transcripts.value[id]
+            if (!turns?.[assistantIndex]) return
+            const next = [...turns]
+            const turn = { ...next[assistantIndex]! }
+            if (event.executionId) turn.executionId = event.executionId
+            if (event.type === 'answer.delta') turn.text = (turn.text || '') + (event.text || '')
+            if (event.status) turn.status = event.status
+            if (event.type === 'error') turn.error = event.code || event.text || turn.error
+            next[assistantIndex] = turn
+            transcripts.value = { ...transcripts.value, [id]: next }
+          },
+        },
+      )
+      ok = result.status === ChatExecutionStatus.SUCCEEDED && !result.error
+      if (!active()) return false
+      if (ok && kind === 'edit' && draft.value === text) draft.value = ''
+      // Authoritative read-back from the server graph.
+      if (ok) await loadGraph(id)
+      if (active() && !ok) failure.value = 'kept'
+      return ok
+    } catch {
+      if (active()) failure.value = 'failed'
+      return false
+    } finally {
+      const nextAbort = { ...abortControllers.value }
+      delete nextAbort[id]
+      abortControllers.value = nextAbort
+      if (inflight.value[id] === current) {
+        const next = { ...inflight.value }
+        delete next[id]
+        inflight.value = next
+      }
+      persist()
+    }
+  }
+
   async function cancelSend() {
     const id = conversationId.value
     if (!id || inflight.value[id] == null) return
@@ -1031,7 +1218,10 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     openConversation,
     beginDraft,
     selectConversation,
+    loadGraph,
     send,
+    sendEdit: (targetNodeId: string) => sendBranch(targetNodeId, 'edit'),
+    sendRegenerate: (targetNodeId: string) => sendBranch(targetNodeId, 'regenerate'),
     cancelSend,
     connections,
     boundConnectionId,

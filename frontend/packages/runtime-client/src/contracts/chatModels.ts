@@ -194,6 +194,27 @@ export type ContextBudgetObservation = {
   notes: string[]
 }
 
+/** Immutable server-authoritative message node (CT-02 slice C). */
+export type ChatMessageNode = {
+  id: string
+  parentId: string | null
+  role: 'USER' | 'ASSISTANT'
+  version: number
+  text: string
+  thinking?: string | null
+  citations?: string | null
+  executionId?: string | null
+  sequence: number
+}
+
+export type ChatGraph = {
+  conversationId: string
+  /** Selected branch path, root-first. */
+  path: ChatMessageNode[]
+  /** All nodes in the conversation, including sibling alternatives. */
+  all: ChatMessageNode[]
+}
+
 export type AiMessageResult = {
   errorMessage?: string
   errorLanguage?: string

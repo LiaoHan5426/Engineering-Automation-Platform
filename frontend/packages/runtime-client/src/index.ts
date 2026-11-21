@@ -61,6 +61,7 @@ import type { MissionExecutionRecord } from './contracts/workflowModels'
 import type { SqlAnalysis } from './contracts/capabilityModels'
 import type { ChatExecutionEvent } from './contracts/chatModels'
 import type { AiMessageResult } from './contracts/chatModels'
+import type { ChatGraph } from './contracts/chatModels'
 import type { AiToolEvent } from './contracts/chatModels'
 import type { AiStatus } from './contracts/chatModels'
 import type { SkillSummary } from './contracts/skillModels'
@@ -94,20 +95,20 @@ import {
   isBoardRuntimeActivity,
   validateCodeProposal,
   validateToolExecution,
-} from './contracts/validation'
+} from './contracts/validation.ts'
 
-import { runtimeLanguage } from './problem'
-import { isChatExecutionStatus } from './contracts/chatExecution'
-export { ContextMetering } from './contracts/contextBudget'
-import { ModelErrors } from './errors/modelErrors'
-import { ToolErrors } from './errors/toolErrors'
+import { runtimeLanguage } from './problem.ts'
+import { isChatExecutionStatus } from './contracts/chatExecution.ts'
+export { ContextMetering } from './contracts/contextBudget.ts'
+import { ModelErrors } from './errors/modelErrors.ts'
+import { ToolErrors } from './errors/toolErrors.ts'
 import { createRequestClient, openStream, type RequestClient } from '@eap/request'
-import { createExpertAgentApi } from './expertAgent'
-import { createTaskDescriptionApi } from './taskDescription'
-import { createTaskDetailApi } from './taskDetail'
-export { createTaskDetailApi, isTaskDetailFields } from './taskDetail'
+import { createExpertAgentApi } from './expertAgent.ts'
+import { createTaskDescriptionApi } from './taskDescription.ts'
+import { createTaskDetailApi } from './taskDetail.ts'
+export { createTaskDetailApi, isTaskDetailFields } from './taskDetail.ts'
 export type { TaskDetailOptimizationRequest, TaskDetailOptimization } from './taskDetail'
-export { createTaskDescriptionApi } from './taskDescription'
+export { createTaskDescriptionApi } from './taskDescription.ts'
 export type {
   TaskDescriptionOptimizationRequest,
   TaskDescriptionOptimization,
@@ -120,7 +121,9 @@ export type {
   ExpertAgentResult,
 } from './expertAgent'
 
-const baseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080/api'
+// 该包同时被 Vite 应用与 Node 端的 mock 服务加载；Node 下没有 import.meta.env，
+// 因此这里必须容忍它缺失，否则非 Vite 宿主一进入模块就抛错。
+const baseUrl = import.meta.env?.VITE_API_URL ?? 'http://127.0.0.1:8080/api'
 
 let onPendingChange: ((pending: number) => void) | undefined
 export function configureRuntimeRequests(options: { onPendingChange?: (pending: number) => void }) {
@@ -1071,6 +1074,41 @@ export function createChatApi(
         { message, toolMode, ...(context ? { context } : {}) },
         options,
       ),
+    conversationGraph: (id: string, leafId?: string) =>
+      get<ChatGraph>(
+        '/ai/conversations/' +
+          encodeURIComponent(id) +
+          '/graph' +
+          (leafId ? '?leafId=' + encodeURIComponent(leafId) : ''),
+      ),
+    editAiMessage: (
+      id: string,
+      targetNodeId: string,
+      message: string,
+      toolMode: AiToolMode,
+      context?: TaskContext,
+      options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
+    ) =>
+      postChatSse(
+        client,
+        '/ai/conversations/' + encodeURIComponent(id) + '/messages/edit',
+        { message, toolMode, targetNodeId, ...(context ? { context } : {}) },
+        options,
+      ),
+    regenerateAiMessage: (
+      id: string,
+      targetNodeId: string,
+      message: string,
+      toolMode: AiToolMode,
+      context?: TaskContext,
+      options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
+    ) =>
+      postChatSse(
+        client,
+        '/ai/conversations/' + encodeURIComponent(id) + '/messages/regenerate',
+        { message, toolMode, targetNodeId, ...(context ? { context } : {}) },
+        options,
+      ),
     cancelAiConversation: (id: string) =>
       client
         .post<{ cancelled: boolean; executionId: string }>(
@@ -1175,38 +1213,38 @@ export function createChatApi(
   }
 }
 
-export { SkillErrors } from './errors/skillErrors'
-export { BoardVerificationErrors } from './errors/boardVerificationErrors'
-export { BoardDeliveryErrors } from './errors/boardDeliveryErrors'
-export { ToolErrors } from './errors/toolErrors'
-export { ModelErrors } from './errors/modelErrors'
+export { SkillErrors } from './errors/skillErrors.ts'
+export { BoardVerificationErrors } from './errors/boardVerificationErrors.ts'
+export { BoardDeliveryErrors } from './errors/boardDeliveryErrors.ts'
+export { ToolErrors } from './errors/toolErrors.ts'
+export { ModelErrors } from './errors/modelErrors.ts'
 
-export * from './contracts/index'
+export * from './contracts/index.ts'
 
-export { AgentErrors } from './errors/agentErrors'
+export { AgentErrors } from './errors/agentErrors.ts'
 
-export { BoardErrors } from './errors/boardErrors'
+export { BoardErrors } from './errors/boardErrors.ts'
 
-export { CodeErrors } from './errors/codeErrors'
+export { CodeErrors } from './errors/codeErrors.ts'
 
-export { ExecutionErrors } from './errors/executionErrors'
+export { ExecutionErrors } from './errors/executionErrors.ts'
 
-export { SecurityErrors } from './errors/securityErrors'
+export { SecurityErrors } from './errors/securityErrors.ts'
 
-export { WorkspaceErrors } from './errors/workspaceErrors'
+export { WorkspaceErrors } from './errors/workspaceErrors.ts'
 
-export { ProtocolErrors } from './errors/protocolErrors'
+export { ProtocolErrors } from './errors/protocolErrors.ts'
 
-export { CommonErrors } from './errors/commonErrors'
+export { CommonErrors } from './errors/commonErrors.ts'
 
-export { McpErrors } from './errors/mcpErrors'
+export { McpErrors } from './errors/mcpErrors.ts'
 
-export { ChatGptAuthErrors } from './errors/chatGptAuthErrors'
+export { ChatGptAuthErrors } from './errors/chatGptAuthErrors.ts'
 
-export { ChatErrors } from './errors/chatErrors'
+export { ChatErrors } from './errors/chatErrors.ts'
 
-export { ResourceErrors } from './errors/resourceErrors'
+export { ResourceErrors } from './errors/resourceErrors.ts'
 
-export { CliProgramErrors } from './errors/cliProgramErrors'
+export { CliProgramErrors } from './errors/cliProgramErrors.ts'
 
-export { GitErrors } from './errors/gitErrors'
+export { GitErrors } from './errors/gitErrors.ts'

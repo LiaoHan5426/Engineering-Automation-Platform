@@ -15,6 +15,7 @@ import {
   InfiniteScroll,
   Input,
   Textarea,
+  RichText,
   Collapse,
   WorkbenchFrame,
   Drawer,
@@ -23,6 +24,7 @@ import { type AiConnectionState } from '@eap/runtime-client'
 import { IconEllipsis, Icon } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
 import { createChatSession } from './chatSession'
+import { isDraftSubmitKey } from './draftKeys'
 import TurnContextDetails from './TurnContextDetails.vue'
 import TaskMemoryPanel from './TaskMemoryPanel.vue'
 import ModelHistoryDialog from './ModelHistoryDialog.vue'
@@ -90,18 +92,51 @@ let restoringFeed = false
 function feedKey(id: string | null | undefined) {
   return id || 'scratch'
 }
+const FEED_BOTTOM_SLACK = 64
+/** True while the reader is parked at the newest turn; scrolling up releases it. */
+const followBottom = ref(true)
+let lastFeedTop = 0
+
+/**
+ * Follow is inferred from the reader's own direction, not from the current offset:
+ * while an answer streams, the feed grows under a stationary scrollTop, which would
+ * otherwise look like "the reader scrolled away".
+ */
 function onFeedScroll(event: Event) {
   if (restoringFeed || !props.active) return
   const feedNode = event.currentTarget
-  if (feedNode instanceof HTMLElement)
-    saveFeedScroll(feedKey(session.conversationId.value), feedNode.scrollTop)
+  if (!(feedNode instanceof HTMLElement)) return
+  saveFeedScroll(feedKey(session.conversationId.value), feedNode.scrollTop)
+  const movedUp = feedNode.scrollTop < lastFeedTop - 4
+  lastFeedTop = feedNode.scrollTop
+  if (movedUp) followBottom.value = false
+  else if (feedNode.scrollHeight - feedNode.scrollTop - feedNode.clientHeight <= FEED_BOTTOM_SLACK)
+    followBottom.value = true
 }
+
+function scrollFeedToBottom(behavior: ScrollBehavior = 'auto') {
+  const node = feed()
+  // A box without layout metrics cannot be scrolled; skip instead of collapsing a
+  // restored position to zero.
+  if (!node || !node.clientHeight) return
+  node.scrollTo({ top: node.scrollHeight, behavior })
+  lastFeedTop = node.scrollTop
+  followBottom.value = true
+}
+
+function jumpToLatest() {
+  scrollFeedToBottom('smooth')
+}
+
 function restoreFeed(id: string | null | undefined) {
   restoringFeed = true
   holdingFeed.value = true
   const apply = () => {
     const node = feed()
-    if (node) node.scrollTop = readFeedScroll(feedKey(id))
+    if (node) {
+      node.scrollTop = readFeedScroll(feedKey(id))
+      lastFeedTop = node.scrollTop
+    }
   }
   const raf =
     typeof requestAnimationFrame === 'function'
@@ -112,6 +147,16 @@ function restoreFeed(id: string | null | undefined) {
     raf(() => {
       apply()
       raf(() => {
+        // A restored offset may be clamped by the browser (e.g. the new
+        // conversation is shorter than the saved scrollTop). Re-derive the
+        // follow state from the *actual* landing position, otherwise the
+        // "back to latest" button lingers while we are already at the bottom.
+        const node = feed()
+        if (node && node.clientHeight) {
+          lastFeedTop = node.scrollTop
+          followBottom.value =
+            node.scrollHeight - node.scrollTop - node.clientHeight <= FEED_BOTTOM_SLACK
+        }
         restoringFeed = false
         holdingFeed.value = false
       })
@@ -137,6 +182,20 @@ const api = chatService()
 const session = createChatSession(
   api,
   typeof localStorage === 'undefined' ? undefined : chatStorage(localStorage),
+)
+const showJumpToLatest = computed(() => !followBottom.value && session.turns.value.length > 0)
+// Streaming appends grow the feed from the top edge; only follow while the reader
+// has not scrolled away. `turns.value.length` alone misses token-level growth.
+watch(
+  () => {
+    const turns = session.turns.value
+    const last = turns[turns.length - 1]
+    return `${turns.length}:${last?.text?.length ?? 0}`
+  },
+  () => {
+    if (!followBottom.value) return
+    void nextTick(() => scrollFeedToBottom())
+  },
 )
 const visibleTurns = computed(() => {
   const all = session.turns.value
@@ -229,6 +288,32 @@ function adoptPreparedTask(selection: CodePreparationSelection) {
 
 const exportingChat = ref(false)
 const documentSource = ref<{ key: string; turn: ChatTurn } | null>(null)
+const composerForm = ref<HTMLFormElement | null>(null)
+
+/** Grow the draft box with its content, capped so the feed keeps readable room. */
+function growDraft() {
+  const field = composerForm.value?.querySelector<HTMLTextAreaElement>('.composer-draft')
+  if (!field || !field.offsetParent) return
+  const height = field.scrollHeight
+  if (!height) return
+  field.style.height = 'auto'
+  field.style.height = `${Math.min(height, 220)}px`
+}
+
+/**
+ * Enter sends, Shift+Enter inserts a newline. While an IME candidate window is open
+ * Enter confirms the candidate, so a composing keystroke must never submit the draft.
+ */
+function draftKeydown(event: KeyboardEvent) {
+  if (!isDraftSubmitKey(event)) return
+  event.preventDefault()
+  if (session.draft.value.trim() && !session.sending.value) void sendTask()
+}
+
+watch(
+  () => session.conversationId.value,
+  () => void nextTick(growDraft),
+)
 function resumeTaskHandoff() {
   workbench.boardHandoffToken++
   window.location.hash = 'board'
@@ -677,8 +762,36 @@ const outgoingText = computed(() => {
     plan: workbench.executionMode === 'plan',
   })
 })
+/** Node id of a user question being edited; sending then creates a versioned sibling branch. */
+const editingNodeId = ref<string | null>(null)
+
+function editQuestion(turn: ChatTurn) {
+  if (!turn.nodeId || session.sending.value) return
+  editingNodeId.value = turn.nodeId
+  session.draft.value = turn.text
+  nextTick(() => {
+    const input = document.querySelector<HTMLTextAreaElement>('[data-testid="chat-input"]')
+    input?.focus()
+  })
+}
+
+function cancelEdit() {
+  editingNodeId.value = null
+}
+
+async function regenerateAnswer(index: number) {
+  if (session.sending.value) return
+  const turns = session.turns.value
+  const answer = turns[index]
+  const question = index > 0 ? turns[index - 1] : null
+  if (!answer || answer.role !== 'assistant' || !question || question.role !== 'user' || !question.nodeId)
+    return
+  await session.sendRegenerate(question.nodeId)
+}
+
 async function sendTask() {
   if (workbench.executionMode === 'agent' && !agentReady.value) return
+  const editing = editingNodeId.value
   const extras = currentExtras()
   const guidance = extras.experts.map((item) => item.guidance).join('\n')
   const sceneInstructions =
@@ -696,10 +809,15 @@ async function sendTask() {
   })
   const before = session.conversationId.value
   try {
-    await session.send(
-      requestContext,
-      workbench.executionMode === 'agent' ? AiToolMode.CODE_SOURCES : undefined,
-    )
+    if (editing) {
+      const ok = await session.sendEdit(editing)
+      if (ok) editingNodeId.value = null
+    } else {
+      await session.send(
+        requestContext,
+        workbench.executionMode === 'agent' ? AiToolMode.CODE_SOURCES : undefined,
+      )
+    }
   } finally {
     if (!before && session.conversationId.value) {
       adoptScratch(session.conversationId.value)
@@ -1106,6 +1224,12 @@ onMounted(async () => {
             :compact="session.turns.value.length > 0"
             @scenario="useScene"
           />
+          <Feedback v-if="editingNodeId" tone="info" data-testid="editing-branch-hint">
+            {{ t('chat.editingHint') }}
+            <Button size="sm" variant="ghost" data-testid="cancel-edit" @click="cancelEdit">{{
+              t('chat.cancelEdit')
+            }}</Button>
+          </Feedback>
           <ol v-if="visibleTurns.length" class="chat-log">
             <li
               v-for="{ turn, key } in visibleTurns"
@@ -1113,8 +1237,26 @@ onMounted(async () => {
               :aria-label="turn.role === 'user' ? t('chat.speakerYou') : t('chat.speakerModel')"
               :class="turn.role === 'user' ? 'turn-user' : 'turn-assistant'"
             >
-              <p v-if="turn.text">{{ turn.text }}</p>
-              <p v-else-if="turn.role === 'assistant'">
+              <RichText
+                v-if="turn.text && turn.role === 'assistant'"
+                class="turn-answer"
+                :source="turn.text"
+                :copy-label="t('chat.copyCode')"
+                :copied-label="t('chat.copiedCode')"
+                :streaming-label="
+                  turn.status === ChatExecutionStatus.RUNNING ? t('chat.streamingAnswer') : ''
+                "
+              />
+              <p v-else-if="turn.text" class="turn-text">{{ turn.text }}</p>
+              <Button
+                v-if="turn.role === 'user' && turn.nodeId && !session.sending.value"
+                size="sm"
+                variant="ghost"
+                data-testid="question-edit"
+                @click="editQuestion(turn)"
+                >{{ t('chat.editQuestion') }}</Button
+              >
+              <p v-if="!turn.text && turn.role === 'assistant'">
                 {{
                   t(
                     key === pendingAnswerKey && turn.status === ChatExecutionStatus.RUNNING
@@ -1156,6 +1298,14 @@ onMounted(async () => {
                 data-testid="task-plan-open"
                 @click="taskPlan = turn"
                 >{{ t('desktop.taskPlanTitle') }}</Button
+              >
+              <Button
+                v-if="turn.role === 'assistant' && turn.text && !session.sending.value"
+                size="sm"
+                variant="ghost"
+                data-testid="answer-regenerate"
+                @click="regenerateAnswer(key)"
+                >{{ t('chat.regenerate') }}</Button
               >
               <p v-if="turn.error">
                 {{
@@ -1462,7 +1612,19 @@ onMounted(async () => {
             {{ t('desktop.effortReset', { effort: t('task.' + effortReset) }) }}
           </p>
         </InfiniteScroll>
+        <div class="jump-latest-anchor">
+          <Button
+            v-if="showJumpToLatest"
+            class="jump-latest"
+            variant="secondary"
+            size="sm"
+            data-testid="jump-latest"
+            @click="jumpToLatest"
+            >{{ t('chat.jumpLatest') }}</Button
+          >
+        </div>
         <form
+          ref="composerForm"
           class="chat-composer preview-composer preview-input-box"
           data-testid="chat-composer"
           @submit.prevent="sendTask"
@@ -1504,6 +1666,8 @@ onMounted(async () => {
                     )
                   "
                   rows="3"
+                  @keydown="draftKeydown"
+                  @input="growDraft"
                   :disabled="
                     session.sending.value ||
                     session.opening.value ||
@@ -2028,6 +2192,29 @@ onMounted(async () => {
 .chat-log > li > p {
   line-height: 1.9;
   font-size: 14px;
+}
+.chat-log > li > .turn-answer {
+  line-height: 1.8;
+  font-size: 14px;
+  color: var(--text);
+}
+/* Answers carry tables and code: they need the column, not intrinsic text width.
+   User drafts keep content sizing and stay right-aligned. */
+.chat-log > li.turn-assistant {
+  width: 100%;
+  justify-self: stretch;
+}
+.jump-latest-anchor {
+  position: relative;
+  z-index: 2;
+  height: 0;
+}
+.jump-latest {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: var(--eap-box-shadow-overlay);
 }
 .turn-meta {
   font-size: 12px;

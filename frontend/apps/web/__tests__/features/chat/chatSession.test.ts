@@ -1,6 +1,43 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
-import type { AiMessageResult, AiStatus, ContextBudgetObservation } from '@eap/runtime-client'
+import type {
+  AiMessageResult,
+  AiStatus,
+  ContextBudgetObservation,
+  ChatGraph,
+  ChatMessageNode,
+  ChatTurn,
+} from '@eap/runtime-client'
+
+/**
+ * Test-only projection: seeded turns live in a localStorage snapshot, but the product now reads
+ * sent messages from the backend graph. This adapter keeps those session tests meaningful by
+ * serving the seeded turns through the graph API, carrying the rich turn for evidence assertions.
+ */
+function graphApiFromStored(getSnapshot: () => string): Pick<ChatApi, 'conversationGraph'> {
+  return {
+    conversationGraph: async (id: string): Promise<ChatGraph> => {
+      let turns: ChatTurn[] = []
+      try {
+        const parsed = getSnapshot() ? JSON.parse(getSnapshot()) : null
+        turns = parsed?.transcripts?.[id] ?? []
+      } catch {
+        turns = []
+      }
+      const all: ChatMessageNode[] = turns.map((turn, index) => ({
+        id: turn.nodeId ?? `${id}-node-${index}`,
+        parentId: turn.parentId ?? (index > 0 ? `${id}-node-${index - 1}` : null),
+        role: turn.role === 'user' ? 'USER' : 'ASSISTANT',
+        version: 1,
+        text: turn.text,
+        executionId: turn.executionId ?? null,
+        sequence: index + 1,
+        ...({ _turn: turn } as Record<string, unknown>),
+      } as ChatMessageNode))
+      return { conversationId: id, path: all, all }
+    },
+  }
+}
 
 function status(state: AiStatus['state'] = 'disabled'): AiStatus {
   return {
@@ -247,7 +284,7 @@ describe('chat session', () => {
       expect(session.context.value.knowledgeExpertRef).toEqual({ id: 'saved', revision: 4 })
     },
   )
-  it('preserves returned resource evidence and safety clearing on the assistant turn and local replay', async () => {
+  it('keeps returned resource evidence on the live turn and replays only server graph content', async () => {
     const evidence = {
       expertRef: { id: 'saved', revision: 4 },
       status: 'no_matches' as const,
@@ -260,7 +297,21 @@ describe('chat session', () => {
         saved = value
       },
     }
-    const api = {
+    const graphNode: ChatMessageNode = {
+      id: 'c1-answer-1',
+      parentId: null,
+      role: 'ASSISTANT',
+      version: 1,
+      text: 'real',
+      executionId: 'exec-1',
+      sequence: 1,
+    }
+    const api: ChatApi = {
+      conversationGraph: async (id: string): Promise<ChatGraph> => ({
+        conversationId: id,
+        path: [graphNode],
+        all: [graphNode],
+      }),
       aiStatus: async () => status(),
       openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
       sendAiMessage: async () =>
@@ -276,10 +327,12 @@ describe('chat session', () => {
     })
     const replay = createChatSession(api, storage)
     await replay.restoreLastConversation()
-    expect(replay.turns.value[1]).toMatchObject({
-      knowledgeContext: evidence,
-      knowledgeMemoryCleared: true,
+    expect(replay.turns.value[0]).toMatchObject({
+      role: 'assistant',
+      text: 'real',
+      executionId: 'exec-1',
     })
+    expect(replay.turns.value[0]).not.toHaveProperty('knowledgeContext')
   })
   it.each([
     [409, 'CODE_GENERATION_BASELINE_CHANGED', 'generation-stale'],
@@ -908,7 +961,30 @@ it('keeps independent drafts, binding and transcripts through switching, reload,
       store.set(key, value)
     },
   }
+  const graphs = new Map<string, ChatGraph>()
+  const seedGraph = (id: string, question: string, answer: string) => {
+    const user: ChatMessageNode = {
+      id: id + '-user',
+      parentId: null,
+      role: 'USER',
+      version: 1,
+      text: question,
+      sequence: 1,
+    }
+    const assistant: ChatMessageNode = {
+      id: id + '-answer',
+      parentId: user.id,
+      role: 'ASSISTANT',
+      version: 1,
+      text: answer,
+      executionId: 'exec-1',
+      sequence: 2,
+    }
+    graphs.set(id, { conversationId: id, path: [user, assistant], all: [user, assistant] })
+  }
   const api: ChatApi = {
+    conversationGraph: async (id: string): Promise<ChatGraph> =>
+      graphs.get(id) ?? { conversationId: id, path: [], all: [] },
     aiStatus: async () => status(),
     openAiConversation: async () => ({
       conversationId: 'chat-' + ++serial,
@@ -925,6 +1001,7 @@ it('keeps independent drafts, binding and transcripts through switching, reload,
   await session.openConversation()
   session.draft.value = 'First request'
   await session.send()
+  seedGraph('chat-1', 'First request', 'real')
   session.draft.value = 'First draft'
   await session.openConversation()
   session.draft.value = 'Second draft'
@@ -1016,6 +1093,7 @@ it('preserves per-conversation context and restores the active conversation afte
     },
   }
   const api: ChatApi = {
+    ...graphApiFromStored(() => store.get('eap.chat.history.v1') ?? ''),
     aiStatus: async () => status(),
     openAiConversation: async () => ({
       conversationId: 'c' + ++serial,
@@ -1063,4 +1141,102 @@ it('keeps a new draft local until the first message', async () => {
   await session.send()
   expect(opened).toBe(2)
   expect(session.history.value[0]?.title).toBe('第一条')
+})
+
+it('sends an edited question as a versioned branch and reloads the authoritative graph', async () => {
+  const branch: ChatGraph = {
+    conversationId: 'c1',
+    path: [
+      {
+        id: 'c1-user',
+        parentId: null,
+        role: 'USER',
+        version: 1,
+        text: 'original question',
+        sequence: 1,
+      },
+      {
+        id: 'c1-answer',
+        parentId: 'c1-user',
+        role: 'ASSISTANT',
+        version: 1,
+        text: 'original answer',
+        executionId: 'exec-1',
+        sequence: 2,
+      },
+    ],
+    all: [],
+  }
+  const calls: Array<unknown[]> = []
+  let graphReads = 0
+  const api: ChatApi = {
+    aiStatus: async () => status(),
+    openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+    sendAiMessage: async () => result(),
+    conversationGraph: async () => {
+      graphReads++
+      return branch
+    },
+    editAiMessage: async (...args) => {
+      calls.push(args)
+      return result({ answer: 'edited answer' })
+    },
+  }
+  const session = createChatSession(api)
+  await session.openConversation()
+  await session.loadGraph('c1')
+  session.draft.value = 'edited question'
+  expect(await session.sendEdit('c1-user')).toBe(true)
+  expect(calls).toHaveLength(1)
+  expect(calls[0]!.slice(0, 4)).toEqual(['c1', 'c1-user', 'edited question', 'none'])
+  expect(graphReads).toBe(2)
+  expect(session.turns.value[0].text).toBe('original question')
+})
+
+it('regenerates an answer from the user node and reads the sibling branch back', async () => {
+  const branch: ChatGraph = {
+    conversationId: 'c1',
+    path: [
+      {
+        id: 'c1-user',
+        parentId: null,
+        role: 'USER',
+        version: 1,
+        text: 'original question',
+        sequence: 1,
+      },
+      {
+        id: 'c1-answer',
+        parentId: 'c1-user',
+        role: 'ASSISTANT',
+        version: 1,
+        text: 'original answer',
+        sequence: 2,
+      },
+    ],
+    all: [],
+  }
+  const calls: Array<unknown[]> = []
+  let graphReads = 0
+  const api: ChatApi = {
+    aiStatus: async () => status(),
+    openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+    sendAiMessage: async () => result(),
+    conversationGraph: async () => {
+      graphReads++
+      return branch
+    },
+    regenerateAiMessage: async (...args) => {
+      calls.push(args)
+      return result({ answer: 'regenerated answer' })
+    },
+  }
+  const session = createChatSession(api)
+  await session.openConversation()
+  await session.loadGraph('c1')
+  expect(await session.sendRegenerate('c1-user')).toBe(true)
+  expect(calls).toHaveLength(1)
+  expect(calls[0]!.slice(0, 4)).toEqual(['c1', 'c1-user', 'original question', 'none'])
+  expect(graphReads).toBe(2)
+  expect(session.turns.value[1].text).toBe('original answer')
 })

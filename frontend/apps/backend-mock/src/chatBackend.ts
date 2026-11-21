@@ -12,6 +12,8 @@ import {
 } from '@eap/runtime-client/contracts'
 import { prototypeVersionDesign } from '@eap/runtime-client/contracts'
 import type {
+  ChatGraph,
+  ChatMessageNode,
   AiConversation,
   AiMessageResult,
   AiStatus,
@@ -31,6 +33,7 @@ import { fileURLToPath } from 'node:url'
 import { createModelBackend } from './modelBackend.ts'
 import { createKnowledgeBackend } from './knowledgeBackend.ts'
 import { createDatabaseBackend } from './databaseBackend.ts'
+import { createRuleBackend } from './ruleBackend.ts'
 import { createBoardBackend } from './boardBackend.ts'
 import { createTaskDetailBackend } from './taskDetailBackend.ts'
 import { createTaskDescriptionBackend } from './taskDescriptionBackend.ts'
@@ -45,6 +48,39 @@ import {
 } from './expertContext.ts'
 
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..')
+
+/**
+ * Rich-text fixture for the chat rendering path: every construct the parser claims to
+ * support, so a visual check of the answer area covers headings, emphasis, lists,
+ * tables, fenced code and links without calling a real model.
+ */
+const RICH_TEXT_SAMPLE = [
+  '## 富文本渲染验收',
+  '',
+  '这是一段带 **加粗**、*斜体*、`行内代码` 与 [外链](https://example.com) 的正文。',
+  '',
+  '### 检查清单',
+  '',
+  '1. 标题按层级显示',
+  '2. 列表缩进正确',
+  '3. 表格可横向滚动',
+  '',
+  '- 无序项一',
+  '- 无序项二',
+  '',
+  '| 规则 | 级别 | 说明 |',
+  '| --- | --- | --- |',
+  '| 全表扫描 | 警告 | 建议补充过滤条件 |',
+  '| 隐式转换 | 提示 | 检查字段类型 |',
+  '',
+  '```sql',
+  'select id, name',
+  'from account',
+  'where status = 1',
+  '```',
+  '',
+  '> 引用块用于强调结论边界。',
+].join('\n')
 
 /** Deterministic CE-01 observation for mock turns; not real token metering. */
 export function mockContextBudget(message: string): ContextBudgetObservation {
@@ -103,6 +139,44 @@ export function createMockChatBackend() {
   const sensitiveConversations = new Set<string>()
   const proposals = new Map<string, CodeProposal>()
   const proposalStates = new Map<string, { status: string; reason: string }>()
+  /** Server-authoritative message graph per conversation (CT-02 slice C). */
+  const chatGraph = new Map<string, ChatMessageNode[]>()
+
+  function appendNode(
+    conv: string,
+    parentId: string | null,
+    role: 'USER' | 'ASSISTANT',
+    text: string,
+    executionId: string | null,
+  ): ChatMessageNode {
+    const all = chatGraph.get(conv) ?? []
+    const siblings = all.filter((node) => node.parentId === parentId)
+    const version = siblings.length ? Math.max(...siblings.map((node) => node.version)) + 1 : 1
+    const sequence = all.length ? Math.max(...all.map((node) => node.sequence)) + 1 : 1
+    const node: ChatMessageNode = {
+      id: randomUUID(),
+      parentId,
+      role,
+      version,
+      text,
+      executionId,
+      sequence,
+    }
+    chatGraph.set(conv, [...all, node])
+    return node
+  }
+  function graphView(conv: string, leafId?: string): ChatGraph {
+    const all = chatGraph.get(conv) ?? []
+    const byId = new Map(all.map((node) => [node.id, node]))
+    const leaf = leafId && byId.has(leafId) ? byId.get(leafId)! : all.at(-1)
+    const path: ChatMessageNode[] = []
+    let cursor = leaf
+    while (cursor) {
+      path.unshift(cursor)
+      cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined
+    }
+    return { conversationId: conv, path, all }
+  }
   const versions: Array<Record<string, unknown>> = []
 
   const models = [
@@ -141,6 +215,7 @@ export function createMockChatBackend() {
   const skillBackend = createSkillBackend()
   const scenarioBackend = createScenarioBackend(() => versions.length)
   const databaseBackend = createDatabaseBackend()
+  const ruleBackend = createRuleBackend()
   const taskDetailBackend = createTaskDetailBackend()
   const taskDescriptionBackend = createTaskDescriptionBackend()
   const boardBackend = createBoardBackend((id) => versions.some((version) => version.id === id))
@@ -186,6 +261,8 @@ export function createMockChatBackend() {
       if (knowledge) return knowledge
       const database = databaseBackend.handle(method, requestUrl, body)
       if (database) return database
+      const rule = ruleBackend.handle(method, requestUrl, body)
+      if (rule) return rule
       if (requestUrl.searchParams.has('connectionId'))
         body.connectionId = requestUrl.searchParams.get('connectionId')
       const configured = modelBackend.handle(method, path, body)
@@ -501,7 +578,55 @@ export function createMockChatBackend() {
         modelHistory.delete(id)
         bindingRevisions.delete(id)
         sensitiveConversations.delete(id)
+        chatGraph.delete(id)
         return result(200, {})
+      }
+      if (method === 'GET' && suffix?.startsWith('/graph')) {
+        if (!item) return result(404, { code: ChatErrors.UNKNOWN_CONVERSATION })
+        const leafId = new URL(path, 'http://mock.local').searchParams.get('leafId') ?? undefined
+        return result(200, graphView(id, leafId))
+      }
+      if (
+        method === 'POST' &&
+        (suffix === '/messages/edit' || suffix === '/messages/regenerate')
+      ) {
+        if (!item) return result(404, { code: ChatErrors.UNKNOWN_CONVERSATION })
+        if (busy.has(id)) return result(409, { code: ChatErrors.CONVERSATION_BUSY })
+        const targetId = String(body.targetNodeId ?? '')
+        const target = (chatGraph.get(id) ?? []).find((node) => node.id === targetId)
+        if (!target || target.role !== 'USER')
+          return result(400, { code: 'MOCK_INVALID_BRANCH_TARGET' })
+        if (typeof body.message !== 'string' || !body.message.trim())
+          return result(400, { code: 'INVALID_MESSAGE' })
+        busy.add(id)
+        try {
+          await Promise.resolve()
+          const executionId = `mock-exec-${++sequence}`
+          const answer = suffix === '/messages/edit'
+            ? '这是编辑提问后重新生成的模拟回答（新分支）。'
+            : '这是重新生成的模拟回答（同级新版本）。'
+          if (suffix === '/messages/edit') {
+            // edit creates a versioned sibling USER under the edited node's parent
+            const userNode = appendNode(id, target.parentId, 'USER', body.message, null)
+            appendNode(id, userNode.id, 'ASSISTANT', answer, executionId)
+          } else {
+            appendNode(id, target.id, 'ASSISTANT', answer, executionId)
+          }
+          const response: AiMessageResult = {
+            executionId,
+            answer,
+            error: '',
+            status: 'SUCCEEDED',
+            approval: 'review',
+            verification: 'not_requested',
+            toolEvents: [],
+            artifactError: '',
+            artifacts: [],
+          }
+          return result(200, response)
+        } finally {
+          busy.delete(id)
+        }
       }
       if (method === 'POST' && suffix === '/connection') {
         const target = connections.items.find(
@@ -735,13 +860,17 @@ export function createMockChatBackend() {
           const derivedCleared =
             body.message.includes('派生清空验收') || body.message.includes('__DERIVED_CLEARED__')
           if (derivedCleared) cleared = true
+          const richTextSample =
+            body.message.includes('富文本验收') || body.message.includes('__RICH_TEXT__')
           const response = {
             skillContext: skill ? (skill.data as SkillContext) : null,
             knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null,
             executionId: `mock-exec-${++sequence}`,
             answer: proposal
               ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。'
-              : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。',
+              : richTextSample
+                ? RICH_TEXT_SAMPLE
+                : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。',
             error: '',
             status: 'SUCCEEDED',
             approval: context?.approval ?? 'review',
@@ -758,6 +887,10 @@ export function createMockChatBackend() {
             messages: previous.messages + 2,
             chars: previous.chars + body.message.length + response.answer.length,
           })
+          // Append the successful pair to the authoritative graph (tip of the current branch).
+          const tip = graphView(id).path.at(-1)
+          const userNode = appendNode(id, tip?.role === 'ASSISTANT' ? tip.id : null, 'USER', body.message, null)
+          appendNode(id, userNode.id, 'ASSISTANT', response.answer, response.executionId)
           return reply(200, response)
         } finally {
           busy.delete(id)
