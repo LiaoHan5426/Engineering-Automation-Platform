@@ -249,6 +249,8 @@ import org.springframework.context.annotation.Import;
     SkillController.class,
     SkillService.class,
     SkillTextParser.class,
+    com.lh.eap.ai.graph.ChatMessageGraphStore.class,
+    com.lh.eap.ai.execution.JdbcChatExecutionStore.class,
     AiBrowserRequestGuard.class,
     AiChatController.class,
     ApiErrorHandler.class,

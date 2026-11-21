@@ -103,8 +103,10 @@ class SkillPersistenceTest {
         var other = create(otherRoot);
         assertEquals("SKILL_NOT_FOUND", assertThrows(ResponseStatusException.class, () -> other.get(name,"1.0.0")).getReason());
         assertEquals("SKILL_DIGEST_MISMATCH", assertThrows(ResponseStatusException.class, () -> other.save(Map.of("input",input(),"confirmed",true,"expectedDigest",preview.digest()))).getReason());
-        assertEquals("18", jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE version='18' AND success",String.class));
-        assertEquals("19", jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE version='19' AND success",String.class));
+        // V1–V37 were consolidated into one approved V1 baseline (2026-11-13), so the
+        // historical 18/19 rows no longer exist. Assert the baseline is recorded once and
+        // that the migration effect survives, instead of pinning merged version numbers.
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM eap.flyway_schema_history WHERE version='1' AND success", Integer.class));
         assertNotNull(jdbc.queryForObject("SELECT obj_description('eap.skill_version'::regclass)",String.class));
     }
     @Test void durableImmutableVersionIsIdempotentWithoutChangingTrustOrActivationAndUsesCas() {

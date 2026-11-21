@@ -1,4 +1,8 @@
 package com.lh.eap.ai;
+import com.lh.eap.ai.graph.ChatMessageGraph;
+import com.lh.eap.ai.graph.ChatMessageNode;
+import com.lh.eap.ai.graph.MessageGraphWriter;
+import com.lh.eap.ai.dto.ChatMessageNodeView;
 import com.lh.eap.ai.dto.AiConversationReconnectResponse;
 import com.lh.eap.application.dto.AiConnectionAssignment;
 import com.lh.eap.delivery.PrototypeVersionQuery;
@@ -17,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.dao.DataAccessException;
 import tools.jackson.core.StreamReadFeature;
 import com.lh.eap.error.ChatErrors;
+import com.lh.eap.error.ProtocolErrors;
 import com.lh.eap.error.WorkspaceErrors;
 import com.lh.eap.error.AgentErrors;
 import com.lh.eap.error.CodeErrors;
@@ -58,6 +63,9 @@ public class AiChatApplication {
     private ExpertKnowledgeContextService expertKnowledge;
     @Autowired
     private SkillService skills;
+    /** Optional backend authority for sent messages; absent in minimal compositions and unit tests. */
+    @Autowired(required = false)
+    private ChatMessageGraph messageGraph;
     private final AiConnectionStatus status;
     private final AiConversationRegistry conversations;
     private final EngineeringChatService chat;
@@ -129,7 +137,42 @@ public class AiChatApplication {
             var selected = connections.effectiveDefault();
             if (selected != null) conversations.bind(session.id, binding(selected), false);
         }
+        persistConversationRoot(session);
         return conversation(session.id);
+    }
+
+    /** Create the durable graph root when a backend authority is wired; null-safe otherwise. */
+    private void persistConversationRoot(AiConversationRegistry.Session session) {
+        if (messageGraph == null) return;
+        try {
+            var bound = conversations.binding(session.id);
+            messageGraph.createConversation(session.id, workspace.toAbsolutePath().normalize().toString(),
+                    session.workspaceLabel,
+                    bound == null ? null : bound.connectionId,
+                    bound == null ? null : bound.revision,
+                    bound == null ? null : bound.model,
+                    java.time.Instant.now());
+        } catch (RuntimeException ignored) {
+            // Graph persistence is best-effort at open; it must not fail session creation.
+        }
+    }
+
+    /**
+     * Append a successful question/answer pair to the durable graph. Only a real answer becomes a
+     * server-backed message: cancelled/failed/error outcomes carry no answer and are execution
+     * evidence (journal), not sent messages. Best-effort: persistence must not fail the reply.
+     */
+    private void persistTurn(UUID conversationId, String question, AiMessageResponse response) {
+        if (messageGraph == null || response == null) return;
+        if (response.error() != null && !response.error().isBlank()) return;
+        String answer = response.answer();
+        if (answer == null || answer.isBlank()) return;
+        try {
+            new MessageGraphWriter(messageGraph).appendTurn(
+                    conversationId, question, answer, response.executionId(), answer);
+        } catch (RuntimeException ignored) {
+            // The generation already succeeded and was emitted; never fail it over graph writes.
+        }
     }
 
     public AiConversationReconnectResponse reconnect(UUID id, String json) {
@@ -250,12 +293,30 @@ public class AiChatApplication {
 
     /** Execution is owned by the application; disconnecting an HTTP observer does not cancel it. */
     public RunningTurn sendDetached(UUID id, String json, Consumer<ChatExecutionEvent> observer) {
+        return detach(id, json, observer, this::send);
+    }
+
+    /** Branch variants run the same detached execution lifecycle as a normal send. */
+    public RunningTurn editDetached(UUID id, String json, Consumer<ChatExecutionEvent> observer) {
+        return detach(id, json, observer, this::editMessage);
+    }
+
+    public RunningTurn regenerateDetached(UUID id, String json, Consumer<ChatExecutionEvent> observer) {
+        return detach(id, json, observer, this::regenerateMessage);
+    }
+
+    @FunctionalInterface
+    private interface TurnAction {
+        AiMessageResponse run(UUID id, String json, Consumer<ChatExecutionEvent> observer);
+    }
+
+    private RunningTurn detach(UUID id, String json, Consumer<ChatExecutionEvent> observer, TurnAction action) {
         var started = new CompletableFuture<Void>();
         var result = new CompletableFuture<AiMessageResponse>();
         try {
             turns.execute(() -> {
                 try {
-                    var response = send(id, json, event -> {
+                    var response = action.run(id, json, event -> {
                         started.complete(null);
                         if (observer != null) observer.accept(event);
                     });
@@ -281,13 +342,29 @@ public class AiChatApplication {
     }
 
     public AiMessageResponse send(UUID id, String json, Consumer<ChatExecutionEvent> sink) {
+        return sendWithBranch(id, json, sink, null, null, Set.of());
+    }
+
+    /**
+     * Shared execution pipeline for normal sends and branch sends. When {@code branchPath} is set,
+     * the model window is rebuilt from that single selected path before the turn so sibling
+     * branches never leak into context. {@code graphAction}, when set, writes the branch append
+     * instead of the default linear turn.
+     */
+    private AiMessageResponse sendWithBranch(UUID id, String json, Consumer<ChatExecutionEvent> sink,
+            List<AiConversationRegistry.BranchMessage> branchPath,
+            java.util.function.BiConsumer<String, AiMessageResponse> graphAction,
+            Set<String> extraFields) {
+        var allowed = new java.util.LinkedHashSet<>(MESSAGE_FIELDS);
+        allowed.addAll(extraFields);
         return conversations.exclusive(id, () -> {
             boolean cleared = conversations.clearContextMemory(id, false);
             try {
-                var body = objectBody(json, MESSAGE_FIELDS);
+                var body = objectBody(json, allowed);
                 var context = TaskContext.parse(body.get("context"));
                 if ((context.knowledgeExpertRef() != null || context.skillRef() != null) && !cleared) cleared = conversations.clearContextMemory(id, true);
-                return sendExclusive(id, body, context, cleared, sink == null ? event -> {} : sink);
+                if (branchPath != null) conversations.replayBranch(id, branchPath);
+                return sendExclusive(id, body, context, cleared, sink == null ? event -> {} : sink, graphAction);
             } catch (ResponseStatusException rejected) {
                 rejected.getBody().setProperty("knowledgeMemoryCleared", cleared);
                 rejected.getBody().setProperty("contextMemoryCleared", cleared);
@@ -313,7 +390,8 @@ public class AiChatApplication {
     }
 
     private AiMessageResponse sendExclusive(UUID id, Map<String,Object> body, TaskContext context, boolean memoryCleared,
-            Consumer<ChatExecutionEvent> sink) {
+            Consumer<ChatExecutionEvent> sink,
+            java.util.function.BiConsumer<String, AiMessageResponse> graphAction) {
         if (!(body.get("message") instanceof String message) || message.isBlank() || message.length() > 32000
                 || !(body.get("toolMode") instanceof String toolMode))
             throw invalid();
@@ -513,6 +591,12 @@ public class AiChatApplication {
             emitter.emit("approval", proposal.summary(), "", response.status(), proposal);
         }
         if (!response.error().isBlank()) emitter.emit("error", "", response.error(), response.status(), null);
+        if (graphAction != null) {
+            try { graphAction.accept(message, response); }
+            catch (RuntimeException ignored) { /* branch graph write is best-effort; reply already emitted */ }
+        } else {
+            persistTurn(id, message, response);
+        }
         emitter.emit("final", response.answer(), response.error(), response.status(), response);
         emitter.complete(response.status());
         return response;
@@ -574,6 +658,97 @@ public class AiChatApplication {
                 bound == null ? null : bound.connectionId, bound == null ? null : bound.name,
                 bound == null ? null : bound.revision, bound == null ? null : bound.model,
                 conversations.workingMemory(id));
+    }
+
+    /**
+     * Read the durable message graph for a conversation. When {@code leafId} is supplied the path
+     * selects that branch; otherwise the highest-sequence node is used. Switching branches is a
+     * read-only selection and never mutates nodes or execution facts. Returns an empty view when no
+     * backend graph is wired, so minimal compositions keep working.
+     */
+    public ChatMessageNodeView.GraphView conversationGraph(UUID id, UUID leafId) {
+        conversations.require(id);
+        if (messageGraph == null)
+            return new ChatMessageNodeView.GraphView(id, List.of(), List.of());
+        var all = messageGraph.allInConversation(id);
+        var byId = new java.util.HashMap<UUID, ChatMessageNode>();
+        all.forEach(node -> byId.put(node.id(), node));
+        UUID target = leafId;
+        if (target == null || !byId.containsKey(target))
+            target = all.isEmpty() ? null : all.get(all.size() - 1).id();
+        List<ChatMessageNodeView> path = target == null
+                ? List.of()
+                : com.lh.eap.ai.graph.MessageGraph.pathToRoot(target, id, byId::get).stream()
+                        .map(AiChatApplication::view).toList();
+        return new ChatMessageNodeView.GraphView(id, path, all.stream().map(AiChatApplication::view).toList());
+    }
+
+    private static ChatMessageNodeView view(ChatMessageNode node) {
+        return new ChatMessageNodeView(node.id(), node.parentId(), node.role().wire(), node.version(),
+                node.text(), node.thinking(), node.citations(),
+                node.executionId() == null ? null : node.executionId().toString(), node.sequence());
+    }
+
+    /**
+     * Edit a question: rebuild model context from the branch before that question, run the same
+     * execution pipeline with the new text, then append a versioned sibling user/answer pair. The
+     * target node and its old branch stay immutable. {@code json} must include targetNodeId.
+     */
+    public AiMessageResponse editMessage(UUID id, String json, Consumer<ChatExecutionEvent> sink) {
+        return branchSend(id, json, sink, ChatMessageNode.Role.USER, "edit");
+    }
+
+    /**
+     * Regenerate an answer: rebuild model context from the path before the question, rerun the
+     * execution, then append a sibling assistant node under the same question with a fresh
+     * execution id. The previous answer is not touched. {@code json} must include targetNodeId.
+     */
+    public AiMessageResponse regenerateMessage(UUID id, String json, Consumer<ChatExecutionEvent> sink) {
+        return branchSend(id, json, sink, ChatMessageNode.Role.USER, "regenerate");
+    }
+
+    private AiMessageResponse branchSend(UUID id, String json, Consumer<ChatExecutionEvent> sink,
+            ChatMessageNode.Role expectedRole, String kind) {
+        if (messageGraph == null)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ChatErrors.UNKNOWN_CONVERSATION.code());
+        conversations.require(id);
+        final java.util.Map<String, Object> body;
+        try { body = objectBody(json, java.util.Set.of("message", "toolMode", "context", "targetNodeId")); }
+        catch (ResponseStatusException bad) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ProtocolErrors.CURSOR_INVALID.code());
+        }
+        UUID targetNodeId;
+        try { targetNodeId = UUID.fromString(text(body, "targetNodeId")); }
+        catch (IllegalArgumentException bad) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ProtocolErrors.CURSOR_INVALID.code());
+        }
+        var all = messageGraph.allInConversation(id);
+        var target = all.stream().filter(n -> n.id().equals(targetNodeId)).findFirst();
+        if (target.isEmpty() || target.get().role() != expectedRole)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ProtocolErrors.CURSOR_INVALID.code());
+        ChatMessageNode targetNode = target.get();
+        var byId = new java.util.HashMap<UUID, ChatMessageNode>();
+        all.forEach(n -> byId.put(n.id(), n));
+
+        // Context = path up to (not including) the target question; this turn's message is appended
+        // by the advisor as a fresh user message, so no branch text is duplicated in the window.
+        List<AiConversationRegistry.BranchMessage> branchPath = targetNode.parentId() == null
+                ? List.of()
+                : com.lh.eap.ai.graph.MessageGraph.pathToRoot(targetNode.parentId(), id, byId::get).stream()
+                        .map(n -> n.role() == ChatMessageNode.Role.USER
+                                ? AiConversationRegistry.BranchMessage.user(n.text())
+                                : AiConversationRegistry.BranchMessage.assistant(n.text()))
+                        .toList();
+
+        final String question = text(body, "message");
+        final UUID targetId = targetNodeId;
+        final MessageGraphWriter writer = new MessageGraphWriter(messageGraph);
+        java.util.function.BiConsumer<String, AiMessageResponse> graphAction = kind.equals("edit")
+                ? (msg, response) -> writer.editTurn(id, targetId, msg, response.answer(),
+                        response.executionId(), response.answer())
+                : (msg, response) -> { writer.regenerate(id, targetId, response.answer(),
+                        response.executionId(), response.answer()); };
+        return sendWithBranch(id, json, sink, branchPath, graphAction, java.util.Set.of("targetNodeId"));
     }
 
     public AiConversationRegistry.ModelHistoryUsage modelHistory(UUID id) {

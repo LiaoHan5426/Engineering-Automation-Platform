@@ -68,12 +68,19 @@ class BackendModuleBoundaryTest {
             assertFalse(classes.isEmpty());
             for (var source : classes) {
                 String name = source.getFileName().toString();
-                assertTrue(List.of("EapApplication.java", "RuntimeConfiguration.java", "BuiltinResourceSeeder.java", "CliRetentionConfiguration.java", "FullApplicationConfiguration.java").contains(name), source.toString());
+                // ChatMessageGraphStore is the JDBC adapter for the CT-02 sent-message authority;
+                // JdbcChatExecutionStore is the CT-01 execution-log evidence adapter. Both are
+                // deliberately kept here (composition layer) so domain modules stay free of
+                // persistence technology, matching the working-memory adapter placement.
+                assertTrue(List.of("EapApplication.java", "RuntimeConfiguration.java", "BuiltinResourceSeeder.java", "CliRetentionConfiguration.java", "FullApplicationConfiguration.java", "ChatMessageGraphStore.java", "JdbcChatExecutionStore.java").contains(name), source.toString());
             }
         }
         try (var migrations = Files.list(Path.of("src/main/resources/db/migration"))) {
-            assertEquals(List.of("V1__initial_schema.sql"), migrations.filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString()).sorted().toList());
+            // V2 is the CT-02 chat-message-graph migration; V3 is the CT-01 execution-log migration.
+            // V1 baseline is untouched.
+            assertEquals(List.of("V1__initial_schema.sql", "V2__chat_message_graph.sql", "V3__chat_execution_log.sql"),
+                    migrations.filter(Files::isRegularFile)
+                            .map(path -> path.getFileName().toString()).sorted().toList());
         }
     }
 

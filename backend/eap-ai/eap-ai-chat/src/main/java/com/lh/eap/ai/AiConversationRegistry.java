@@ -196,6 +196,42 @@ public class AiConversationRegistry {
         }
     }
 
+    /**
+     * A single model message to replay when selecting a message-graph branch. Plain text only.
+     */
+    public record BranchMessage(String role, String text) {
+        public BranchMessage {
+            if (!("USER".equals(role) || "ASSISTANT".equals(role)))
+                throw new IllegalArgumentException("branch role must be USER or ASSISTANT");
+            if (text == null || text.isBlank())
+                throw new IllegalArgumentException("branch text is required");
+        }
+        public static BranchMessage user(String text) { return new BranchMessage("USER", text); }
+        public static BranchMessage assistant(String text) { return new BranchMessage("ASSISTANT", text); }
+    }
+
+    /**
+     * Replace the SDK model window with an explicit branch path (root-first). Used only from inside
+     * an exclusive turn for edit/regenerate, so the model sees exactly one selected branch and never
+     * a linear mix of sibling versions. This is process-local model context, not server truth; the
+     * authoritative append-only graph is written separately by the chat application.
+     */
+    public void replayBranch(UUID id, List<BranchMessage> path) {
+        synchronized (lock) {
+            var session = require(id);
+            if (!session.busy) throw new IllegalStateException("Branch replay requires exclusive turn");
+            String key = ChatClients.memoryKey(PRINCIPAL, id);
+            memory.clear(key);
+            for (BranchMessage message : path) {
+                if ("USER".equals(message.role()))
+                    memory.add(key, new org.springframework.ai.chat.messages.UserMessage(message.text()));
+                else
+                    memory.add(key, new org.springframework.ai.chat.messages.AssistantMessage(message.text()));
+            }
+            session.touched = clock.get();
+        }
+    }
+
     /** Only an exclusive, explicit summary request may read the SDK window as material. */
     public String summaryMaterial(UUID id) {
         synchronized (lock) {

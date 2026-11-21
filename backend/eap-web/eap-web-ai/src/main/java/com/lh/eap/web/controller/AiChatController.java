@@ -141,6 +141,21 @@ public class AiChatController {
         return chat.reconnect(id, body);
     }
 
+    /** Read-only projection of the server-authoritative sent-message graph (CT-02 slice C). */
+    @GetMapping("/conversations/{id}/graph")
+    public com.lh.eap.ai.dto.ChatMessageNodeView.GraphView graph(
+            @PathVariable UUID id,
+            @RequestParam(name = "leafId", required = false) String leafId) {
+        UUID leaf = null;
+        if (leafId != null && !leafId.isBlank()) {
+            try { leaf = UUID.fromString(leafId); }
+            catch (IllegalArgumentException invalid) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ProtocolErrors.CURSOR_INVALID.code());
+            }
+        }
+        return chat.conversationGraph(id, leaf);
+    }
+
     /**
      * Primary chat path: SSE observer of an application-owned execution.
      * Validation failures thrown before the first event keep HTTP 4xx JSON error semantics.
@@ -151,10 +166,33 @@ public class AiChatController {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter message(@PathVariable UUID id, @RequestBody(required = false) String body, HttpServletRequest request, HttpServletResponse response) {
+        return chatSse(id, body, request, response, chat::sendDetached);
+    }
+
+    /** Edit a question: new versioned branch under the edited node's parent. */
+    @PostMapping(
+            value = "/conversations/{id}/messages/edit",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter edit(@PathVariable UUID id, @RequestBody(required = false) String body, HttpServletRequest request, HttpServletResponse response) {
+        return chatSse(id, body, request, response, chat::editDetached);
+    }
+
+    /** Regenerate an answer: new sibling assistant node under the same question. */
+    @PostMapping(
+            value = "/conversations/{id}/messages/regenerate",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter regenerate(@PathVariable UUID id, @RequestBody(required = false) String body, HttpServletRequest request, HttpServletResponse response) {
+        return chatSse(id, body, request, response, chat::regenerateDetached);
+    }
+
+    private SseEmitter chatSse(UUID id, String body, HttpServletRequest request, HttpServletResponse response,
+            TurnStarter starter) {
         var language = RequestLanguage.resolve(request.getHeader("Accept-Language"));
         response.setHeader("Content-Language", language.toLanguageTag());
         var emitter = new SseEmitter(120_000L);
-        var turn = chat.sendDetached(id, body, event -> sendEvent(emitter, event, language));
+        var turn = starter.start(id, body, event -> sendEvent(emitter, event, language));
         turn.result().whenComplete((result, failure) -> {
             if (failure == null) emitter.complete();
             else emitter.completeWithError(failure);
@@ -166,6 +204,11 @@ public class AiChatController {
             throw failure;
         }
         return emitter;
+    }
+
+    @FunctionalInterface
+    private interface TurnStarter {
+        AiChatApplication.RunningTurn start(UUID id, String body, java.util.function.Consumer<com.lh.eap.ai.dto.ChatExecutionEvent> observer);
     }
 
     @PostMapping("/conversations/{id}/cancel")
