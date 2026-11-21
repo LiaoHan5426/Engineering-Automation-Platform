@@ -28,8 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -60,25 +59,56 @@ public class ExpertExecutionService {
     private final ExpertAnalysisPolicyResolver policies;
     private final Path workspace;
     private final List<ExecutionResource> resources;
+    private final DagExecutionTransactions transactions;
 
-    @Autowired
+    /** Kept for direct construction (tests, lightweight compositions) with no managed transaction. */
     public ExpertExecutionService(ExpertDefinitionService definitions, TaskRepository tasks,
             CapabilityHandlerRegistry handlers, ExpertAnalysisPolicyResolver policies, Path workspace,
             List<ExecutionResource> resources) {
+        this(definitions, tasks, handlers, policies, workspace, resources, null);
+    }
+
+    /** Spring injects the host transaction manager; see {@link DagExecutionTransactions}. */
+    @Autowired
+    public ExpertExecutionService(ExpertDefinitionService definitions, TaskRepository tasks,
+            CapabilityHandlerRegistry handlers, ExpertAnalysisPolicyResolver policies, Path workspace,
+            List<ExecutionResource> resources, PlatformTransactionManager transactionManager) {
         this.definitions = definitions;
         this.tasks = tasks;
         this.handlers = handlers;
         this.policies = Objects.requireNonNull(policies);
         this.workspace = workspace;
         this.resources = List.copyOf(resources);
+        this.transactions = new DagExecutionTransactions(transactionManager);
     }
 
     /** Existing HTTP shape composes domain inputs; it is not the generic capability input contract. */
     public record Request(String sql,String question,UUID databaseId,Map<String,Object> explainPlan,Boolean enhanceWithModel,String pattern)
             implements DatabaseEvidenceInput, WorkspaceSearchInput {}
 
-    @Transactional(isolation=Isolation.REPEATABLE_READ,timeout=90)
+    /**
+     * Three bounded phases; no model, process or remote tool call ever holds a transaction.
+     *
+     * <p>Segment A captures an immutable definition/authorization snapshot in a short read-only
+     * transaction. Segment B runs the whole graph and the model call with no transaction. Segment C
+     * rechecks the definition in a short write transaction and persists the result once. The resource
+     * scope spans B and C so a failed write still closes this run's MCP session.
+     */
     public Map<String,Object> execute(String expertId,Request request){
+        var run=transactions.snapshot(()->loadSnapshot(expertId,request));
+        try(var resourceScope=ExecutionResourceScope.open(resources,run.id(),expertId)){
+            // No transaction is active here: handlers may block on CLI/MCP/network/model work.
+            var outcome=executeGraph(run);
+            return transactions.commit(()->{
+                revalidate(run);
+                tasks.save(run.id(),run.goal(),outcome.status(),outcome.decision(),outcome.modelEnhancement(),outcome.observations());
+                return outcome.response();
+            });
+        }
+    }
+
+    /** Segment A: read and validate the persisted definition, then resolve its domain policy. */
+    private Snapshot loadSnapshot(String expertId,Request request){
         var manifest=definitions.require(expertId,true);
         if (manifest.agent() != null || policies.describe(manifest).map(item -> "agent".equals(item.executionMode())).orElse(false))
             throw new ResponseStatusException(HttpStatus.CONFLICT, AgentErrors.EXPERT_REQUIRES_AGENT_ENTRY.code());
@@ -106,18 +136,32 @@ public class ExpertExecutionService {
 
         var id=UUID.randomUUID();
         var goal=!question.isBlank()?question:!sql.isBlank()?sql:SensitiveData.redact(request.pattern());
-        // Everything expert-scoped is bound to this one execution and released with it.
-        try(var resourceScope=ExecutionResourceScope.open(resources,id,expertId)){
-            return executeGraph(new Run(id,expertId,manifest,request,sql,question,goal,declaredPackIds,resolvedPacks,missingPacks,policy,allowedFacts,binding));
-        }
+        return new Snapshot(id,expertId,manifest,request,sql,question,goal,declaredPackIds,resolvedPacks,missingPacks,policy,allowedFacts,binding);
     }
 
-    private record Run(UUID id,String expertId,ExpertManifest manifest,Request request,String sql,
+    /**
+     * Segment C guard: a definition edited or disabled while the graph was running must not be
+     * written back under the snapshot's route. The comparison is a record value equality, so any
+     * change to the manifest the run relied on rejects the commit; no row is saved on rejection.
+     */
+    private void revalidate(Snapshot snapshot){
+        var current=definitions.require(snapshot.expertId(),true);
+        if(!current.equals(snapshot.manifest()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,AgentErrors.EXPERT_REVOKED.code());
+    }
+
+    private record Snapshot(UUID id,String expertId,ExpertManifest manifest,Request request,String sql,
             String question,String goal,List<String> declaredPackIds,List<RulePack> resolvedPacks,
             List<String> missingPacks,ExpertAnalysisPolicy policy,Set<String> allowedFacts,
             ExpertBehaviorBinding behavior){}
 
-    private Map<String,Object> executeGraph(Run ctx){
+    /** What segment B computed and segment C persists, from one computation. */
+    private record Outcome(String status,String decision,String modelEnhancement,
+            List<Observation> observations,Map<String,Object> response){}
+
+    /** The graph computation from the former executeGraph, now transaction-free. */
+
+    private Outcome executeGraph(Snapshot ctx){
         var id=ctx.id();var expertId=ctx.expertId();var manifest=ctx.manifest();var request=ctx.request();
         var sql=ctx.sql();var question=ctx.question();var goal=ctx.goal();
         var policy=ctx.policy();
@@ -190,7 +234,7 @@ public class ExpertExecutionService {
         // One computation, two consumers: the response field and the persisted column must not be able to
         // disagree, or the overview would report a different route than the result page shows.
         var modelEnhancement=enhancement.state();
-        tasks.save(id,goal,status,decision,modelEnhancement,observations);
+        // Persist moved to segment C: revalidate the definition in a short write transaction first.
         var response=new LinkedHashMap<String,Object>();
         response.put("id",id);response.put("expertId",expertId);response.put("goal",goal);
         if(ctx.behavior()!=null)response.put("behavior",Map.of("id",ctx.behavior().id(),"version",ctx.behavior().version()));
@@ -206,7 +250,7 @@ public class ExpertExecutionService {
         response.put("safety",List.of("输入与持久化证据在平台侧脱敏","只读取已显式授权的资料与知识库","未连接业务数据库，未执行输入 SQL","仅当确定性证据不足或操作者显式请求时才调用模型，且提交前已做证据压缩","模型输出仅为待验证观察，不代表性能提升"));
         response.put("message",failed?"必需节点未通过，已停止其后续依赖":incomplete?"已返回可用分析；缺少上下文或独立验证的节点已明确标注":"流程已完成；完成状态不等于证明 SQL 性能提升");
         log.info("Expert execution {} completed: status={}, observations={}",id,status,observations.size());
-        return response;
+        return new Outcome(status,decision,modelEnhancement,observations,response);
     }
 
     /**
