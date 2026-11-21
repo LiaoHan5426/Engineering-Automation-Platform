@@ -153,7 +153,7 @@ public class McpServerRegistry implements ExpertScopedCapabilityQuery {
     }
 
     public static String capabilityId(String serverId, String tool) {
-        return "mcp." + serverId + "." + tool;
+        return com.lh.eap.core.McpCatalogQuery.capabilityId(serverId, tool);
     }
 
     private static String text(Object value) {
