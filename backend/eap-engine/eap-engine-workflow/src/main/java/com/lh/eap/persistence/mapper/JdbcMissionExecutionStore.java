@@ -16,17 +16,46 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class JdbcMissionExecutionStore implements MissionExecutionStore {
-    private static final String SELECT = """
+    private static final String SELECT_BASE = """
             SELECT id, mission_id, status, capability, principal, workspace_path, workspace_label, executable,
                    policy_snapshot, os_pid, process_started_at, process_user, process_executable, started_at,
                    finished_at, exit_code, stdout, stderr, exit_evidence, unconfirmed_reason, cancel_requested,
                    approval, created_at
-            FROM eap.mission_execution
             """;
+    private static final String SELECT_AUDIT = ", resolution_note, resolution_operator, resolved_at";
+    private static final String FROM = " FROM eap.mission_execution ";
     private final JdbcTemplate jdbc;
+    private volatile Boolean auditColumnsPresent;
 
     public JdbcMissionExecutionStore(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+    }
+
+    /**
+     * The resolution audit columns arrive in an incremental migration (V4). Some persistence tests
+     * still bind this store to a baseline V1 schema. Detect once and omit the audit projection when
+     * the columns are absent, so pre-existing reads keep working; the audit is only ever populated
+     * on a fully migrated schema.
+     */
+    private boolean auditColumnsPresent() {
+        var present = auditColumnsPresent;
+        if (present == null) {
+            synchronized (this) {
+                present = auditColumnsPresent;
+                if (present == null) {
+                    Integer count = jdbc.queryForObject(
+                            "SELECT count(*) FROM information_schema.columns "
+                                    + "WHERE table_schema = 'eap' AND table_name = 'mission_execution' "
+                                    + "AND column_name = 'resolution_note'", Integer.class);
+                    auditColumnsPresent = present = count != null && count > 0;
+                }
+            }
+        }
+        return present;
+    }
+
+    private String select() {
+        return SELECT_BASE + (auditColumnsPresent() ? SELECT_AUDIT : "") + FROM;
     }
 
     @Override
@@ -52,23 +81,23 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
 
     @Override
     public Optional<MissionExecution> open(UUID missionId) {
-        return jdbc.query(SELECT + " WHERE mission_id = ? AND status = ANY(?::text[])",
+        return jdbc.query(select() + " WHERE mission_id = ? AND status = ANY(?::text[])",
                 (rs, row) -> map(rs), missionId, StateBindings.MISSION_ACTIVE).stream().findFirst();
     }
 
     @Override
     public Optional<MissionExecution> find(UUID id) {
-        return jdbc.query(SELECT + " WHERE id = ?", (rs, row) -> map(rs), id).stream().findFirst();
+        return jdbc.query(select() + " WHERE id = ?", (rs, row) -> map(rs), id).stream().findFirst();
     }
 
     @Override
     public List<MissionExecution> list(UUID missionId) {
-        return jdbc.query(SELECT + " WHERE mission_id = ? ORDER BY created_at DESC", (rs, row) -> map(rs), missionId);
+        return jdbc.query(select() + " WHERE mission_id = ? ORDER BY created_at DESC", (rs, row) -> map(rs), missionId);
     }
 
     @Override
     public List<MissionExecution> openAll() {
-        return jdbc.query(SELECT + " WHERE status = ANY(?::text[])", (rs, row) -> map(rs), StateBindings.MISSION_ACTIVE);
+        return jdbc.query(select() + " WHERE status = ANY(?::text[])", (rs, row) -> map(rs), StateBindings.MISSION_ACTIVE);
     }
 
     @Override
@@ -115,6 +144,22 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
 
     @Override
     @Transactional
+    public int resolveUnconfirmed(UUID id, String note, String operator, Instant resolvedAt) {
+        var updated = jdbc.update(
+                """
+                UPDATE eap.mission_execution
+                SET status = ?, resolution_note = ?, resolution_operator = ?, resolved_at = ?
+                WHERE id = ? AND status = ANY(?::text[]) AND unconfirmed_reason IS NOT NULL
+                  AND resolution_note IS NULL
+                """,
+                MissionExecutionStatus.CLOSED_UNCONFIRMED.wire(), note, operator, Timestamp.from(resolvedAt),
+                id, StateBindings.MISSION_ACTIVE);
+        // No projection to eap.mission.execution: a human review is not a successful run.
+        return updated;
+    }
+
+    @Override
+    @Transactional
     public void failSameRow(UUID id, UUID missionId, String reason) {
         jdbc.update(
                 """
@@ -134,7 +179,7 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
         return jdbc.queryForObject("SELECT mission_id FROM eap.mission_execution WHERE id = ?", UUID.class, id);
     }
 
-    private static MissionExecution map(ResultSet rs) throws SQLException {
+    private MissionExecution map(ResultSet rs) throws SQLException {
         return new MissionExecution(
                 rs.getObject("id", UUID.class),
                 rs.getObject("mission_id", UUID.class),
@@ -158,7 +203,15 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
                 rs.getString("unconfirmed_reason"),
                 rs.getBoolean("cancel_requested"),
                 rs.getString("approval"),
-                instant(rs, "created_at"));
+                instant(rs, "created_at"),
+                auditColumnsPresent() ? resolution(rs) : null);
+    }
+
+    private static MissionExecution.Resolution resolution(ResultSet rs) throws SQLException {
+        var note = rs.getString("resolution_note");
+        return note == null ? null : new MissionExecution.Resolution(
+                rs.getObject("id", UUID.class), note, rs.getString("resolution_operator"),
+                instant(rs, "resolved_at"));
     }
 
     private static Instant instant(ResultSet rs, String column) throws SQLException {

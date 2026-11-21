@@ -46,7 +46,27 @@ public class MissionExecutionController {
         return executions.cancel(missionId, executionId);
     }
 
+    @PostMapping("/{executionId}/resolve-unknown")
+    public MissionExecution resolveUnknown(@PathVariable UUID missionId, @PathVariable UUID executionId,
+                                           @RequestBody(required = false) String body) {
+        var parsed = noteBody(body);
+        return executions.resolveUnknown(missionId, executionId, parsed);
+    }
+
+    private static String noteBody(String json) {
+        var body = objectBody(json, Set.of("note"));
+        var value = body.get("note");
+        if (!(value instanceof String text)) {
+            throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
+        }
+        return text;
+    }
+
     private static Map<String, Object> objectBody(String json) {
+        return objectBody(json, FIELDS);
+    }
+
+    private static Map<String, Object> objectBody(String json, Set<String> fields) {
         if (json == null || json.isBlank()) return Map.of();
         final Object parsed;
         try {
@@ -59,7 +79,7 @@ public class MissionExecutionController {
         }
         var body = new LinkedHashMap<String, Object>();
         for (var entry : raw.entrySet()) {
-            if (!(entry.getKey() instanceof String name) || !FIELDS.contains(name)) {
+            if (!(entry.getKey() instanceof String name) || !fields.contains(name)) {
                 throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
             }
             body.put(name, entry.getValue());

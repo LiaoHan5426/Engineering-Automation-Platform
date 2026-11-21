@@ -206,6 +206,7 @@ class MissionGitAcceptanceTest {
                 executions.finish(id, mission, status, projection, evidence, exitCode, stdout, stderr, cancelRequested);
             }
             @Override public void unconfirmed(UUID id, String reason) { executions.unconfirmed(id, reason); }
+            @Override public int resolveUnconfirmed(UUID id, String note, String operator, Instant resolvedAt) { return executions.resolveUnconfirmed(id, note, operator, resolvedAt); }
             @Override public void failSameRow(UUID id, UUID mission, String reason) { executions.failSameRow(id, mission, reason); }
         };
         var registry = new CapabilityRegistry().register(new GitCapability("status"));
@@ -277,6 +278,7 @@ class MissionGitAcceptanceTest {
                 executions.finish(id, mission, status, projection, evidence, exitCode, stdout, stderr, cancelRequested);
             }
             @Override public void unconfirmed(UUID id, String reason) { executions.unconfirmed(id, reason); }
+            @Override public int resolveUnconfirmed(UUID id, String note, String operator, Instant resolvedAt) { return executions.resolveUnconfirmed(id, note, operator, resolvedAt); }
             @Override public void failSameRow(UUID id, UUID mission, String reason) { executions.failSameRow(id, mission, reason); }
         };
     }

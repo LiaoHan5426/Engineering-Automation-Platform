@@ -47,6 +47,48 @@ class MissionGitExecutionServiceTest {
         assertEquals(1, rows.size());
     }
 
+    @Test
+    void resolveUnknownUnblocksStartWithoutFabricatingExitEvidence() {
+        var rows = new ArrayList<MissionExecution>();
+        var execution = open(UUID.randomUUID(), 42L, Instant.parse("2026-10-24T06:00:00Z"));
+        rows.add(execution);
+        var service = service(execution.missionId(), rows, new CapabilityHandlerRegistry(List.of()), new CapabilityRegistry());
+        service.markRestartUnknown();
+        var resolved = service.resolveUnknown(execution.missionId(), execution.id(), "Reviewed process identity and logs");
+
+        assertEquals("CLOSED_UNCONFIRMED", resolved.status());
+        assertEquals(MissionGitExecutionService.RESTART_UNKNOWN, resolved.unconfirmedReason());
+        assertEquals(null, resolved.exitCode());
+        assertEquals(null, resolved.exitEvidence());
+        assertEquals("Reviewed process identity and logs", resolved.resolution().note());
+        assertEquals("local-operator", resolved.resolution().operator());
+        assertEquals(execution.id(), resolved.resolution().executionId());
+
+        // Unblocked: no in-flight row remains for the mission, so open(missionId) no longer returns
+        // this row and a later authorized start can insert a new execution id. Old row is untouched.
+        assertEquals(true, rows.stream()
+                .noneMatch(row -> MissionExecutionStatus.fromWire(row.status()).active()));
+        assertEquals("CLOSED_UNCONFIRMED", service.list(execution.missionId()).stream()
+                .filter(row -> row.id().equals(execution.id())).findFirst().orElseThrow().status());
+    }
+
+    @Test
+    void resolveUnknownRejectsShortNoteAndSecondResolution() {
+        var rows = new ArrayList<MissionExecution>();
+        var execution = open(UUID.randomUUID(), 42L, Instant.parse("2026-10-24T06:00:00Z"));
+        rows.add(execution);
+        var service = service(execution.missionId(), rows, new CapabilityHandlerRegistry(List.of()), new CapabilityRegistry());
+        service.markRestartUnknown();
+
+        var bad = assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown(execution.missionId(), execution.id(), "short"));
+        assertEquals(400, bad.getStatusCode().value());
+        service.resolveUnknown(execution.missionId(), execution.id(), "Reviewed process identity and logs");
+        var second = assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown(execution.missionId(), execution.id(), "Reviewed once again fully"));
+        assertEquals(409, second.getStatusCode().value());
+    }
+
     private static MissionGitExecutionService service(UUID missionId, List<MissionExecution> rows,
                                                       CapabilityHandlerRegistry handlers, CapabilityRegistry capabilities) {
         var mission = new Mission(missionId, UUID.randomUUID(), "builder", "builder-alpha", "summary",
@@ -87,6 +129,14 @@ class MissionGitExecutionServiceTest {
         @Override public void markCancelling(UUID id) {}
         @Override public void rememberProcess(UUID id, long pid, Instant startedAt, String user, String executable) {}
         @Override public void unconfirmed(UUID id, String reason) { replace(id, copy(find(id).orElseThrow(), reason, null)); }
+
+        @Override public int resolveUnconfirmed(UUID id, String note, String operator, Instant resolvedAt) {
+            var current = find(id).orElseThrow();
+            boolean inFlight = "CREATED".equals(current.status()) || "RUNNING".equals(current.status()) || "CANCELLING".equals(current.status());
+            if (!inFlight || current.unconfirmedReason() == null || current.resolution() != null) return 0;
+            replace(id, current.closeUnconfirmed(new MissionExecution.Resolution(id, note, operator, resolvedAt)));
+            return 1;
+        }
 
         @Override
         public void finish(UUID id, UUID missionId, String status, String projection, String evidence, Integer exitCode,

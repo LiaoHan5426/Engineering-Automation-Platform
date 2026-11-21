@@ -28,5 +28,12 @@ public interface MissionExecutionStore {
 
     void unconfirmed(UUID id, String reason);
 
+    /**
+     * Conditionally close an unconfirmed in-flight row with human-review audit. Returns the number
+     * of rows updated: 1 on success, 0 if the row is already terminal, not unconfirmed, or resolved.
+     * Never writes exit_code/exit_evidence or claims process termination.
+     */
+    int resolveUnconfirmed(UUID id, String note, String operator, Instant resolvedAt);
+
     void failSameRow(UUID id, UUID missionId, String reason);
 }

@@ -18,6 +18,9 @@ class DomainWireAndMessagesTest {
         assertEquals("awaiting-approval",ExpertAgentState.AWAITING_APPROVAL.wire());
         assertEquals("running",BoardTaskColumn.RUNNING.wire());
         assertEquals("INTERRUPTED",MissionExecutionStatus.INTERRUPTED.wire());
+        assertEquals("CLOSED_UNCONFIRMED",MissionExecutionStatus.CLOSED_UNCONFIRMED.wire());
+        assertFalse(MissionExecutionStatus.CLOSED_UNCONFIRMED.blocking());
+        assertFalse(MissionExecutionStatus.CLOSED_UNCONFIRMED.active());
         assertThrows(IllegalArgumentException.class, () -> new BoardRuntimeService.Activity(UUID.randomUUID(),UUID.randomUUID(),"SOURCE_WRITE","CREATED","PROPOSED"));
         assertThrows(IllegalArgumentException.class, () -> new BoardRuntimeService.Activity(UUID.randomUUID(),UUID.randomUUID(),"VERIFICATION","APPLYING","RUNNING"));
         assertThrows(IllegalArgumentException.class,()->ToolExecutionStatus.fromWire("unknown"));

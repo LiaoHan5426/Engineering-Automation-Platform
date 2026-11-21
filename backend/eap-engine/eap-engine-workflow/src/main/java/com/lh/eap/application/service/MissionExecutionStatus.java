@@ -15,7 +15,9 @@ public enum MissionExecutionStatus implements WireValue {
     TIMED_OUT("TIMED_OUT"),
     CANCELLED("CANCELLED"),
     INTERRUPTED("INTERRUPTED"),
-    UNKNOWN("UNKNOWN");
+    UNKNOWN("UNKNOWN"),
+    /** Human evidence review closed an unknown run; NOT a process-exit claim. */
+    CLOSED_UNCONFIRMED("CLOSED_UNCONFIRMED");
 
     private final String value;
     MissionExecutionStatus(String value) { this.value = value; }

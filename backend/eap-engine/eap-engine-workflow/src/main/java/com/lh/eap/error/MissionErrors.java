@@ -8,7 +8,8 @@ public enum MissionErrors implements PlatformErrorCode {
     HANDOFF_INPUT_INVALID,
     MISSION_NOT_FOUND,
     HANDOFF_NOT_FOUND,
-    MISSION_EXECUTION_NOT_FOUND;
+    MISSION_EXECUTION_NOT_FOUND,
+    MISSION_UNKNOWN_NOT_RESOLVABLE;
 
     @Override public String code() { return name(); }
 }

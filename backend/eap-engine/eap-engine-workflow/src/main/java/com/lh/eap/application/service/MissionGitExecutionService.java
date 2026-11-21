@@ -157,6 +157,30 @@ public class MissionGitExecutionService {
         }
     }
 
+    private static final int NOTE_MIN = 10;
+    private static final int NOTE_MAX = 2000;
+
+    /**
+     * Human evidence review of an unknown in-flight run. Closes the row to CLOSED_UNCONFIRMED so it
+     * stops blocking a new start. This never fabricates a process exit: exitCode/exitEvidence stay
+     * untouched, no tool-domain CLOSED_UNKNOWN is used, and the run is not resumed.
+     */
+    public MissionExecution resolveUnknown(UUID missionId, UUID executionId, String note) {
+        requireMission(missionId);
+        var row = executions.find(executionId)
+                .filter(value -> value.missionId().equals(missionId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, MissionErrors.MISSION_EXECUTION_NOT_FOUND.code()));
+        if (note == null || note.isBlank() || note.trim().length() < NOTE_MIN || note.length() > NOTE_MAX) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, MissionErrors.MISSION_INPUT_INVALID.code());
+        }
+        var trimmed = note.trim();
+        var changed = executions.resolveUnconfirmed(executionId, trimmed, runtime.operatorLabel(), Instant.now());
+        if (changed != 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, MissionErrors.MISSION_UNKNOWN_NOT_RESOLVABLE.code());
+        }
+        return executions.find(executionId).orElseThrow();
+    }
+
     private MissionExecution complete(UUID id, UUID missionId, Observation observation) {
         var current = executions.find(id).orElseThrow();
         var metadata = new LinkedHashMap<String, Object>();
