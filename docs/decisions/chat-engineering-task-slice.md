@@ -127,6 +127,8 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 
 离线证据：`ChatExecutionStreamTest` 4 项；前端 eventProjector/reconnect/wireApi 等定向通过。不宣称跨重启持久事件日志或真实供应商流式验收。
 
+该"进程内事件日志、不跨重启"的边界随后由 CT-01 收敛：执行事件落库并提供跨重启**只读回放**，不接管运行中的推理、不伪造终态，详见[聊天执行日志持久化与跨重启只读回放](chat-execution-log-persistence.md)。
+
 ### SSE 回归收敛（接续 1e13b66）
 
 先在同一工作树、现有网络保护下复现707项/673通过/34失败，再分两线修正，不放行开发8080、不修改后端UUID校验或供应商协议：

@@ -1,6 +1,6 @@
 # DeepSeek 聊天体验重做与前后端边界
 
-日期：2026-11-14。状态：**范围按用户本轮修订记录；技术方案供评审，尚未实施或验收。** 当前进度仅由[CT-02台账](../planning-status.md#ct-02-chat-adaptation)维护。本方案不将源码审阅、上游功能或既有测试升级为新增能力已完成。
+日期：2026-11-14。状态：**切片 C 的服务端权威消息图底座、分支闭环与前端投影已实现并通过限定技术回归；CT-01 执行日志持久化与跨重启只读回放已落地（2026-11-21）；用户交互接受及 D/E/F 切片仍待。** 当前进度由[CT-02台账](../planning-status.md#ct-02-chat-adaptation)维护，CT-01 持久化见[执行日志决策](chat-execution-log-persistence.md)。本方案不将源码审阅、上游功能或既有测试升级为新增能力已完成。
 
 ## 1. 范围与依据
 
@@ -14,7 +14,7 @@
 | 消息与输入 | 当前ChatWorkspace承担消息、输入与工程证据装配；已有草稿及滚动保护 | 按上游重做消息区、操作区、输入区及滚动行为，工程证据通过明确区域装配 |
 | 编辑、重新生成、分支 | [chatSession](../../frontend/apps/web/src/features/chat/chatSession.ts)是线性ChatTurn；上游[branches.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/chat/branches.ts)用父子关系选路径 | 新建分支、保留旧分支、上下文按分支构建，执行记录保持不可变关联 |
 | 附件 | [acceptFiles](../../frontend/apps/web/src/features/chat/acceptFiles.ts)拒绝媒体；[TaskContext](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/TaskContext.java)只接收name/content文本 | 前端保存原件，后端有限校验及调用时转发，按模型/解析能力限定可发送格式 |
-| 存储 | [chatHistory](../../frontend/apps/web/src/features/chat/chatHistory.ts)使用浏览器Storage；后端会话和执行日志为进程内Map | 明确草稿、已发送消息、执行证据、附件原件各自权威来源；不双写两套可编辑消息历史 |
+| 存储 | [chatHistory](../../frontend/apps/web/src/features/chat/chatHistory.ts)使用浏览器Storage；后端会话为进程内Map，执行事件热路径在内存、落库后由 [V3 执行日志](chat-execution-log-persistence.md)提供跨重启只读回放 | 明确草稿、已发送消息、执行证据、附件原件各自权威来源；不双写两套可编辑消息历史；执行回放是只读证据、不接管推理 |
 | MCP | [McpClientService](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/mcp/client/McpClientService.java)已有会话隔离及矩阵授权；[生产Handler](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/handler/McpReadonlyHandler.java)仅桥接无参read_graph | 在现有调用路径扩展按需网页搜索/链接阅读及后续语音，不能把已登记或tools/list当已接通 |
 
 上游也有前端本地原件与供应商文件两种身份：[db.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/chat/db.ts)存IndexedDB Blob，[attachments.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/attachments.ts)通过供应商Files API上传。其选文件即上传的行为与EAP选择/上传分离合同冲突，适配时使用EAP明确操作合同。
@@ -39,7 +39,7 @@
 | 原始图片、文件和录音 | 前端本机附件存储 | Java后端不持久保存原件；元数据、摘要与执行关联和原件区分 |
 | 审批、工具、候选、任务与Run | 现有所属领域 | 聊天视图不另建执行状态机；历史展示不能改变审计事实 |
 
-此方案会替换已发送聊天历史的本地权威及后端线性上下文构建路径，属于实质重构。切片实施时同步DTO、HTTP/SSE、Mock、调用方和测试，移除被替代的读写及兼容入口；旧本机展示记录不伪造服务端执行身份。历史数据处置须先给出可审阅的导出/迁移方案，不在本轮清理数据。
+此方案会替换已发送聊天历史的本地权威及后端线性上下文构建路径，属于实质重构。切片 C 已按此边界落地：DTO、HTTP/SSE、Mock、调用方与测试同批更新，前端不再恢复或持久化已发送 transcripts，旧本机展示记录不伪造服务端执行身份，也不为保持旧架构而保留双读或反向导入入口。[处置方案已批准并执行（2026-11-21）：旧本机记录不保留，用户确认后立即清除，一次性启动清理已落地](local-chat-history-migration.md)。
 
 模块落点遵守[共享模块边界](frontend-ui-shared-module-boundaries.md)：无领域富文本/代码块/输入原语进入 `@eap/ui`，样式token进入 `@eap/style`；聊天消息、分支、附件和引用编排留 `features/chat`；DTO与事件解析归 `@eap/runtime-client`，传输归 `@eap/request`。后端聊天图与上下文落现有AI聊天/上下文职责，供应商适配落AI模型模块，MCP调用落现有engine-mcp，HTTP适配落web-ai。实现时先确认依赖方向，不把领域编排放入UI或App.vue，不新建平行能力注册表。
 
@@ -95,7 +95,7 @@ MCP工具可以返回audio内容，但普通tools/call和Streamable HTTP不自�
 |---|---|---|
 | A 核心交互原型 | 消息、输入、滚动、分支切换、附件本机状态、窄屏；确定富文本样例 | 可点击并明确模拟；用户核对交互。列表/已有会话/新会话/编辑取消/未保存/错误状态逐项验证，不能用静态截图接受 |
 | B 展示与输入生产切片 | 公共富文本及输入原语，新消息/输入/滚动实现 | 替换原纯文本展示和对应旧交互；保留现有执行合同及工程证据。浏览器验1440/390、输入法、复制、长内容、流式未闭合、HTML/危险URL、图表失败及滚动锚点 |
-| C 分支闭环 | 后端消息图、上下文选路、编辑/重生成/切换/取消及恢复，前端投影 | 同批替换线性历史/上下文路径；验证分支隔离、重复请求、响应丢失、迟到事件、重连不重发、审批/UNKNOWN和任务草稿保护 |
+| C 分支闭环 | 后端消息图、上下文选路、编辑/重生成/切换/取消及恢复，前端投影 | 已替换线性历史/上下文路径：`open` 建图根、成功 `send` 写不可变问答对、`GET /graph` 返回选定路径、编辑写 USER 兄弟节点、重生成写 ASSISTANT 兄弟节点、`replayBranch` 重建模型窗口；runtime-client 与 mock 同步契约，前端从图投影并暴露编辑/重生成交互。已验证分支隔离、迟到响应归属、切换/重载、图 API 失败时不回灌本机历史；真实供应商效果与用户交互接受仍单独验收 |
 | D 本机附件 | IndexedDB原件、预览/重选/删除、受限转发，先文本及支持模型的图片 | 替换纯name/content附件合同；HTTP/Mock/测试同批更新。验证刷新、配额失败、缺失原件、分支共享回收、后端无落盘/日志泄露及真实模型识别 |
 | E MCP网页资料 | 按需互联网网页搜索、链接阅读、引用卡片及聊天上下文接入 | 复用并扩展现有MCP调用/授权；验证无需联网时零调用、明确要求搜索、授权范围内按需触发、关闭/撤权后不调用、直接链接阅读、搜索→按需读页→引用，以及无结果/失败/超时/取消；真实服务初始化、发现、调用与引用一致性分别验 |
 | F MCP语音 | 录音→ASR草稿；回答→TTS播放 | 与网页搜索的授权和内容类型分别建合同；实测音频、失败、停止、刷新/离开释放资源；不扩大为实时通话承诺 |
@@ -104,8 +104,8 @@ MCP工具可以返回audio内容，但普通tools/call和Streamable HTTP不自�
 
 ## 7. 验证入口与本轮证据
 
-本轮仅源码/合同审阅及文档更新；未运行应用测试、构建、浏览器、模型或MCP服务，未修改实现、安装依赖或操作数据库。`git status --short`起始为空；查看上述文件确认当前结构。文档交付检查为 `git diff --check` 和本方案本地链接存在性/UTF-8无BOM检查，结果以本轮交付说明为准。
+切片 C 本轮已实际运行限定技术验证：前端 chat 定向 42 文件 263 项（修复消息图迁移与助手气泡 `v-if` 链缺陷后全绿），新增编辑/重生成分支发送用例后 `chatSession` 59 项通过；前端全量 185 文件 1126 项、`pnpm typecheck`、`vp build` 均通过。后端 `mvn -q test` 退出码 0；本次 surefire 报告 220 份、1176 项、0 失败、0 错误、79 跳过（排除 `target/` 历史快照中的陈旧报告）。`git diff --check` 通过。未运行真实模型、MCP服务或用户交互验收，不以 mock 与本地测试替代这些结论。
 
-实现时从根执行 `rtk proxy vp -C frontend run typecheck`、`rtk proxy vp -C frontend run check:architecture`，按受影响文件运行 `rtk proxy vp -C frontend test run <测试路径>`；Web构建使用 `frontend/apps/web` 中的 `rtk proxy vp build`。后端按模块选择reactor回归，最终按影响执行 `rtk proxy mvn -f backend/pom.xml test`；改状态/错误目录后运行 `rtk proxy python scripts/verify-domain-contracts.py`。真实数据库、模型、MCP及浏览器按切片的实际授权和环境分别记录，不用脚本存在代替通过。
+实现与复核入口：前端 `vp typecheck`（等价于 package script 的 `pnpm typecheck`）、`vp test --run`、`vp build`、`vsh check`/`vp check`；后端 `mvn -q test`，消息图相关定向测试为 `MessageGraphWriterTest`、`ChatMessageGraphWiringTest`、`BranchContextReplayTest`、`ChatMessageGraphDdlTest` 与 `BackendModuleBoundaryTest`。真实数据库、模型、MCP及浏览器按切片的实际授权和环境分别记录，不用脚本存在代替通过。
 
 参考资料：[OPFS边界](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)、[浏览器目录选择](https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker)、[MCP工具与音频结果](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)。
