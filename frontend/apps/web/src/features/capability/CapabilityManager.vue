@@ -382,8 +382,8 @@ async function submitServer() {
 
 <template>
   <div class="page-head">
-    <p class="eyebrow">CAPABILITIES</p>
     <h1>能力目录</h1>
+    <p>按种类查看运行时实际注册的确定性能力；这里只反映注册事实，安装与改写实现不在此处发生。</p>
   </div>
 
   <Feedback

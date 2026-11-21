@@ -290,7 +290,10 @@ onDeactivated(leave)
 </script>
 <template>
   <section class="skill-manager">
-    <h2>{{ t('skill.title') }}</h2>
+    <header class="page-head">
+      <h1>{{ t('skill.title') }}</h1>
+      <p>{{ t('skill.hint') }}</p>
+    </header>
 
     <Feedback v-if="error" tone="error" data-testid="skill-error">{{ error }}</Feedback>
     <Feedback v-if="pending" tone="warning" data-testid="skill-pending"

@@ -21,6 +21,7 @@ import {
   EmptyState,
   Feedback,
   Input,
+  ListRow,
   Select,
   Textarea,
 } from '@eap/ui'
@@ -542,8 +543,8 @@ defineExpose({ refresh })
 <template>
   <section class="view">
     <div class="page-head">
-      <p class="eyebrow">RULE LIBRARY</p>
       <h1>规则库</h1>
+      <p>管理规则包与事实词表。规则与事实词表为固定配置只读，动态规则可增删改；内置包只读，复制为新标识后即可编辑。</p>
     </div>
 
     <Feedback tone="error" v-if="error" role="alert">{{ error }}</Feedback>
@@ -561,7 +562,7 @@ defineExpose({ refresh })
       <article v-if="!draft" class="eap-panel">
         <header class="panel-head">
           <div>
-            <h2>规则包</h2>
+            <h2>规则包 · {{ packs.length }}</h2>
             <p>内置包为只读，复制为新标识后即可编辑。</p>
           </div>
           <div class="form-actions">
@@ -599,28 +600,24 @@ defineExpose({ refresh })
         </header>
 
         <div class="list">
-          <Button
-            variant="navigation"
+          <ListRow
             v-for="pack in packs"
             :key="pack.id"
-            class="list-item"
-            :active="pack.id === selectedId"
+            badge="RB"
+            :status="pack.shipped ? '内置只读' : pack.enabled ? '已启用' : '已停用'"
+            :status-tone="!pack.shipped && pack.enabled ? 'success' : 'neutral'"
+            :selected="pack.id === selectedId"
             :disabled="busy"
-            @click="selectPack(pack.id)"
+            @activate="selectPack(pack.id)"
           >
-            <span>
-              <b>{{ pack.name }}</b>
-              <small>
-                <code class="mono">{{ pack.id }}</code>
-                · {{ pack.ruleCount }} 条规则 ·
-                {{ pack.shipped ? '内置只读' : pack.enabled ? '已启用' : '已停用' }}
-                <template v-if="!pack.shipped"> · r{{ pack.revision }}</template>
-              </small>
-              <small class="requirement-line">
-                需要能力：{{ pack.requires?.length ? pack.requires.join('、') : '未声明' }}
-              </small>
-            </span>
-          </Button>
+            <template #title>{{ pack.name }}</template>
+            <template #meta>
+              <code class="mono">{{ pack.id }}</code>
+              · {{ pack.ruleCount }} 条规则
+              <template v-if="!pack.shipped"> · r{{ pack.revision }}</template>
+              · 需要能力：{{ pack.requires?.length ? pack.requires.join('、') : '未声明' }}
+            </template>
+          </ListRow>
         </div>
         <EmptyState v-if="!packs.length && !loading">没有可用的规则包。</EmptyState>
       </article>

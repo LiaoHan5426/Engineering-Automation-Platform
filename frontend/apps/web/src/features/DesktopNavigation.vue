@@ -67,16 +67,19 @@ const renamingProjectId = ref<string | null>(null)
 const renameProjectLabel = ref('')
 const pendingDeleteProjectId = ref<string | null>(null)
 const codeIds = ['chat', 'sql', 'board']
-const settingsIds = [
-  'model-settings',
-  'appearance',
-  'skills',
-  'plugins',
-  'rules',
-  'knowledge',
-  'databases',
-  'capabilities',
-]
+/**
+ * 设置菜单的唯一权威定义：分组与顺序来自桌面设计稿（工作区在前、偏好独立成组）。
+ * 垂直列表由这里派生，任何新增设置页只改这里一处。
+ */
+const settingsGroups = [
+  {
+    id: 'workspace',
+    labelKey: 'desktop.settingsGroupWorkspace',
+    ids: ['model-settings', 'knowledge', 'rules', 'databases', 'skills', 'capabilities', 'plugins'],
+  },
+  { id: 'preference', labelKey: 'desktop.settingsGroupPreference', ids: ['appearance'] },
+] as const
+const settingsIds = settingsGroups.flatMap((group) => group.ids as readonly string[])
 const expertIds = ['expert-catalog', 'experts']
 function isProjectExpanded(id: string) {
   if (expandedProjects.value[id] != null) return expandedProjects.value[id]!
@@ -213,6 +216,17 @@ const settings = computed(() => {
         (!needle || page.name.toLowerCase().includes(needle) || id.includes(needle)),
     ),
   )
+})
+/** 分组视图：搜索命中后为空的分组不渲染标题，避免出现孤立的分组标签。 */
+const settingsGrouped = computed(() => {
+  const items = settings.value
+  return settingsGroups
+    .map((group) => ({
+      id: group.id,
+      labelKey: group.labelKey,
+      items: items.filter((item) => (group.ids as readonly string[]).includes(item.id)),
+    }))
+    .filter((group) => group.items.length > 0)
 })
 const analysis = computed(() => props.pages.find((page) => page.id === 'sql'))
 const conversations = computed(
@@ -787,16 +801,19 @@ onUnmounted(() => {
           :aria-label="t('desktop.settingsSearch')"
           :placeholder="t('desktop.settingsSearch')"
         />
-        <Button
-          variant="navigation"
-          v-for="item in settings"
-          :key="item.id"
-          type="button"
-          class="nav"
-          :active="activeView === item.id"
-          @click="open(item.id)"
-          >{{ item.name }}</Button
-        >
+        <div v-for="group in settingsGrouped" :key="group.id" class="settings-group">
+          <p class="settings-group__label">{{ t(group.labelKey) }}</p>
+          <Button
+            variant="navigation"
+            v-for="item in group.items"
+            :key="item.id"
+            type="button"
+            class="nav"
+            :active="activeView === item.id"
+            @click="open(item.id)"
+            >{{ item.name }}</Button
+          >
+        </div>
         <p v-if="!settings.length" class="hint">{{ t('desktop.noSettings') }}</p>
       </template>
     </aside>
@@ -1026,6 +1043,19 @@ onUnmounted(() => {
 }
 .settings-search {
   width: 100%;
+}
+.settings-group {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+}
+.settings-group__label {
+  margin: 0 0 2px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-mute);
 }
 .preview-tree-project {
   display: grid;

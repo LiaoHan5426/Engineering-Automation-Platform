@@ -885,6 +885,12 @@ label.row {
   min-width: 0;
 }
 
+/* 页头横跨两栏：标题与描述必须压在这两个面板之上，而不是挤进 240px 的列表列。 */
+.manager-page-head {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
 .manager-list {
   display: grid;
   gap: 12px;

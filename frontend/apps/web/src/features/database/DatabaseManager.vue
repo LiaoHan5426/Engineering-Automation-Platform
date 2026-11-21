@@ -196,10 +196,14 @@ defineExpose({ refresh })
 onMounted(refresh)
 </script>
 <template>
-  <section class="database-catalog">
+  <section class="manager-workspace">
+    <div class="page-head manager-page-head">
+      <h1>数据库资料</h1>
+      <p>登记脱敏后的表结构与索引快照，供分析与规则判定引用；这里只描述结构，不保存连接凭据。</p>
+    </div>
     <aside class="eap-panel manager-list">
       <div class="manager-toolbar">
-        <h2>数据库资料</h2>
+        <h2>资料 · {{ items.length }}</h2>
         <Button variant="primary" :disabled="busy" @click="create"> ＋ 新建资料 </Button>
       </div>
       <Input v-model="filter" placeholder="搜索资料名称" aria-label="搜索数据库资料" /><Button

@@ -107,7 +107,6 @@ function toggle(host: PluginHost, id: PluginId) {
 <template>
   <section class="view" data-testid="plugin-center">
     <div class="page-head">
-      <p class="eyebrow">PLUGINS</p>
       <h1>{{ t('plugin.center') }}</h1>
       <p>{{ t('plugin.centerHint') }}</p>
     </div>

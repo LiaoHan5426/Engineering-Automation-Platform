@@ -316,9 +316,13 @@ defineExpose({ refresh: retryLoad })
 </script>
 <template>
   <section class="manager-workspace">
+    <div class="page-head manager-page-head">
+      <h1>知识库</h1>
+      <p>管理知识集合与文档，配置导入来源、授权范围与检索策略；集合可增删，文档可录入与检索。</p>
+    </div>
     <aside class="eap-panel manager-list">
       <div class="manager-toolbar">
-        <h2>知识库</h2>
+        <h2>知识集合 · {{ bases.length }}</h2>
         <Button variant="primary" :disabled="busy" @click="openCreate"> ＋ 新建 </Button>
       </div>
       <Dialog
