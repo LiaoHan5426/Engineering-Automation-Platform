@@ -6,6 +6,8 @@
 
 | 目的 | 文档 |
 |---|---|
+| **架构方法总纲（架构议题先读）** | [architecture-method](architecture-method.md)：前后端规范 / Superagent·Subagent 协作 / 基于知识库与规则的本地确定性执行；本目录其余架构文档均从属于它 |
+| 库表与目标架构对齐评审 | [data-model-review](data-model-review.md)：识别“已建表但不能支撑运行”的固定值壳表与硬编码约束，给出收敛/去硬编码/增量新增建议 |
 | 看当前进度和后续关口 | [路线图](roadmap.md)、[完整规划状态](planning-status.md)、[缺陷/风险/优化及关闭条件](planning-status.md#next-work-register) |
 | 查阶段实施与验证的完整记录 | [主题记录总览](records/README.md) |
 | **约束：个人本机 + 本地服务（必读）** | [running-context](running-context.md) |
@@ -46,7 +48,16 @@
 
 ## 文档维护
 
-根目录保留长期使用说明和当前进度；**约束性定位以 `running-context.md` 为唯一事实源**。decisions 保存有效决策，records 按主题维护完整阶段记录，audits 保留未被主题总览取代的专项结论。当前完整状态统一维护在planning-status，roadmap只列主线摘要及推进顺序，主方案保留规范及验收行；逐次验证流水统一归records/validation-history，其他主题记录保留其独有分析；其他文档引用验收基线，不复制“最新测试数”。日期写进章节，不再新建日期报告；合并时更新链接及稳定锚点，保留失败、跳过、授权和未完成证据。历史指令不重新生效。测试删改必须记录过时原因与覆盖去向，不以数量减少为质量指标。
+文档按四层维护，各层只回答自己该回答的问题，不互相复制口径：
+
+| 层 | 文档 | 口径 |
+|---|---|---|
+| 方法层 | [architecture-method.md](architecture-method.md) | 架构方法与决策顺序的唯一入口：前后端规范、Superagent/Subagent 协作、本地确定性执行 |
+| 约束层 | [running-context.md](running-context.md) | **唯一约束事实源**（本机单机、语汇约束），冲突时以它为准 |
+| 现状层 | [planning-status.md](planning-status.md)、[roadmap.md](roadmap.md)、[v1.6 合同](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md) | 当前状态、推进顺序、产品与验收合同；其他文档引用验收基线，不复制“最新测试数” |
+| 证据层 | `decisions/`、`records/`、`audits/`、`evidence/` | decisions 保存有效决策；**records/audits/evidence 仅为历史参考**，不构成现行约束，也不作为当前能力状态的依据 |
+
+维护规则：可复用结论上提到方法层或现状层，历史记录只保留可复用内容（决策理由、接口合同、失败与授权证据）；“本轮 / 第 N 轮”式进度流水、过时测试数字与日期报告不再回填现行文档。日期写进章节，不再新建日期报告；合并时更新链接及稳定锚点，保留失败、跳过、授权和未完成证据。历史指令不重新生效。测试删改必须记录过时原因与覆盖去向，不以数量减少为质量指标。
 
 ### 2026-10-27 合并说明
 

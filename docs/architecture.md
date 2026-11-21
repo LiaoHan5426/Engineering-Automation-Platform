@@ -1,6 +1,8 @@
 # Architecture
 
-Implementation baseline: `2c7e87b` (2026-11-09). Current scope and validation are maintained in
+> **架构方法总纲**：本文是 [EAP 架构方法总纲](architecture-method.md) 的下位架构文档，承载「平台边界、已实现 vs 规划、模块归属」。约束以 [running-context.md](running-context.md) 为唯一事实源，进度以 [planning-status.md](planning-status.md) 为准，本文不复制验收数字。
+
+Implementation baseline: `1496335` (2026-11-14, aligned with the acceptance ledger). Current scope and validation are maintained in
 [the acceptance ledger](planning-status.md#validation-baseline); detailed dated evidence belongs in
 [topic records](records/README.md). The module decision defines composition and remaining coupling;
 the expert workspace decision defines the shared three-pane editor and domain ownership.
@@ -35,8 +37,10 @@ backend/             Java 25 / Spring Boot / Maven reactor
                      only executable Boot host: explicit product wiring, resources, migrations,
                      and cross-module acceptance tests
   eap-applications/eap-full-application/src/main/resources/db/migration
-                     25 migrations: retained V1–V22 plus incremental V23–V25
-docs/                architecture, pipeline, roadmap, environment, expert/knowledge/rules, prototype
+                     one consolidated V1__initial_schema.sql (29 tables; V1–V37 merged 2026-11-13);
+                     future changes use incremental migrations
+docs/                architecture-method (method overview), architecture, pipeline, roadmap,
+                     environment, expert/knowledge/rules, data-model-review, prototype
 ```
 
 The layout above is the implemented composition through the current SQL Agent slice. `eap-api` has no framework dependencies;

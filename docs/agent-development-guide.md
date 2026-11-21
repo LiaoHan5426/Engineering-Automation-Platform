@@ -8,15 +8,21 @@ Root and module AGENTS files contain rules; this guide contains acceptance evide
 |---|---|---|
 | Prototype | interaction/state contract and clickable fixtures | user approves interactions; simulations clearly labeled |
 | Architecture | source-backed audit, alternatives, staged plan | explicit approval before large implementation |
-| Feature | approved contract and smallest end-to-end slice | relevant build/tests plus actual business behavior |
+| Feature | approved contract and smallest end-to-end slice | relevant build/tests at the [§3.6](architecture-method.md#sec-3-6-verify) level plus actual business behavior |
 | Defect | reproduction and affected boundary | cause corrected, relevant regression passes |
-| Frontend UI / shared module | placement decision per [frontend-ui-shared-module-boundaries](decisions/frontend-ui-shared-module-boundaries.md): search `@eap/ui` → classify L0–L5 → implement or register staging | no parallel Button/Dialog shells; boundaries + targeted tests; doc/§3.2 updated when adding a package or shared category |
+| Frontend UI / shared module | placement decision per [frontend-ui-shared-module-boundaries](decisions/frontend-ui-shared-module-boundaries.md): search `@eap/ui` → classify L0–L5 → implement or register staging | no parallel Button/Dialog shells; boundaries + targeted tests at the §3.6 level; 登记只在首次引入原语/共享类别时做一次 |
 
 Frontend agents must follow `frontend/AGENTS.md` UI placement rules on every UI change. New primitives land in `@eap/ui` first; reusable composites and planned modules (`hooks`, `effects`, `layout`, `toggle`, `plugin`) use the decision doc—do not invent ad-hoc shared packages.
 
 ## Validation commands
 
-Run from repository root with the RTK prefix required by local instructions. Backend: `rtk proxy mvn -f backend/pom.xml test`. Frontend uses Vite+ per [frontend guidance](../frontend/AGENTS.md): `rtk proxy vp -C frontend run typecheck`, `rtk proxy vp -C frontend test run`, `rtk proxy vp -C frontend run check:architecture` (includes boundaries and cycles). For the Web production build, run `rtk proxy vp build` from `frontend/apps/web`; the root build failed in the [last implementation validation](records/validation-history.md#implementation-commit-validation), while the app-directory build passed. Do not report the root entry as repaired. These are execution entry points, not passing results.
+Run from repository root with the RTK prefix required by local instructions. **跑哪几条按[总纲 §3.6 验证分级](architecture-method.md#sec-3-6-verify)判定，不默认全跑。**
+
+Backend: `rtk proxy mvn -f backend/pom.xml test` 是全 reactor 入口，用于发布/契约级改动；日常单模块改动用 `rtk proxy mvn -f backend/pom.xml -pl :模块 -am test`。
+
+Frontend uses Vite+ per [frontend guidance](../frontend/AGENTS.md): `rtk proxy vp -C frontend run typecheck`, `rtk proxy vp -C frontend test run`, `rtk proxy vp -C frontend run build`, `rtk proxy vp -C frontend run check:boundaries`.
+
+2026-11-21 更正：根入口 `rtk proxy vp -C frontend run build` 已实测通过（两次，7.14s / 7.39s，exit 0）。此前记录的「root build failed，不要报为已修复」已失效，不再作为入口选择的依据。`frontend/apps/web` 目录入口仍然可用，两者等价。These are execution entry points, not passing results.
 
 Before resuming application work, check Java 25/JAVA_HOME, Maven, RTK, Vite+, workspace dependencies, and Python with ripgrep for the domain-contract script. The [2026-11-14 review](records/validation-history.md#development-readiness-review) records the initially missing tools, their subsequent user-authorized Linux installation, actual checks, and the remaining Windows-specific Junction test failure; it does not replace historical Windows acceptance. RTK was unavailable in that session, so the recorded executions used the underlying commands directly. Database/browser/provider checks are separately opt-in; inspect each test's gate before running it, and use only an explicitly authorized datasource.
 

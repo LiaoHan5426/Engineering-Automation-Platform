@@ -1,5 +1,9 @@
 # Experts, knowledge bases and rules
 
+> Method-level overview: [architecture-method.md](architecture-method.md) §5 — how knowledge bases and
+> rule packs drive local deterministic execution without calling a model. This document is the
+> user-facing operations detail.
+
 Current behavior boundary: the fixed-DAG examples below remain `eap/v1`. Explicit `eap/v2` SQL Agents bind `sql-readonly-agent@1` and use authorized tools through Spring AI; they are not workflow graphs or arbitrary prompt-defined permissions. Behavior binding, revision/activation, durable recovery and candidate approval are specified in [the Agent decision](decisions/agent-runtime-evolution.md#expert-agent-boundary). The expert page offers background execution and single-file review; generated SQL is never executed. Real Responses evidence is in [the execution record](records/backend-composition-history.md#responses-tools-acceptance); current navigation, independent editing and task review follow [the workspace contract](decisions/expert-workspace-navigation.md).
 
 This document defines how the platform stays configurable. It exists because an earlier revision of

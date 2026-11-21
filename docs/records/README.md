@@ -1,6 +1,6 @@
 # 完整记录总览
 
-当前怎么做看[路线图](../roadmap.md)、[规划状态](../planning-status.md)和[有效产品合同](../EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)。这里保存决策演进、已执行验证及失败/未完成证据，不将历史过程状态当成当前验收。
+**本目录仅为历史参考**：保存决策演进、已执行验证及失败/未完成证据，**不构成现行约束或当前验收口径**。可复用结论已上提到现行文档——架构方法看[总纲](../architecture-method.md)，运行约束看[running-context](../running-context.md)，产品合同看[v1.6](../EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)，当前进度看[规划状态](../planning-status.md)与[路线图](../roadmap.md)。历史进度流水不续写、不作为现状依据；引用历史数字时须核对其日期与实现范围。
 
 | 主题 | 内容与边界 |
 |---|---|
@@ -22,7 +22,4 @@
 - 每条原记录有来源路径、稳定锚点和完整正文，标题/相对链接已适配。旧文件退出维护，仓库内链接指向新章节；外部旧链接可通过Git历史查原版本。
 - 不将测试数量下降本身当优化成果；测试删除必须说明过时原因及保留的等价行为覆盖。
 - 逐次验证流水写入[阶段验证记录](validation-history.md)，开发命令与验收规则维护在[开发与验收指南](../agent-development-guide.md)；其他主题记录保留独有分析，不重复复制整份验证台账，不新增日期报告。
-
-当前交付接续：[真实供应商双路由六文件](validation-history.md#real-route-model-validation)、[绑定任务源码Agent](validation-history.md#engineering-agent-validation)及[应用后原任务交接](validation-history.md#application-task-continuation-validation)。旧单文件和重启恢复记录保留为各自阶段证据，当前关口统一见台账。
-
-当前恢复接续：[任务持久源码候选与Chat失效后的正式重启恢复](delivery-history.md#board-code-recovery)，使用原持久证据和写入服务，区别于上一批真实模型生成证据。
+- 历史记录只保留**可复用内容**（决策理由、接口合同、失败与授权证据）；纯进度流水、"本轮/当前接续"式表述与过时测试数字不回填现行文档，也不据此推断当前能力状态。现行方法一律以[总纲](../architecture-method.md)为准。

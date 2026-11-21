@@ -1,5 +1,11 @@
 # Desktop frontend specification
 
+> **Scope note.** The "Master" / "Master UI" references below are **planned** capabilities listed
+> only as web/desktop consistency criteria; they are not delivered in the current runtime (a fixed
+> workflow plus a single read-only SQL agent). The desktop shell never implements or owns Master
+> decisions. See [architecture method §4](architecture-method.md#sec-4-agents) for the target
+> collaboration model and its status.
+
 ## Decision
 
 The frontend is a shared Vue application with two delivery targets:

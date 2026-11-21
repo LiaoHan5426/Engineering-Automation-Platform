@@ -1,6 +1,9 @@
 # 前后端模块边界与 CLI 实现
 
-本次实现覆盖浏览器控制台、运行时 CLI 程序/操作管理，以及已有管理模块的后端分层。桌面外壳与 MCP 协议客户端仍按各自路线图推进。
+> 上位：[架构方法总纲 §3](architecture-method.md#sec-3-frontend) 定义前后端规范；本文承载模块边界、
+> 依赖方向与验证入口的下位清单。
+
+本文覆盖浏览器控制台、运行时 CLI 程序/操作管理，以及管理模块的后端分层。桌面外壳与 MCP 协议客户端仍按各自路线图推进。
 
 ## 前端工作区
 
@@ -60,7 +63,7 @@ apps/web/src
 ## 后端层次
 
 <a id="maven模块归属runtime拆分"></a>
-### 当前Maven模块归属（2026-11-08阶段收束）
+### 当前 Maven 模块归属
 
 | 模块 | 实现归属 | 依赖边界 |
 |---|---|---|
@@ -135,27 +138,20 @@ rtk pnpm exec vp dev --config test/preview.config.ts
 
 包名迁移后的首次构建需要 `clean`，以清掉旧包名对应的 `.class`；否则 Spring 可能同时扫描旧、新两份 Bean。
 
-本轮模块边界补充：ai-context通过engine-knowledge的ExpertKnowledgeAccess读取专家知识授权，完整产品由workflow适配原存储；ai-context不再依赖workflow。Web模块不直接访问Mapper或声明业务事务，CLI/能力开关/MCP事务归各自服务。ExpertExecution现通过core分析/资源端口组合sql策略与mcp会话生命周期；workflow整体仍依赖SQL/MCP，产品Chat的完整可选化仍见模块组合记录。
+模块边界补充：ai-context通过engine-knowledge的ExpertKnowledgeAccess读取专家知识授权，完整产品由workflow适配原存储；ai-context不再依赖workflow。Web模块不直接访问Mapper或声明业务事务，CLI/能力开关/MCP事务归各自服务。ExpertExecution现通过core分析/资源端口组合sql策略与mcp会话生命周期；workflow整体仍依赖SQL/MCP，产品Chat的完整可选化仍见模块组合记录。
 
-第四轮：CliChannels及CliChannelStore已归engine-local，无Spring/JDBC依赖；workflow的JdbcCliChannelStore负责原表持久化与写事务。starter-local提供可覆盖、默认只读的通道装配，产品使用JDBC适配；配置读取失败明确拒绝，不静默使用默认二进制。CLI程序/操作登记及审批执行仍在workflow。
+### 模块归属演进：当前有效结论
 
-第五轮：ai-codegen通过delivery的PrototypeVersionQuery读取原型，产品PrototypeVersionService实现该接口；不再依赖workflow，也不带入SQL/MCP。ExecutionArtifactStore/FileExecutionArtifactStore及本地文件回归归engine-local，AiConnectionAssignment归ai-chat，现有Java包名与HTTP响应字段保留。codegen仍组合模型适配、knowledge/skill及delivery，并非最小headless Chat；按用例可选贡献仍待拆解。
+> 第四～十四轮的逐轮过程流水与证据已归入[后端组合历史](records/backend-composition-history.md)与[模块组合实施](decisions/backend-module-composition.md#implementation)，本文只保留今天仍然成立的依赖结论。
 
-第六轮：core提供RulePackQuery与ExpertScopedCapabilityQuery；SQL/MCP原服务实现接口，专家定义/编辑目录消费接口且注入实际CapabilitySettings。事实目录JSON合同保持，workflow整体仍依赖SQL/MCP。专家仍为固定DAG；专业Agent与流程分离的目标及模块落点见[专家行为提案](decisions/agent-runtime-evolution.md#expert-agent-boundary)，尚未实现自主决策。
+| 领域 | 当前归属与依赖边界 |
+|---|---|
+| 本地通道 | `CliChannels`/`CliChannelStore` 在 engine-local（无 Spring/JDBC），`JdbcCliChannelStore` 在 workflow 负责持久化与写事务；starter-local 默认只读、可覆盖，配置读取失败明确拒绝而非回退默认二进制。CLI 程序/操作登记及审批执行在 workflow。 |
+| 代码生成 | ai-codegen 经 delivery 的 `PrototypeVersionQuery` 读原型，不依赖 workflow、不带入 SQL/MCP；`ExecutionArtifactStore`/`FileExecutionArtifactStore` 与本地文件回归在 engine-local，`AiConnectionAssignment` 在 ai-chat。codegen 仍组合模型适配、knowledge/skill 及 delivery。 |
+| 查询端口 | core 提供 `RulePackQuery`、`ExpertScopedCapabilityQuery`、`ExpertAnalysisPolicyResolver`、`ExpertBehaviorBinding/Catalog`、`ExpertAgentDefinition/Access`、`ExpertAgentJournal/Writes`；SQL/MCP 服务实现对应接口，专家定义/目录消费接口，产品经 workflow 适配。 |
+| 能力输入 | `CapabilityRequest` 不声明 SQL/检索字段；SQL 持有 `DatabaseEvidenceInput`、local 持有 `WorkspaceSearchInput`；错误/缺输入不启动外部操作，授权仍由原调用链校验。 |
+| 固定流程 | `WorkflowDefinition/WorkflowGraph/FixedWorkflowRunner` 独立于专家身份、SQL 与授权存储；ExpertGraph 保留 v1 兼容与领域校验。它不是 Agent 自主循环或持久任务运行时。 |
+| 专业 Agent | ai-sql 的 `SqlExpertAgentService`/`SqlExpertAgentScheduler` 复用 Spring AI 工具循环与 core Journal 端口，实施只读取证/终结/预算/取消及有界后台调度；workflow 以短事务复用专家/grant/Task 表，模型等待不持事务；web-ai 提供独立启动/取消/202 入口与审批 UI。 |
+| 模型协议 | model-openai 补齐 Responses 函数工具声明、完成响应与工具结果/加密 reasoning 回传；ai-sql 复用既有 Spring AI 循环，未新增模块。 |
 
-第七轮：core提供WorkflowDefinition/WorkflowGraph/FixedWorkflowRunner，独立于专家身份、SQL及授权存储。workflow中的ExpertGraph作为v1兼容与领域校验，ExpertExecutionService复用固定流程调度，继续持有产品授权/分析/保存。该执行器不是Agent自主循环或持久任务运行时；EA-02后续仍需角色、行为绑定与输入输出合同。
-
-第八轮：core的CapabilityRequest不再声明SQL/检索字段；SQL模块提供DatabaseEvidenceInput，local提供WorkspaceSearchInput。产品旧六字段请求组合领域接口，公共上下文文本改名input；SQL/local处理器按接口取值，错误/缺输入不启动外部操作，权限仍须原调用链验证。HTTP兼容，Java自定义请求及sql()访问器需要适配。
-
-第九轮：core的ExpertAnalysisPolicyResolver负责宿主按专家选择分析策略；workflow执行服务解析一次并把策略与不可变事实词表绑定至Run。full宿主显式提供SQL兼容默认且允许自定义Resolver，空策略前置拒绝；不引入平行能力注册表或自动策略猜测。此为第九轮当时快照；持久绑定进度见下一段，专业Agent仍待。
-
-第十轮：core的ExpertBehaviorBinding/ExpertBehaviorCatalog提供专业分析行为精确版本合同和宿主映射；workflow在既有专家manifest JSONB中持久保存并校验绑定，旧编辑器省略时原子保留，变更走停用/版本递增/撤权/重启用。full发布sql-analysis v1，API目录和执行/历史观察可追溯版本。实库回归仅验证绑定、授权生命周期和历史保存；固定DAG、SQL应用输入/全局规则目录及90秒事务仍保留。
-
-第十一轮（历史快照，恢复扩展见下）：core新增ExpertAgentDefinition/ExpertAgentAccess，既有行为目录公开agent模式及allowedTools/requiredTools；ai-sql的SqlExpertAgentService复用Spring AI工具循环并实施只读取证/终结/预算/取消；workflow的WorkflowExpertAgentAccess在短事务中复用专家/grant/Task表，模型调用不持事务；web-ai依赖ai-sql提供独立Agent启动/取消入口。full显式装配sql-readonly-agent v1，旧sql-analysis及DAG保留。没有新模块/迁移；自主只读行为的真实供应商、UI和跨重启持久运行仍待验。
-
-第十二轮：core新增ExpertAgentJournal/ExpertAgentWrites端口；workflow持有JdbcExpertAgentJournal及ExpertAgentApprovalService，在原Task下保存输入、专家快照、检查点、租约与审批决定。ai-sql仅保存候选，无文件应用工具；审批服务复用delivery的CodeChangeService及JDBC候选/基线/UNKNOWN互锁。web-ai增加查询、显式resume和approval；full显式装配恢复钩子及V23/V24增量迁移。跨JVM恢复使用累计预算和新owner令牌，不自动启动模型或重放写操作；未新增模块或替换原Spring AI循环。
-
-
-第十三轮：ai-sql增加SqlExpertAgentScheduler，复用原Agent服务与core Journal端口；workflow负责有界入队、扫描/领取及自动许可不变式，full显式装配并持有V25迁移。web-ai提供202后台入口和持久任务列表；前端runtime-client集中合同，features/expert持有后台任务/审批业务，components/ProposalDiffView供Chat/专家共用，确认框等原语继续来自@eap/ui。无新增模块或平行任务/写入机制；自动恢复仅覆盖显式后台提交，旧手动任务不迁移授权。
-
-第十四轮：model-openai补齐Responses函数工具声明、完成响应与工具结果/加密reasoning回传；ai-sql复用既有Spring AI循环。未新增模块。真实候选审批整链、当前32模块验证与剩余产品耦合见[阶段收束](decisions/backend-module-composition.md#stage-checkpoint)。
+剩余产品耦合与验收关口见[模块组合实施](decisions/backend-module-composition.md#stage-checkpoint)；本文不维护验证轮次与测试数字。

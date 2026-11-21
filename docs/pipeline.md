@@ -1,8 +1,12 @@
 # The core pipeline: deterministic first, model last
 
-This document defines the value chain the platform is built around. Every other document is
-subordinate to it. If a feature does not reduce model dependency or make model input smaller and
-more auditable, it does not belong in the roadmap.
+> Method-level overview: [architecture-method.md](architecture-method.md) §1/§5 — the method overview
+> states the three axioms and unifies this pipeline with task grading and routing. This document
+> remains the authoritative statement of the value chain itself.
+
+This document defines the value chain the platform is built around, and is subordinate only to the
+[running-context constraints](running-context.md). If a feature does not reduce model dependency or
+make model input smaller and more auditable, it does not belong in the roadmap.
 
 ## The problem this pipeline solves
 
@@ -153,13 +157,13 @@ These are non-negotiable and are enforced in code and tests.
 ## How to verify the pipeline
 
 ```shell
-cd backend
-# deterministic rules and the preprocessing/decision layers
-mvn -pl eap-runtime -am test
+# The only executable host is eap-full-application; eap-runtime was retired (see module-layout.md).
+# From the repository root, per agent-development.md validation commands:
+rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am clean verify
 
-# run the runtime with a local model (LM Studio / vLLM) and observe routing in logs
-EAP_LLM_ENABLED=true EAP_AI_PROVIDER=openai EAP_AI_MODEL=<api-model-id> OPENAI_API_KEY=<injected-secret> \
-  mvn spring-boot:run -pl eap-runtime -am
+# To observe routing with a local OpenAI-compatible endpoint, configure the connection via
+# spring.ai.* in the local service data directory (not EAP_LLM_* legacy variables; see environment.md)
+# and start the full host. Authored rules / decision layers are covered by the reactor test above.
 ```
 
 Submit an SQL through the frontend and read the `modelAdvisor` block in the response: it reports the

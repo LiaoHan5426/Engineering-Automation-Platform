@@ -41,7 +41,13 @@ PL-01/PL-02与SC-03的历史提交及生命周期验证见[阶段记录](records
 <a id="section-0a-1"></a>
 ### 0A.1 保留架构与当前模块归属
 
-2026-11-08已实施模块组合首轮：applications/full接替runtime；engine七域、ai六域、web七域聚合；spring提供core/local/ai starter与条件装配；api保留契约JAR。core/local与headless Chat、最小本地HTTP及完整Bean图已验证；第二轮已通过知识授权端口消除ai-context到workflow的依赖，并将CLI/开关/MCP管理事务下沉服务；第三轮将ExpertExecution的分析与执行资源生命周期端口化，SQL策略归sql、MCP资源归mcp，第四轮CLI通道迁入local、持久化端口可覆盖且存储失败拒绝默认回退；第五轮codegen通过原型只读端口移除workflow依赖，执行证据存储归local、连接响应DTO归chat；第六轮专家定义/目录消费规则与范围能力查询接口；第七轮固定流程定义/调度提取至core，v1专家继续复用；第八轮core能力输入去SQL耦合，SQL/local各持有自身输入，原HTTP请求兼容；第九轮宿主可按专家选择分析策略，并固定单次执行策略与词表；第十轮将行为id/version存入专家manifest，打通保存、启用、执行、目录与历史观察，实库重载/撤权/回滚已验证，第十一轮新增显式v2 SQL只读Agent，复用Spring AI选择授权证据/追问/结束（Fake模型与实库已验），旧固定DAG不自动升级；第十二轮增加原Task下的检查点/租约/预算、跨JVM显式续跑和单SQL候选人工写入审批；第十三轮提供显式后台入队与自动恢复、专家任务列表/候选Diff审批UI（组件与真实Chromium视觉/模拟审批交互已验，用户接受仍待）；第十四轮补齐Responses工具协议，真实两轮取证/候选/页面审批/文件读回及重启终态已验，职责迁移见[专家行为提案](decisions/agent-runtime-evolution.md#expert-agent-boundary)，完整workflow仍有产品依赖；Expert/目录/CLI持久管理和部分Chat产品整合仍有跨域依赖，详见[模块组合实施与剩余关口](decisions/backend-module-composition.md#implementation)。库不反向依赖应用，engine不依赖ai/web。
+当前模块组合的有效结论（逐轮实施过程与验证数字已归入[后端组合历史](records/backend-composition-history.md)与[模块组合实施](decisions/backend-module-composition.md#implementation)，本文不复述；架构方法的统一入口见[架构方法总纲](architecture-method.md)）：
+
+- 唯一 Boot 宿主为 `backend/eap-applications/eap-full-application`；`eap-api` 保留契约 JAR，能力 JAR 由应用显式组合，不做全包扫描。
+- 依赖方向：库不反向依赖应用，`eap-engine` 不依赖 `eap-ai` / `eap-web`；确定性交付在 engine-delivery，Board/JDBC 任务整合在 workflow。
+- Agent 运行时现状：固定流程 DAG 与单个 SQL 只读 Agent 并存；版本化行为绑定、检查点/租约/预算、跨 JVM 显式续跑、候选人工审批与后台入队已接通；**旧固定 DAG 不自动升级为自主 Agent**。
+- 仍存跨域依赖：Expert / 目录 / CLI 持久管理、部分 Chat 产品整合、完整 workflow 的产品耦合，关闭条件见[模块组合实施与剩余关口](decisions/backend-module-composition.md#implementation)。
+- Superagent / Subagent 多智能体编排为**目标态（未实现）**，其概念模型、委派合同与落地路线见[架构方法总纲 §4](architecture-method.md#sec-4-agents)；本文不把它表述为已交付能力。
 
 - 保留 Java 25 / Spring Boot 4.1.1 / Spring AI 2.0.2、Maven reactor，以及 Vue 3 + TypeScript + Vite+ + pnpm workspace + Tailwind 4 / 标准CSS变量；不引入Sass或另建React Renderer。
 - 当前完整产品仍是单一Java服务，唯一启动模块为`backend/eap-applications/eap-full-application`，保留主类、产品资源及跨模块验收；能力JAR由应用显式组合。确定性交付迁至engine-delivery，Board/JDBC任务整合留workflow；已应用迁移不重写，HTTP/JSON与授权合同保留。

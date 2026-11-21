@@ -1,5 +1,8 @@
 # Backend runtime reference
 
+> Method-level overview: [architecture-method.md](architecture-method.md) §3.2 / §4.5. The target
+> state machine described below is **planned**, not enforced.
+
 For the module boundaries and what is implemented today, read [architecture.md](architecture.md).
 This file is the runtime *reference*: the HTTP surface, the execution flow, and the target state
 machine.
