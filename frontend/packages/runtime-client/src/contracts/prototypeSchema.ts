@@ -1,5 +1,5 @@
-import { prototypeTaskListProblems } from './prototypeTaskList'
-import { prototypeInteractionProblems } from './prototypeInteraction'
+import { prototypeTaskListProblems } from './prototypeTaskList.ts'
+import { prototypeInteractionProblems } from './prototypeInteraction.ts'
 
 export type PrototypeNode = {
   id: string

@@ -49,13 +49,17 @@ export function createRequestClient(options: RequestClientOptions = {}): Request
 
 export class RequestError<T = unknown> extends Error {
   readonly isRequestError = true
+  readonly response?: { status: number; data: T; headers?: Headers }
+  readonly code?: string
   constructor(
     message: string,
-    readonly response?: { status: number; data: T; headers?: Headers },
-    readonly code?: string,
+    response?: { status: number; data: T; headers?: Headers },
+    code?: string,
   ) {
     super(message)
     this.name = 'RequestError'
+    this.response = response
+    this.code = code
   }
 }
 

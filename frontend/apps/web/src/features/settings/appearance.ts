@@ -12,7 +12,7 @@ export type AppearancePreferences = {
 }
 export const appearanceDefaults: Readonly<AppearancePreferences> = {
   theme: 'light',
-  skin: 'console',
+  skin: 'default',
   density: 'comfortable',
   sidebarWidth: 288,
   railWidth: 360,
@@ -28,7 +28,7 @@ export function normalizeAppearance(value: unknown): AppearancePreferences {
   }
   return {
     theme: source.theme === 'dark' || source.theme === 'system' ? source.theme : 'light',
-    skin: source.skin === 'default' ? 'default' : 'console',
+    skin: source.skin === 'console' ? 'console' : 'default',
     density: source.density === 'compact' ? 'compact' : 'comfortable',
     sidebarWidth: size('sidebarWidth', 240, 380),
     railWidth: size('railWidth', 280, 560),

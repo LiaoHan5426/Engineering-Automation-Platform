@@ -1,0 +1,98 @@
+.eap-list-row {
+  display: flex;
+  gap: var(--eap-space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--eap-space-3) var(--eap-space-4);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: var(--eap-fill-color-blank);
+  border: 1px solid var(--eap-border-color);
+  border-radius: var(--eap-border-radius-base);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.eap-list-row:focus-visible {
+  outline: 2px solid var(--eap-color-primary-focus);
+  outline-offset: 1px;
+}
+
+.eap-list-row[data-selected] {
+  background: var(--eap-color-primary-soft);
+  border-color: var(--eap-color-primary);
+}
+
+.eap-list-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.eap-list-row:hover:not(:disabled) {
+  background: var(--eap-fill-color-hover);
+}
+
+/* 选中行悬停时保留选中底色，否则鼠标一过就丢了「当前打开的是哪一条」。 */
+.eap-list-row[data-selected]:hover:not(:disabled) {
+  background: var(--eap-color-primary-soft);
+}
+
+.eap-list-row__badge {
+  display: grid;
+  flex: 0 0 32px;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: var(--eap-font-size-xs);
+  font-weight: 700;
+  color: var(--eap-color-primary);
+  letter-spacing: 0.04em;
+  background: var(--eap-color-primary-soft);
+  border-radius: var(--eap-border-radius-sm);
+}
+
+.eap-list-row[data-badge-tone='neutral'] .eap-list-row__badge {
+  color: var(--eap-text-color-secondary);
+  background: var(--eap-fill-color);
+}
+
+.eap-list-row__main {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eap-list-row__title {
+  font-size: var(--eap-font-size-base);
+  font-weight: 600;
+  color: var(--eap-text-color-primary);
+  overflow-wrap: anywhere;
+}
+
+.eap-list-row__meta {
+  font-size: var(--eap-font-size-sm);
+  color: var(--eap-text-color-placeholder);
+  overflow-wrap: anywhere;
+}
+
+.eap-list-row__trailing {
+  flex: 0 0 auto;
+  font-size: var(--eap-font-size-sm);
+  color: var(--eap-text-color-secondary);
+}
+
+.eap-list-row[data-status-tone='success'] .eap-list-row__trailing {
+  color: var(--eap-color-success);
+}
+
+.eap-list-row[data-status-tone='warning'] .eap-list-row__trailing {
+  color: var(--eap-color-warning);
+}
+
+.eap-list-row[data-status-tone='danger'] .eap-list-row__trailing {
+  color: var(--eap-color-danger);
+}

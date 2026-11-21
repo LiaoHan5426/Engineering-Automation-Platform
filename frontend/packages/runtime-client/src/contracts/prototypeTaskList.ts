@@ -1,5 +1,5 @@
 import type { BoardTask } from './boardModels'
-import { isBoardTaskColumn, type BoardTaskColumn } from './boardTask'
+import { isBoardTaskColumn, type BoardTaskColumn } from './boardTask.ts'
 import type { PrototypeNode } from './prototypeSchema'
 
 export type PrototypeTaskListItem = {

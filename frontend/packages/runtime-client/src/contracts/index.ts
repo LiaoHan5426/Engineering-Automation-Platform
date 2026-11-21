@@ -62,5 +62,5 @@ export * from './prototypeTaskList.ts'
 export * from './prototypeSchema.ts'
 export * from './prototypeInteraction.ts'
 
-export * from './taskMode'
-export { AiToolMode } from './aiToolMode'
+export * from './taskMode.ts'
+export { AiToolMode } from './aiToolMode.ts'

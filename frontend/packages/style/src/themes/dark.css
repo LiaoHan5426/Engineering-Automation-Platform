@@ -1,43 +1,52 @@
 /**
  * Dark theme. Same `--eap-*` names as light, so a skin does not fork the component CSS.
+ *
+ * Palette follows the Ardot design system: neutral near-black surfaces + a single indigo
+ * accent (`#6E7AE8`). Status colours are independent semantic hues, not tints of the accent.
+ * Only token values change here — never fork component class names.
  */
 [data-eap-theme='dark'] {
   color-scheme: dark;
 
   --eap-color-white: #fff;
-  --eap-color-on-primary: #071b14;
-  --eap-color-primary: #3b82f6;
-  --eap-color-primary-hover: #60a5fa;
-  --eap-color-primary-soft: #1e3a5f;
-  --eap-color-primary-focus: #60a5fa;
-  --eap-color-success: #4ade80;
-  --eap-color-success-soft: #14532d;
-  --eap-color-success-border: #166534;
-  --eap-color-warning: #fbbf24;
-  --eap-color-warning-soft: #3b2f14;
-  --eap-color-warning-text: #fde68a;
-  --eap-color-danger: #f87171;
-  --eap-color-danger-soft: #3f1d1d;
-  --eap-color-danger-border: #7f1d1d;
-  --eap-color-info: #93c5fd;
-  --eap-color-info-soft: #1e3a5f;
-  --eap-color-neutral: #94a3b8;
-  --eap-color-neutral-soft: #1e293b;
-  --eap-text-color-primary: #e5eefc;
-  --eap-text-color-regular: #cbd5e1;
-  --eap-text-color-secondary: #94a3b8;
-  --eap-text-color-placeholder: #64748b;
-  --eap-bg-color: #0b1220;
-  --eap-fill-color-blank: #111827;
-  --eap-fill-color-light: #0f172a;
-  --eap-fill-color: #1e293b;
-  --eap-fill-color-hover: #243044;
-  --eap-overlay-color: rgb(2 6 23 / 65%);
-  --eap-border-color: #243044;
-  --eap-border-color-strong: #334155;
-  --eap-box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
-  --eap-box-shadow-overlay: 0 10px 36px rgb(0 0 0 / 45%);
-  --eap-rail-color: #020617;
-  --eap-rail-text: #94a3b8;
-  --eap-rail-active: #1e293b;
+  --eap-color-on-primary: #fff;
+  /* Accent: indigo */
+  --eap-color-primary: #6e7ae8;
+  --eap-color-primary-hover: #8a94ee;
+  --eap-color-primary-soft: #222545;
+  --eap-color-primary-focus: #8a94ee;
+  /* Semantic status colours */
+  --eap-color-success: #3fb99c;
+  --eap-color-success-soft: #12332c;
+  --eap-color-success-border: #1d5a4b;
+  --eap-color-warning: #e5a755;
+  --eap-color-warning-soft: #3a2a16;
+  --eap-color-warning-text: #f0c78a;
+  --eap-color-danger: #e8617a;
+  --eap-color-danger-soft: #3a1c24;
+  --eap-color-danger-border: #6e2f3c;
+  --eap-color-info: #9aa3f0;
+  --eap-color-info-soft: #222545;
+  --eap-color-neutral: #a1a1ab;
+  --eap-color-neutral-soft: #22232a;
+  /* Text: neutral greys (no blue cast) */
+  --eap-text-color-primary: #f2f3f5;
+  --eap-text-color-regular: #c9cad1;
+  --eap-text-color-secondary: #a1a1ab;
+  --eap-text-color-placeholder: #6b6d78;
+  /* Surfaces: neutral near-black */
+  --eap-bg-color: #0f1013;
+  --eap-fill-color-blank: #191a1f;
+  --eap-fill-color-light: #141519;
+  --eap-fill-color: #1f2026;
+  --eap-fill-color-hover: #22232a;
+  --eap-overlay-color: rgb(0 0 0 / 70%);
+  --eap-border-color: #25262d;
+  --eap-border-color-strong: #3a3b45;
+  --eap-box-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  --eap-box-shadow-overlay: 0 10px 36px rgb(0 0 0 / 50%);
+  /* Activity rail is the darkest surface */
+  --eap-rail-color: #0a0b0d;
+  --eap-rail-text: #a1a1ab;
+  --eap-rail-active: #22232a;
 }

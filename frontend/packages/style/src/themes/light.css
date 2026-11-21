@@ -1,5 +1,9 @@
 /**
  * Light theme. Override any `--eap-*` here or on a subtree to reskin the console.
+ *
+ * Palette follows the Ardot design system: neutral near-white surfaces + a single indigo
+ * accent (`#545ECC`). Status colours are independent semantic hues, not tints of the accent.
+ * Only token values change here — never fork component class names.
  */
 :root,
 [data-eap-theme='light'] {
@@ -7,35 +11,39 @@
 
   --eap-color-white: #fff;
   --eap-color-on-primary: #fff;
-  --eap-color-primary: #2563eb;
-  --eap-color-primary-hover: #1d4fd0;
-  --eap-color-primary-soft: #e8f0fe;
-  --eap-color-primary-focus: #93c5fd;
-  --eap-color-success: #15803d;
-  --eap-color-success-soft: #ecfdf3;
-  --eap-color-success-border: #bbf7d0;
-  --eap-color-warning: #a16207;
-  --eap-color-warning-soft: #fff7e6;
-  --eap-color-warning-text: #7a5b13;
-  --eap-color-danger: #b91c1c;
-  --eap-color-danger-soft: #fef2f2;
-  --eap-color-danger-border: #f3c9c9;
-  --eap-color-info: #1d4ed8;
-  --eap-color-info-soft: #eff6ff;
-  --eap-color-neutral: #475569;
-  --eap-color-neutral-soft: #e8eef7;
-  --eap-text-color-primary: #152033;
-  --eap-text-color-regular: #334155;
-  --eap-text-color-secondary: #64748b;
-  --eap-text-color-placeholder: #94a3b8;
-  --eap-bg-color: #f4f6fb;
+  /* Accent: indigo */
+  --eap-color-primary: #545ecc;
+  --eap-color-primary-hover: #4650bb;
+  --eap-color-primary-soft: #e8eafb;
+  --eap-color-primary-focus: #8a94ee;
+  /* Semantic status colours */
+  --eap-color-success: #12866f;
+  --eap-color-success-soft: #dcf3ec;
+  --eap-color-success-border: #b7e3d6;
+  --eap-color-warning: #b57416;
+  --eap-color-warning-soft: #fbefcf;
+  --eap-color-warning-text: #8a5a12;
+  --eap-color-danger: #cf2e4b;
+  --eap-color-danger-soft: #fbe1e6;
+  --eap-color-danger-border: #f0c4cc;
+  --eap-color-info: #545ecc;
+  --eap-color-info-soft: #e8eafb;
+  --eap-color-neutral: #5e616b;
+  --eap-color-neutral-soft: #eceef2;
+  /* Text: neutral greys (no blue cast) */
+  --eap-text-color-primary: #18191c;
+  --eap-text-color-regular: #3c3e45;
+  --eap-text-color-secondary: #5e616b;
+  --eap-text-color-placeholder: #9ca0aa;
+  /* Surfaces: neutral near-white */
+  --eap-bg-color: #f7f8fa;
   --eap-fill-color-blank: #fff;
-  --eap-fill-color-light: #f8fafc;
-  --eap-fill-color: #eef2f7;
-  --eap-fill-color-hover: #e3e9f2;
-  --eap-overlay-color: rgb(15 23 40 / 45%);
-  --eap-border-color: #d8e0ec;
-  --eap-border-color-strong: #cbd5e1;
+  --eap-fill-color-light: #f1f2f5;
+  --eap-fill-color: #eceef2;
+  --eap-fill-color-hover: #e4e6ea;
+  --eap-overlay-color: rgb(0 0 0 / 40%);
+  --eap-border-color: #e5e7eb;
+  --eap-border-color-strong: #d1d5db;
   --eap-border-radius-sm: 4px;
   --eap-border-radius-base: 8px;
   --eap-border-radius-card: 12px;
@@ -59,10 +67,11 @@
   --eap-index-popover: 40;
   --eap-index-dialog: 50;
   --eap-index-confirm: 60;
-  --eap-box-shadow: 0 1px 2px rgb(15 23 40 / 4%);
-  --eap-box-shadow-overlay: 0 10px 36px rgb(20 40 70 / 16%);
+  --eap-box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+  --eap-box-shadow-overlay: 0 12px 40px rgb(0 0 0 / 14%);
   --eap-transition-duration: 0.2s;
-  --eap-rail-color: #0f1728;
-  --eap-rail-text: #b9c6da;
-  --eap-rail-active: #22314b;
+  /* Activity rail is a light surface separated by borders */
+  --eap-rail-color: #fff;
+  --eap-rail-text: #5e616b;
+  --eap-rail-active: #eceef2;
 }
