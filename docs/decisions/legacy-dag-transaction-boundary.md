@@ -9,7 +9,7 @@
 **明确不做**（仍为独立关口，不能因本片宣称完成）：
 
 - 不把旧 DAG 变成后台任务、可恢复运行或可跨重启续跑；`FixedWorkflowRunner` 的 45 秒节点预算仍是唯一的时间上限，没有运行期取消端口。
-- 不拆 workflow 模块对 SQL/MCP/JDBC 的依赖（跨模块拆分单独评审）。
+- 不拆 workflow 模块对 MCP/local/delivery/JDBC 的依赖（跨模块拆分单独评审）。**SQL 例外**：编排层输入端口 `DatabaseEvidenceInput` 已归位 core、workflow 对 SQL 实现模块的编译依赖已移除，见[端口归位决定](workflow-sql-port-relocation.md)；本片的三段事务边界不受其影响。
 - 不引入检查点、重放、从中断处续跑，也不改变"模型输出仅为待验证观察、不代表效果提升"的判定语义。
 - 不替代 SQL Agent / Mission 的持久恢复与人工 UNKNOWN 解除；那些是另一条入口。
 
