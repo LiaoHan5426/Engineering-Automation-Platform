@@ -1,6 +1,6 @@
 # 前端首屏入口基线与大 chunk 告警判读（P2 构建质量）
 
-日期：2026-11-21。状态：**技术方案已确定并实施；离线产物分析与首屏入口回归通过；真实浏览器首屏性能、全站用户接受仍独立。** 本决定关闭 [P2 / 前端构建与质量台账](../planning-status.md) 中"生产构建报告大 chunk（含编辑器与设计器），先按实际入口测首屏/按需加载再决定拆包，不通过提高告警阈值掩盖问题"的缺口。它只处理**告警判据与按需加载事实**，不改任何产品组件、交互或打包产物内容。
+日期：2026-11-21。状态：**技术方案已确定并实施；离线产物分析与首屏入口回归通过；2026-11-22 追加破坏性重构切片，管理页按需加载已落地，入口下降约 35%。真实浏览器首屏性能、全站用户接受仍独立。** 本决定关闭 [P2 / 前端构建与质量台账](../planning-status.md) 中"生产构建报告大 chunk（含编辑器与设计器），先按实际入口测首屏/按需加载再决定拆包，不通过提高告警阈值掩盖问题"的缺口。第 1–2 节与第 3 节原始决定记录当时"不改产品组件"的判读；**第 6 节为后续修订**，按用户"重构可破坏旧架构"的取向，把同步管理页改为按需加载并实测收益。
 
 ## 1. 问题与现状
 
@@ -58,3 +58,21 @@
 - 真实浏览器 FCP/LCP、弱网首屏、全站缩放与用户产品接受不在本片；本片证明的是"构建产物入口结构"这一离线事实。
 - 入口 1.24 MB 的进一步瘦身（同步管理页异步化、ref 时序与未保存保护回归）是独立重构，需单独评审，不因本片宣称已完成。
 - 若未来出现"大 chunk 进入首屏清单"，本回归会失败，届时按实际入口重新决定拆包策略，而不是调整阈值。
+
+## 6. 后续修订：破坏旧首屏结构（2026-11-22）
+
+用户明确取向："重构原有内容可以考虑保留，但不是一定不可破坏架构，不然重构没有意义。"据此撤销第 3 节"不改产品组件 / 入口瘦身属独立重构"的保守边界，在同一 P2 切片内落地管理页按需加载。
+
+**改动**：`App.vue` 中原先同步导入的 10 个非首屏管理页（CapabilityManager / ExpertManager / KnowledgeManager / DatabaseManager / RuleManager / ModelSettings / PluginCenter / ScenarioWorkspace / ProjectBoard / ExpertCatalog）改为 `defineAsyncComponent(() => import(...))`。保留 ChatWorkspace、DesktopNavigation、PluginSlot 同步（首屏 chat 视图与导航需要）。所有经 ref 调用的 `guardLeave` / `refresh` / `currentHash` 方法本就带 null 保护（`?.` 或 `&&` 判断），组件加载完成前 ref 为空不会误触发；各组件已 `defineExpose` 这些方法。
+
+**实测收益**（同一脚本、同一告警阈值，见刷新的证据 JSON）：
+- 入口 chunk `index-*.js`：1,303,273 B → 846,136 B（**−35%**），管理页代码已脱离首屏入口。
+- 首屏 JS 总量：1,724,543 B → 1,493,801 B（**−13%**）；首屏文件 4 → 11（共享依赖 wire / presentation / runtime-core 被提升为 modulepreload chunk，浏览器并行加载）。
+- 编辑器/设计器大 chunk 仍 7 个、全部懒加载、0 泄漏，三类断言保持通过；**未提高任何告警阈值**。
+
+**测试适配**（不是削弱断言，而是对异步渲染正确建模）：
+- `WorkspaceLeave.test.ts` / `DesktopNavigation.return.test.ts` 中被 mock 的管理页模块补 `__esModule: true`——vitest 5 对"被 mock 模块 + `defineAsyncComponent` 动态 import"需显式 ESM 标记，否则触发 `__v_isVNode` 检查错误；WorkspaceLeave 的 ProjectBoard mock 工厂去掉内部 `await import('vue')` 改为顶层 import。
+- `DesktopNavigation.return.test.ts` 的 `click()` 从"固定 8 次 nextTick"改为 `vi.waitFor` 等待目标控件出现——异步视图不再假设固定微任务次数。
+- 全量前端回归：185 文件 / 1128 项通过，无 unhandled error；typecheck / 构建 / fmt / stylelint 通过。
+
+**仍成立的边界**：真实 FCP/LCP、弱网首屏与用户接受仍独立；本修订证明的是"产物入口结构"这一离线事实，不等于真实环境性能验收。

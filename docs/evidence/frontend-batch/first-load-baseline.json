@@ -1,24 +1,52 @@
 {
   "dist": "frontend/apps/web/dist",
-  "entry": "index-BHMzVVsZ.js",
-  "firstLoadBytes": 1724543,
+  "entry": "index-CTsyu0U-.js",
+  "firstLoadBytes": 1493801,
   "firstLoadLimit": 2097152,
   "firstLoad": [
     {
-      "name": "index-BHMzVVsZ.js",
-      "bytes": 1303273
+      "name": "index-CTsyu0U-.js",
+      "bytes": 846136
     },
     {
       "name": "rolldown-runtime-XKyaHtl9.js",
       "bytes": 726
     },
     {
-      "name": "vue-i18n-DTJFHfVB.js",
-      "bytes": 329244
+      "name": "runtime-core.esm-bundler-BW9tvCPc.js",
+      "bytes": 71147
+    },
+    {
+      "name": "vue-i18n-CtbQlNv6.js",
+      "bytes": 258646
     },
     {
       "name": "src-CuKY-WWR.js",
       "bytes": 91300
+    },
+    {
+      "name": "wire-CD2_Bb3L.js",
+      "bytes": 72
+    },
+    {
+      "name": "gitErrors-CT3zLwFK.js",
+      "bytes": 1429
+    },
+    {
+      "name": "runtimeConfig-D92K91KV.js",
+      "bytes": 30
+    },
+    {
+      "name": "pluginMessages-Dvnis8At.js",
+      "bytes": 8904
+    },
+    {
+      "name": "presentation-CxjceYNl.js",
+      "bytes": 213796
+    },
+    {
+      "name": "preload-helper-7y9sWmk5.js",
+      "bytes": 1615
     }
   ],
   "editorLazyChunks": [
@@ -27,12 +55,12 @@
       "bytes": 6927783
     },
     {
-      "name": "editor.api-sFZOxEpA.js",
-      "bytes": 2735517
+      "name": "editor.api-F7O6MKlz.js",
+      "bytes": 2735526
     },
     {
-      "name": "vs-0vScP_qD.js",
-      "bytes": 1295251
+      "name": "vs-CbB8RoUO.js",
+      "bytes": 1294901
     },
     {
       "name": "css.worker-DwfUZ3fB.js",
