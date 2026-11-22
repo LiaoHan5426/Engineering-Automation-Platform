@@ -1,3 +1,4 @@
+import { executionLogMessages } from './executionLogMessages'
 import { productMessages } from './productMessages'
 import { pluginCheckMessages } from './pluginMessages'
 import { configureRuntimeLanguage } from '@eap/runtime-client'
@@ -31,6 +32,7 @@ export const i18n = createI18n({
   messages: {
     'zh-CN': {
       ...pluginCheckMessages['zh-CN'],
+      executionLog: executionLogMessages['zh-CN'],
       product: productMessages['zh-CN'],
       presentation: presentationMessages['zh-CN'],
       toolExecution: toolExecutionMessages['zh-CN'],
@@ -370,6 +372,7 @@ export const i18n = createI18n({
     },
     'en-US': {
       ...pluginCheckMessages['en-US'],
+      executionLog: executionLogMessages['en-US'],
       product: productMessages['en-US'],
       presentation: presentationMessages['en-US'],
       toolExecution: toolExecutionMessages['en-US'],

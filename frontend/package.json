@@ -21,6 +21,7 @@
     "build": "vp build",
     "check": "vsh check && vp check",
     "test": "vp test",
+    "test:unit": "vp test run",
     "preview": "vp preview",
     "stylelint": "stylelint \"**/*.{css,vue}\"",
     "stylelint:fix": "stylelint \"**/*.{css,vue}\" --fix",

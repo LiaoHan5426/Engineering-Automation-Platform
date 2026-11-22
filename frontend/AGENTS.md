@@ -2,7 +2,7 @@
 
 - 跨路由页面交付必须核对宿主路由及资源加载合同。宿主不在候选修改范围时，将必要源码作为有界只读参考提供，禁止凭页面名称猜测 hash/history URL。浏览器验证覆盖候选新增的链接、路由返回和加载失败后的恢复，不能只点击宿主已有导航便宣称生成页面可用。
 
-- 前端安装、开发、构建和检查统一使用 `vp`，不直接调用 `pnpm`。**视觉与截图验证**可直接用本机 Chromium（`EAP_CHROMIUM` 或已验证的 Playwright 缓存 `chrome.exe`）headless 截图，不强制走 Playwright 工程；只有需要**脚本化交互**（点击、输入、等待异步状态）时才用 `vp i -g @playwright/test` 的全局 Playwright，通过测试目录的 `playwright-runtime.mjs` 加载。两种方式都禁止依赖 Hermes 等其他仓库的私有 node_modules；需要选择其他安装时显式设置 `EAP_PLAYWRIGHT_MODULE`。
+- 前端安装、开发、构建和检查统一使用 `vp`，不直接调用 `pnpm`。**测试分工**：默认 `vp test` / `vp run test:unit` 使用 Vite+ 的测试运行器（Node / happy-dom），不启用 Playwright browser provider，也不将它作为运行单元测试的前置依赖。**界面可视化与人工交互验收优先使用当前会话可用的内置浏览器**：打开本机前端，操作并观察加载、错误、重试、关闭和焦点；内置预览能打开页面不等于自动完成这些断言。当前会话没有浏览器操作能力时如实记录，使用已安装 Chromium 或已有脚本做替代验证，不宣称执行了内置浏览器操作。静态视觉/截图可直接用本机 Chromium（`EAP_CHROMIUM` 或已验证的 Playwright 缓存 `chrome.exe`）；确实需要可重复的脚本化点击/输入回归时，已有 `__tests__/browser/*.mjs` 可按需单独运行，通过 `playwright-runtime.mjs` 使用 `vp i -g @playwright/test` 的驱动，**不纳入默认单测链路、不因普通界面任务自动安装驱动**。禁止依赖其他仓库的私有 node_modules；选择其他已安装驱动时显式设置 `EAP_PLAYWRIGHT_MODULE`。
 
 - Retain Vue 3, TypeScript, Vite+, Tailwind and pnpm workspace (`packageManager` currently pnpm 12.9.0). Reuse `@eap/ui`, `@eap/style`, `@eap/runtime-client` and existing feature managers.
 - **UI / 共享模块落点（强制）**：先读并遵守 [`docs/decisions/frontend-ui-shared-module-boundaries.md`](../docs/decisions/frontend-ui-shared-module-boundaries.md)。所有基础组件先在 `@eap/ui` 定义并导出；禁止在 `features/*` 平行实现 Button/Dialog/Confirm 等壳。可复用组合件与 `hooks` / `effects` / `layout` / `toggle` / `plugin` 等按该文档分层与暂存登记落点；未满足抽包条件不得擅自新增含糊包名。**登记只在首次发生时做一次**（新增原语、新增共享类别或改落点规则），复用既有原语不再逐次勾选；交付说明写「复用 `X`」或「新增 `Y`，已登记到 §」即可。

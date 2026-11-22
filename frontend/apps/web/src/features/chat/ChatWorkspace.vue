@@ -27,6 +27,7 @@ import { createChatSession } from './chatSession'
 import { isDraftSubmitKey } from './draftKeys'
 import TurnContextDetails from './TurnContextDetails.vue'
 import TaskMemoryPanel from './TaskMemoryPanel.vue'
+import ExecutionLogDialog from './ExecutionLogDialog.vue'
 import ModelHistoryDialog from './ModelHistoryDialog.vue'
 import ChatExportDialog from './ChatExportDialog.vue'
 import WorkDocumentDialog from './WorkDocumentDialog.vue'
@@ -269,6 +270,13 @@ watch(
 )
 const deleting = ref(false)
 const moreOpen = ref(false)
+const executionLog = ref<{ conversationId: string; executionId: string } | null>(null)
+watch(
+  () => [session.conversationId.value, props.active],
+  () => {
+    executionLog.value = null
+  },
+)
 const modelHistoryOpen = ref(false)
 const taskPlan = ref<ChatTurn | null>(null)
 const preparingTask = ref<BoardTask | null>(null)
@@ -784,7 +792,13 @@ async function regenerateAnswer(index: number) {
   const turns = session.turns.value
   const answer = turns[index]
   const question = index > 0 ? turns[index - 1] : null
-  if (!answer || answer.role !== 'assistant' || !question || question.role !== 'user' || !question.nodeId)
+  if (
+    !answer ||
+    answer.role !== 'assistant' ||
+    !question ||
+    question.role !== 'user' ||
+    !question.nodeId
+  )
     return
   await session.sendRegenerate(question.nodeId)
 }
@@ -1032,6 +1046,12 @@ onMounted(async () => {
         @click="modelHistoryOpen = true"
         >{{ t('contextBudget.historyTitle') }}</Button
       >
+      <ExecutionLogDialog
+        v-if="executionLog"
+        :conversation-id="executionLog.conversationId"
+        :execution-id="executionLog.executionId"
+        @close="executionLog = null"
+      />
       <ModelHistoryDialog
         v-if="modelHistoryOpen && session.conversationId.value"
         :conversation-id="session.conversationId.value"
@@ -1306,6 +1326,19 @@ onMounted(async () => {
                 data-testid="answer-regenerate"
                 @click="regenerateAnswer(key)"
                 >{{ t('chat.regenerate') }}</Button
+              >
+              <Button
+                v-if="turn.role === 'assistant' && turn.executionId && session.conversationId.value"
+                size="sm"
+                variant="ghost"
+                data-testid="open-execution-log"
+                @click="
+                  executionLog = {
+                    conversationId: session.conversationId.value!,
+                    executionId: turn.executionId!,
+                  }
+                "
+                >{{ t('executionLog.title') }}</Button
               >
               <p v-if="turn.error">
                 {{
