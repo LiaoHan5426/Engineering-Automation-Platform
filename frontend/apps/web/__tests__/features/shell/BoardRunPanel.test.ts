@@ -284,6 +284,14 @@ it('keeps an unknown execution blocking and stops automatic polling', async () =
   expect(button('board-run-start').disabled).toBe(true)
   expect(runtimeApi.boardRuns).toHaveBeenCalledTimes(1)
 })
+it('blocks a wire UNKNOWN run even without an additional reason string', async () => {
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [run('UNKNOWN')] })
+  await mount()
+  expect(button('board-run-start').disabled).toBe(true)
+  expect(button('board-run-resolve-unknown')).not.toBeNull()
+  expect(root.textContent).toContain('结果待确认')
+})
+
 it('bounds polling and preserves a last known run during a read failure', async () => {
   vi.useFakeTimers()
   vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [run('RUNNING')] })
@@ -317,6 +325,97 @@ it('ignores a previous task response after switching projects', async () => {
   expect(runtimeApi.startBoardRun).not.toHaveBeenCalled()
 })
 
+async function fillResolution() {
+  button('board-run-resolve-unknown').click()
+  await vi.waitFor(() => expect(button('board-run-resolve-confirm')).not.toBeNull())
+  const input = document.querySelector(
+    '[data-testid=board-run-resolve-note]',
+  ) as HTMLTextAreaElement
+  input.value = 'Reviewed process identity and logs'
+  input.dispatchEvent(new Event('input'))
+  button('board-run-resolve-ack').click()
+  await vi.waitFor(() => expect(button('board-run-resolve-confirm').disabled).toBe(false))
+}
+
+it('keeps resolution failures and the review draft inside the dialog for retry', async () => {
+  const unknown = run('RUNNING')
+  unknown.execution.unconfirmedReason = 'SERVICE_RESTART_EXIT_UNCONFIRMED'
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [unknown] })
+  vi.spyOn(runtimeApi, 'resolveMissionUnknown').mockRejectedValue(new Error('offline'))
+  await mount()
+  await fillResolution()
+  button('board-run-resolve-confirm').click()
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-run-resolve-error]')?.textContent).toContain(
+      '核对提交失败',
+    ),
+  )
+  expect(
+    (document.querySelector('[data-testid=board-run-resolve-note]') as HTMLTextAreaElement).value,
+  ).toBe('Reviewed process identity and logs')
+  expect(button('board-run-start').disabled).toBe(true)
+})
+
+it('ignores a resolution response after moving to another task and unlocks its review', async () => {
+  const unknown = run('RUNNING')
+  unknown.execution.unconfirmedReason = 'SERVICE_RESTART_EXIT_UNCONFIRMED'
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [unknown] })
+  let complete!: (value: typeof unknown.execution) => void
+  vi.spyOn(runtimeApi, 'resolveMissionUnknown').mockImplementation(
+    () =>
+      new Promise((done) => {
+        complete = done
+      }),
+  )
+  const changed = vi.fn()
+  await mount(changed)
+  await fillResolution()
+  button('board-run-resolve-confirm').click()
+  await vi.waitFor(() => expect(runtimeApi.resolveMissionUnknown).toHaveBeenCalledTimes(1))
+  current.value = { ...task, id: 'task-b', projectId: 'project-b' }
+  await vi.waitFor(() => expect(runtimeApi.boardRuns).toHaveBeenCalledWith('task-b', 'project-b'))
+  await fillResolution()
+  expect(button('board-run-resolve-confirm').disabled).toBe(false)
+  changed.mockClear()
+  complete({ ...unknown.execution, status: 'CLOSED_UNCONFIRMED' })
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(document.querySelector('[data-testid=board-run-resolve-dialog]')).not.toBeNull()
+  expect(changed).not.toHaveBeenCalled()
+})
+
+it('shows run counts, completion and human review time without hiding historical evidence after refresh failure', async () => {
+  const closed = run('CLOSED_UNCONFIRMED')
+  closed.execution.finishedAt = '2026-11-22T08:00:00Z'
+  closed.execution.resolution = {
+    executionId: 'run-1',
+    note: 'Reviewed process identity and logs',
+    operator: 'local-operator',
+    resolvedAt: '2026-11-22T09:00:00Z',
+  }
+  const active = run('RUNNING')
+  active.execution.id = 'run-active'
+  const unknown = run('RUNNING')
+  unknown.execution.id = 'run-unknown'
+  unknown.execution.unconfirmedReason = 'SERVICE_RESTART_EXIT_UNCONFIRMED'
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({
+    availability,
+    items: [closed, active, unknown],
+  })
+  await mount()
+  expect(root.querySelector('[data-testid=board-run-summary]')?.textContent).toContain('共 3 次')
+  expect(root.querySelector('[data-testid=board-run-summary]')?.textContent).toContain('待确认 1')
+  expect(root.textContent).toContain('2026-11-22T08:00:00Z')
+  expect(root.querySelector('[data-testid=board-run-resolution]')?.textContent).toContain(
+    '2026-11-22T09:00:00Z',
+  )
+  vi.mocked(runtimeApi.boardRuns).mockRejectedValueOnce(new Error('offline'))
+  button('board-run-refresh').click()
+  await vi.waitFor(() => expect(root.querySelector('[data-testid=board-run-stale]')).not.toBeNull())
+  expect(button('board-run-resolve-unknown')).toBeNull()
+  expect(root.textContent).toContain('untracked evidence.txt')
+})
+
 it('reviews an unknown run and unblocks without claiming process exit', async () => {
   const unknown = run('RUNNING')
   unknown.execution.unconfirmedReason = 'SERVICE_RESTART_EXIT_UNCONFIRMED'
@@ -337,19 +436,29 @@ it('reviews an unknown run and unblocks without claiming process exit', async ()
 
   expect(button('board-run-resolve-unknown')).not.toBeNull()
   button('board-run-resolve-unknown').click()
-  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-run-resolve-dialog]')).not.toBeNull())
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-run-resolve-dialog]')).not.toBeNull(),
+  )
   const confirmBtn = button('board-run-resolve-confirm')
   expect(confirmBtn.disabled).toBe(true)
 
-  const textarea = document.querySelector('[data-testid=board-run-resolve-note]') as HTMLTextAreaElement
+  const textarea = document.querySelector(
+    '[data-testid=board-run-resolve-note]',
+  ) as HTMLTextAreaElement
   textarea.value = 'Reviewed process identity and logs'
   textarea.dispatchEvent(new Event('input'))
   const ack = document.querySelector('[data-testid=board-run-resolve-ack]') as HTMLInputElement
   ack.click()
-  await vi.waitFor(() => expect((button('board-run-resolve-confirm') as HTMLButtonElement).disabled).toBe(false))
+  await vi.waitFor(() =>
+    expect((button('board-run-resolve-confirm') as HTMLButtonElement).disabled).toBe(false),
+  )
   button('board-run-resolve-confirm').click()
 
   await vi.waitFor(() =>
-    expect(resolve).toHaveBeenCalledWith('task-a', 'run-1', 'Reviewed process identity and logs'),
+    expect(resolve).toHaveBeenCalledWith(
+      'mission-1',
+      'run-1',
+      'Reviewed process identity and logs',
+    ),
   )
 })

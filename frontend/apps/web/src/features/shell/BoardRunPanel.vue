@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { MissionExecutionStatus } from '@eap/runtime-client'
-import { isMissionExecutionStatusActive } from '@eap/runtime-client'
+import {
+  isMissionExecutionStatusActive,
+  isMissionExecutionStatusBlocking,
+} from '@eap/runtime-client'
 
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isRequestError } from '@eap/request'
 import {
@@ -42,8 +45,26 @@ const resolving = ref<BoardRun | null>(null)
 const resolveNote = ref('')
 const resolveAck = ref(false)
 const resolveBusy = ref(false)
+const resolveControl = ref<InstanceType<typeof Button>>()
+const resolveError = ref('')
+const readFailed = ref(false)
+const runSummary = computed(() => {
+  const items = page.value?.items ?? []
+  const unknown = items.filter(
+    (run) =>
+      !!run.execution.unconfirmedReason || run.execution.status === MissionExecutionStatus.UNKNOWN,
+  ).length
+  const active = items.filter(
+    (run) =>
+      isMissionExecutionStatusActive(run.execution.status) && !run.execution.unconfirmedReason,
+  ).length
+  return { total: items.length, active, unknown, finished: items.length - active - unknown }
+})
 const resolveValid = computed(
-  () => resolveNote.value.trim().length >= 10 && resolveNote.value.trim().length <= 2000 && resolveAck.value,
+  () =>
+    resolveNote.value.trim().length >= 10 &&
+    resolveNote.value.trim().length <= 2000 &&
+    resolveAck.value,
 )
 const viewing = ref<{ id: string; contentHash: string } | null>(null)
 const reviewing = ref<BoardRun | null>(null)
@@ -61,7 +82,11 @@ const store = (() => {
   }
 })()
 const missionOpen = computed(
-  () => !!page.value?.items.some((run) => isMissionExecutionStatusActive(run.execution.status)),
+  () =>
+    !!page.value?.items.some(
+      (run) =>
+        isMissionExecutionStatusBlocking(run.execution.status) || !!run.execution.unconfirmedReason,
+    ),
 )
 const open = computed(() => props.task.executionActive || missionOpen.value)
 const pollingNeeded = computed(() =>
@@ -75,6 +100,7 @@ const canStart = computed(
     !props.disabled &&
     !loading.value &&
     !starting.value &&
+    !readFailed.value &&
     !open.value &&
     props.task.column === 'ready' &&
     props.task.preparationIssues.length === 0 &&
@@ -114,6 +140,8 @@ async function refresh(manual = false) {
     const data = await runtimeApi.boardRuns(id, projectId)
     if (current !== generation) return
     page.value = data
+    if (readFailed.value) note.value = ''
+    readFailed.value = false
     if (!data.items.some((run) => run.execution.id === selectedRunId.value))
       selectedRunId.value = data.items[0]?.execution.id ?? ''
     if (pending.value && data.items.some((run) => run.requestId === pending.value?.requestId)) {
@@ -129,7 +157,10 @@ async function refresh(manual = false) {
     )
       emit('changed')
   } catch {
-    if (current === generation) note.value = t('boardRun.loadFailed')
+    if (current === generation) {
+      readFailed.value = true
+      note.value = t('boardRun.loadFailed')
+    }
   } finally {
     if (current === generation) {
       loading.value = false
@@ -148,27 +179,40 @@ function openResolve(run: BoardRun) {
   resolving.value = run
   resolveNote.value = ''
   resolveAck.value = false
+  resolveError.value = ''
   note.value = ''
 }
 function cancelResolve() {
   resolving.value = null
   resolveNote.value = ''
   resolveAck.value = false
+  resolveError.value = ''
 }
 async function submitResolve() {
   const run = resolving.value
   if (!run || !resolveValid.value || resolveBusy.value) return
+  const current = generation
   resolveBusy.value = true
+  resolveError.value = ''
   try {
-    await runtimeApi.resolveMissionUnknown(props.task.id, run.execution.id, resolveNote.value.trim())
+    await runtimeApi.resolveMissionUnknown(
+      run.execution.missionId,
+      run.execution.id,
+      resolveNote.value.trim(),
+    )
+    if (current !== generation) return
     cancelResolve()
     note.value = t('boardRun.resolveUnknownDone')
     emit('changed')
     await refresh(true)
-  } catch (error) {
-    note.value = errorText(error)
+  } catch {
+    if (current === generation) resolveError.value = t('boardRun.resolveUnknownFailed')
   } finally {
-    resolveBusy.value = false
+    if (current === generation) {
+      resolveBusy.value = false
+      await nextTick()
+      if (current === generation && resolving.value) resolveControl.value?.$el.focus()
+    }
   }
 }
 async function start() {
@@ -218,13 +262,16 @@ async function start() {
   }
 }
 watch(
-  () => props.task.id,
+  () => [props.task.id, props.task.projectId],
   () => {
     selectedRunId.value = ''
     generation++
     stopPolling()
     viewing.value = null
     resolving.value = null
+    resolveBusy.value = false
+    resolveError.value = ''
+    readFailed.value = false
     resolveNote.value = ''
     resolveAck.value = false
     reviewing.value = null
@@ -250,6 +297,15 @@ onBeforeUnmount(() => {
   <section class="board-run" data-testid="board-run-panel">
     <h3>{{ t('boardRun.title') }}</h3>
     <p>{{ t('boardRun.hint') }}</p>
+    <div v-if="page" class="board-run__actions" data-testid="board-run-summary" role="status">
+      <Badge>{{ t('boardRun.countTotal', { count: runSummary.total }) }}</Badge>
+      <Badge>{{ t('boardRun.countActive', { count: runSummary.active }) }}</Badge>
+      <Badge>{{ t('boardRun.countUnknown', { count: runSummary.unknown }) }}</Badge>
+      <Badge>{{ t('boardRun.countFinished', { count: runSummary.finished }) }}</Badge>
+    </div>
+    <Feedback v-if="readFailed && page" tone="warning" data-testid="board-run-stale">{{
+      t('boardRun.staleEvidence')
+    }}</Feedback>
     <p v-if="page?.availability.workspacePath" data-testid="board-run-workspace">
       {{ t('boardRun.workspace') }}：<code>{{ page.availability.workspacePath }}</code>
     </p>
@@ -291,7 +347,8 @@ onBeforeUnmount(() => {
         <option v-for="item in page.items" :key="item.execution.id" :value="item.execution.id">
           {{
             t(
-              item.execution.unconfirmedReason
+              item.execution.unconfirmedReason ||
+                item.execution.status === MissionExecutionStatus.UNKNOWN
                 ? 'boardRun.unknown'
                 : 'boardRun.status.' + item.execution.status,
             )
@@ -309,7 +366,8 @@ onBeforeUnmount(() => {
       <div class="board-run__actions">
         <Badge>{{
           t(
-            run.execution.unconfirmedReason
+            run.execution.unconfirmedReason ||
+              run.execution.status === MissionExecutionStatus.UNKNOWN
               ? 'boardRun.unknown'
               : 'boardRun.status.' + run.execution.status,
           )
@@ -322,15 +380,12 @@ onBeforeUnmount(() => {
       <p v-if="run.execution.unconfirmedReason" role="alert">
         {{ run.execution.unconfirmedReason }} · {{ t('boardRun.unknownHint') }}
       </p>
-      <Feedback
-        v-if="run.execution.resolution"
-        tone="warning"
-        data-testid="board-run-resolution"
-      >
+      <Feedback v-if="run.execution.resolution" tone="warning" data-testid="board-run-resolution">
         {{ t('boardRun.resolution') }} · {{ run.execution.resolution.note }} ·
-        {{ run.execution.resolution.operator }}
+        {{ run.execution.resolution.operator }} · {{ run.execution.resolution.resolvedAt || '—' }}
       </Feedback>
       <p>{{ t('boardRun.workspace') }}：{{ run.execution.workspacePath }}</p>
+      <p>{{ t('boardRun.finishedAt') }}：{{ run.execution.finishedAt || '—' }}</p>
       <p v-if="run.execution.exitCode != null">
         {{ t('boardRun.exitCode') }}：{{ run.execution.exitCode }} ·
         {{ run.execution.exitEvidence }}
@@ -340,8 +395,12 @@ onBeforeUnmount(() => {
       </p>
       <div class="board-run__actions">
         <Button
-          v-if="run.execution.unconfirmedReason"
+          v-if="
+            run.execution.unconfirmedReason ||
+            run.execution.status === MissionExecutionStatus.UNKNOWN
+          "
           size="sm"
+          :disabled="readFailed || loading || resolveBusy"
           data-testid="board-run-resolve-unknown"
           @click="openResolve(run)"
           >{{ t('boardRun.resolveUnknown') }}</Button
@@ -455,8 +514,13 @@ onBeforeUnmount(() => {
       data-testid="board-run-resolve-dialog"
       @close="cancelResolve"
     >
+      <Feedback v-if="resolveError" tone="error" data-testid="board-run-resolve-error">{{
+        resolveError
+      }}</Feedback>
       <p>{{ t('boardRun.resolveUnknownHint') }}</p>
-      <p><code>{{ resolving.execution.id }}</code></p>
+      <p>
+        <code>{{ resolving.execution.id }}</code>
+      </p>
       <label
         >{{ t('boardRun.resolveUnknownNote') }}
         <Textarea
@@ -479,6 +543,7 @@ onBeforeUnmount(() => {
       <div class="board-run__actions">
         <Button
           size="sm"
+          ref="resolveControl"
           :disabled="!resolveValid || resolveBusy"
           data-testid="board-run-resolve-confirm"
           @click="submitResolve"
@@ -495,59 +560,68 @@ onBeforeUnmount(() => {
 .board-run {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding-top: 14px;
   border-top: 1px solid var(--border);
-  min-width: 0;
 }
+
 .board-run h3 {
   margin: 0;
   font-size: 14px;
 }
+
 .board-run p {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
+
 .board-run__actions {
   display: flex;
-  align-items: center;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
+
 .board-run__item {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  min-width: 0;
 }
+
 .board-run code {
-  overflow-wrap: anywhere;
   font-size: 11px;
-}
-.board-run pre {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.board-run pre {
   max-height: 260px;
-  overflow: auto;
   padding: 10px;
   margin: 8px 0;
+  overflow: auto;
+  font-size: 11px;
   color: var(--eap-code-text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
   background: var(--eap-code-bg);
   border-radius: 8px;
-  font-size: 11px;
 }
+
 .board-run__prototype {
   display: grid;
   gap: 8px;
   justify-items: start;
 }
+
 .board-run__selection {
   display: grid;
   gap: 6px;
   min-width: 0;
   font-size: 12px;
 }
+
 .board-run__selection :deep(.eap-select) {
   width: 100%;
   max-width: 100%;
