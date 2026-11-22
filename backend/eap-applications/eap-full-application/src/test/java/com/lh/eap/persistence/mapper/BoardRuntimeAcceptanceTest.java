@@ -2,7 +2,7 @@ package com.lh.eap.persistence.mapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 import com.lh.eap.application.service.BoardRuntimeService;
-import com.lh.eap.local.LocalProcessIdentityInspector;
+import com.lh.eap.core.LocalProcessIdentityInspector;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;

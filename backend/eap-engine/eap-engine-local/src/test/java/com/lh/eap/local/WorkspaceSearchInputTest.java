@@ -2,6 +2,7 @@ package com.lh.eap.local;
 
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.CapabilityRequest;
+import com.lh.eap.domain.model.WorkspaceSearchInput;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;

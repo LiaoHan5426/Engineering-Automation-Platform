@@ -1,6 +1,4 @@
-package com.lh.eap.local;
-
-import com.lh.eap.domain.model.CapabilityRequest;
+package com.lh.eap.domain.model;
 
 /** Search text only; the executor supplies and authorizes the workspace independently. */
 @FunctionalInterface

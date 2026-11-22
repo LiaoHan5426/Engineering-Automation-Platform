@@ -1,4 +1,4 @@
-package com.lh.eap.local;
+package com.lh.eap.domain.model;
 
 import java.util.Map;
 

@@ -99,13 +99,13 @@ class ModuleCompositionTest {
                 });
         local().withPropertyValues("eap.local.enabled=false").run(context ->
                 assertThat(context).doesNotHaveBean(com.lh.eap.application.service.CliChannels.class)
-                        .doesNotHaveBean(com.lh.eap.local.CliChannelStore.class));
+                        .doesNotHaveBean(com.lh.eap.domain.model.CliChannelStore.class));
     }
     @Test void consumerCliStoreIsUsedAndUserChannelsCanOverrideTheDefault() {
-        var store = org.mockito.Mockito.mock(com.lh.eap.local.CliChannelStore.class);
+        var store = org.mockito.Mockito.mock(com.lh.eap.domain.model.CliChannelStore.class);
         org.mockito.Mockito.when(store.overrides()).thenReturn(java.util.Map.of("git", "custom-git"));
-        local().withBean(com.lh.eap.local.CliChannelStore.class, () -> store).run(context -> {
-            assertThat(context).hasSingleBean(com.lh.eap.local.CliChannelStore.class);
+        local().withBean(com.lh.eap.domain.model.CliChannelStore.class, () -> store).run(context -> {
+            assertThat(context).hasSingleBean(com.lh.eap.domain.model.CliChannelStore.class);
             assertThat(context.getBean(com.lh.eap.application.service.CliChannels.class).binaryFor("git-status", "git"))
                     .isEqualTo("custom-git");
         });

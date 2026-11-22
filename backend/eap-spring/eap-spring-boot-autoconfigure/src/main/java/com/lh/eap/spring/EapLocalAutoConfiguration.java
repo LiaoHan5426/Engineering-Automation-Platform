@@ -1,7 +1,7 @@
 package com.lh.eap.spring;
 import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.application.service.CliChannels;
-import com.lh.eap.local.CliChannelStore;
+import com.lh.eap.domain.model.CliChannelStore;
 import org.springframework.beans.factory.ObjectProvider;
 
 import com.lh.eap.application.service.WorkspaceFilesService;

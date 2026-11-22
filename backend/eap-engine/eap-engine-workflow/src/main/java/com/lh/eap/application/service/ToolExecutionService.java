@@ -19,7 +19,7 @@ import com.lh.eap.common.SensitiveData;
 import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.core.CapabilityRegistry;
 import com.lh.eap.core.LocalBinaries;
-import com.lh.eap.local.LocalProcessIdentityInspector;
+import com.lh.eap.core.LocalProcessIdentityInspector;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import com.lh.eap.runtime.handler.GitInspectionHandler;
 import jakarta.annotation.PreDestroy;

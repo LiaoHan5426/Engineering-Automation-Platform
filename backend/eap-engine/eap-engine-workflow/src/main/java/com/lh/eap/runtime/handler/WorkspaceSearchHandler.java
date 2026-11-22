@@ -1,5 +1,5 @@
 package com.lh.eap.runtime.handler;
-import com.lh.eap.local.WorkspaceSearchInput;
+import com.lh.eap.domain.model.WorkspaceSearchInput;
 
 import com.lh.eap.application.service.CliChannels;
 import com.lh.eap.domain.model.CapabilityAvailability;

@@ -1,5 +1,6 @@
 package com.lh.eap.local;
 
+import com.lh.eap.core.LocalProcessIdentityInspector;
 import static org.junit.jupiter.api.Assertions.*;
 import java.lang.reflect.Proxy;
 import java.nio.file.*;

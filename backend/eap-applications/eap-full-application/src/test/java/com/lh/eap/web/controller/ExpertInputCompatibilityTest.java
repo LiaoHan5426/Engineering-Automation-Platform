@@ -1,7 +1,7 @@
 package com.lh.eap.web.controller;
 
 import com.lh.eap.application.service.ExpertExecutionService;
-import com.lh.eap.local.WorkspaceSearchInput;
+import com.lh.eap.domain.model.WorkspaceSearchInput;
 import com.lh.eap.domain.model.DatabaseEvidenceInput;
 import java.util.*;
 import org.junit.jupiter.api.Test;

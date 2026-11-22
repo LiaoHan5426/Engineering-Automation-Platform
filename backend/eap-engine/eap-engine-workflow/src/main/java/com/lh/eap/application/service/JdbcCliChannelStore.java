@@ -1,7 +1,7 @@
 package com.lh.eap.application.service;
 import com.lh.eap.error.CliProgramErrors;
 
-import com.lh.eap.local.CliChannelStore;
+import com.lh.eap.domain.model.CliChannelStore;
 import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;

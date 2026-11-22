@@ -3,7 +3,7 @@ package com.lh.eap.runtime.handler;
 import com.lh.eap.api.*;
 import com.lh.eap.core.CapabilityRegistry;
 import com.lh.eap.domain.model.*;
-import com.lh.eap.local.WorkspaceSearchInput;
+import com.lh.eap.domain.model.WorkspaceSearchInput;
 import java.nio.file.Path;
 import java.util.*;
 import org.junit.jupiter.api.Test;

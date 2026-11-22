@@ -1,4 +1,4 @@
-package com.lh.eap.local;
+package com.lh.eap.core;
 import com.lh.eap.api.ProcessIdentityStatus;
 
 import com.lh.eap.api.ProcessIdentityInspection;

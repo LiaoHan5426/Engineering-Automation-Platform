@@ -16,7 +16,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class GitCapabilityTest {
     @Test void missingProgramBindingIsReportedWithoutExecutingOrRewritingBindings() {
-        var store = new com.lh.eap.local.CliChannelStore() {
+        var store = new com.lh.eap.domain.model.CliChannelStore() {
             public Map<String,String> overrides() { return Map.of("git", "/eap-missing-program-fixture/git.exe"); }
             public void configure(String capability, String binary) { fail("Catalog must not rewrite bindings"); }
         };

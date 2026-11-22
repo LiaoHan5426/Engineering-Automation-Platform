@@ -1,6 +1,6 @@
 package com.lh.eap.application.service;
 
-import com.lh.eap.local.CliChannelStore;
+import com.lh.eap.domain.model.CliChannelStore;
 import com.lh.eap.api.Observation;
 import java.nio.file.Path;
 import java.util.*;

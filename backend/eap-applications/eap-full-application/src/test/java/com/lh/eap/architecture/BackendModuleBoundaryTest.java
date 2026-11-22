@@ -124,6 +124,31 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void localContractsLiveInCoreAndWorkflowDoesNotImportThem() throws Exception {
+        // WorkspaceSearchInput/CliChannelStore/LocalProcessIdentityInspector are pure contracts or
+        // stateless tools: they belong in core, not the local capability module. Behavioural
+        // capabilities (GitCapability/RuntimeWorkspace/CliChannels) legitimately stay in local
+        // under neutral packages and are intentionally out of scope for this guard.
+        var core = backend.resolve("eap-engine/eap-engine-core/src/main/java/com/lh/eap");
+        for (String contract : List.of("domain/model/WorkspaceSearchInput.java",
+                "domain/model/CliChannelStore.java", "core/LocalProcessIdentityInspector.java")) {
+            assertTrue(Files.isRegularFile(core.resolve(contract)), "core must own " + contract);
+        }
+        var oldLocal = backend.resolve("eap-engine/eap-engine-local/src/main/java/com/lh/eap/local");
+        if (Files.isDirectory(oldLocal)) {
+            try (var stale = Files.list(oldLocal)) {
+                assertTrue(stale.findAny().isEmpty(),
+                        "com.lh.eap.local production package must be empty after contract relocation");
+            }
+        }
+        try (var sources = Files.walk(backend.resolve("eap-engine/eap-engine-workflow/src"))) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                assertFalse(Files.readString(source).contains("import com.lh.eap.local."),
+                        source + " imports the local capability implementation package");
+            }
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");

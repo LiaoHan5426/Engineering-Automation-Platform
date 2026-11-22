@@ -5,7 +5,7 @@ import com.lh.eap.domain.model.CapabilityAvailability;
 import com.lh.eap.common.SensitiveData;
 
 import com.lh.eap.api.ProcessExecutor;
-import com.lh.eap.local.CliChannelStore;
+import com.lh.eap.domain.model.CliChannelStore;
 import com.lh.eap.core.LocalBinaries;
 import java.nio.file.Path;
 import java.util.*;

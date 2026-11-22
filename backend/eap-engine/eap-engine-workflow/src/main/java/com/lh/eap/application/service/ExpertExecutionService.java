@@ -1,6 +1,6 @@
 package com.lh.eap.application.service;
 import com.lh.eap.domain.model.ExpertBehaviorBinding;
-import com.lh.eap.local.WorkspaceSearchInput;
+import com.lh.eap.domain.model.WorkspaceSearchInput;
 import com.lh.eap.domain.model.DatabaseEvidenceInput;
 import com.lh.eap.error.AgentErrors;
 
