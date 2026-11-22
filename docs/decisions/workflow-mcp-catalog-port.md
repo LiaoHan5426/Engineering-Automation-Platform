@@ -11,7 +11,7 @@
 **明确不做**（仍为独立关口，不能因本片宣称完成）：
 
 - 不改 MCP 注册表/服务的任何持久化、事务、授权或协议行为；`McpServerRegistry`/`McpServerService`/`OfficialReadonlyMcpMatrix` 原样留在 mcp 模块，仅由适配器委托。
-- 不拆 workflow 对 local/delivery/JDBC/`JdbcTemplate` 的依赖（30 类直接用 JDBC，端口抽取 + 装配改造属更大范围，单独评审）。
+- 不拆 workflow 对 local/delivery/JDBC/`JdbcTemplate` 的依赖（30 类直接用 JDBC，端口抽取 + 装配改造属更大范围，单独评审）。**local 纯契约例外**：`WorkspaceSearchInput`/`CliChannelStore`/`LocalProcessIdentityInspector` 已归位 core（local 行为类依赖仍在，非全拆），见[local 契约归位](workflow-local-contract-relocation.md)。
 - 不改变任何 HTTP 字段、JSON 形状、错误码或校验语义；目录响应内容与改造前逐字段一致。
 - 不修改日常数据库、常驻服务或持久数据；本片是编译期结构变更。
 

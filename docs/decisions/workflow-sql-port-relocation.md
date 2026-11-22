@@ -10,7 +10,7 @@
 
 **明确不做**（仍为独立关口，不能因本片宣称完成）：
 
-- 不拆 workflow 对 `eap-engine-local`、`eap-engine-delivery`、JDBC（`JdbcTemplate`）的依赖。JDBC 侧 30 个类直接用 `JdbcTemplate`——这是端口抽取 + 装配改造的更大范围，单独评审。**MCP 例外**：其依赖已于同日经 `McpCatalogQuery` 端口拆除，见[MCP 目录端口化](workflow-mcp-catalog-port.md)。
+- 不拆 workflow 对 `eap-engine-local`、`eap-engine-delivery`、JDBC（`JdbcTemplate`）的依赖。JDBC 侧 30 个类直接用 `JdbcTemplate`——这是端口抽取 + 装配改造的更大范围，单独评审。**MCP 例外**：其依赖已于同日经 `McpCatalogQuery` 端口拆除，见[MCP 目录端口化](workflow-mcp-catalog-port.md)。**local 纯契约例外**：`WorkspaceSearchInput`/`CliChannelStore`/`LocalProcessIdentityInspector` 已归位 core（local 行为类依赖仍在，不宣称 local 全拆），见[local 契约归位](workflow-local-contract-relocation.md)。
 - 不把旧 DAG 变为后台可续跑任务、不引入检查点/重放/跨重启接管；`legacy-dag-transaction-boundary.md` 的三段事务边界不变。
 - 不改变任何运行时行为、HTTP 请求/响应字段、JSON 形状、错误码或校验语义。
 - 不修改日常数据库、常驻服务或任何持久数据；本片是编译期结构变更。
