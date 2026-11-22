@@ -15,6 +15,8 @@ import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingResponseWrapper;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeDeliveryStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
 
 /** Real prototype/scenario HTTP adapters and stores. A test-only latch delays the first publish response. */
 public final class DesignerLifecycleFixture {

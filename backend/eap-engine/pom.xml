@@ -10,6 +10,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>eap-engine-core</module>
+        <module>eap-engine-persistence-jdbc</module>
         <module>eap-engine-local</module>
         <module>eap-engine-sql</module>
         <module>eap-engine-knowledge</module>

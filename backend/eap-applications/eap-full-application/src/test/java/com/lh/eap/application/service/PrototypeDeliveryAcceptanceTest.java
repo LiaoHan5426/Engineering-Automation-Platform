@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import com.lh.eap.persistence.mapper.JdbcPrototypeDeliveryStore;
-import com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeDeliveryStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
 import java.sql.DriverManager;
 import java.util.Map;
 import java.util.UUID;

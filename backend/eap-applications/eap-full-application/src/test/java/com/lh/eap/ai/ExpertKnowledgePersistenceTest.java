@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.AnnotationTransactionAttribute
 import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.springframework.transaction.support.*;
 import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
+import com.lh.eap.persistence.jdbc.CapabilityUsage;
 
 /** Existing local Postgres only. No Spring Boot server, real model, migrations, schema reset or shared settings writes.
  * Fixture ownership is random expert/base IDs; cleanup deletes only these rows. */

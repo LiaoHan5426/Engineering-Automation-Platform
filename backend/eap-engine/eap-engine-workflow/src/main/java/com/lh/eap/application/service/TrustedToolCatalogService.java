@@ -1,5 +1,5 @@
 package com.lh.eap.application.service;
-import com.lh.eap.persistence.mapper.CliProgramMapper;
+import com.lh.eap.persistence.jdbc.CliProgramMapper;
 import java.util.HashMap;
 import com.lh.eap.error.CliProgramErrors;
 import com.lh.eap.error.ExecutionErrors;

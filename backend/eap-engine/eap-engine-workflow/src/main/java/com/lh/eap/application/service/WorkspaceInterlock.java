@@ -1,5 +1,5 @@
 package com.lh.eap.application.service;
-import com.lh.eap.persistence.mapper.StateBindings;
+import com.lh.eap.persistence.jdbc.StateBindings;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;

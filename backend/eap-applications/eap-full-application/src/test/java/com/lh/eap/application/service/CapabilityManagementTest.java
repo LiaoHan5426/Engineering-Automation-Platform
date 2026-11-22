@@ -3,7 +3,7 @@ package com.lh.eap.application.service;
 import com.lh.eap.domain.expert.ExpertGraph;
 import com.lh.eap.domain.model.CapabilityAvailability;
 import com.lh.eap.domain.model.ExpertManifest;
-import com.lh.eap.persistence.mapper.CapabilityUsage;
+import com.lh.eap.persistence.jdbc.CapabilityUsage;
 import com.lh.eap.persistence.mapper.KnowledgeRepository;
 import com.lh.eap.persistence.mapper.McpServerRegistry;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
 
 /**
  * Every kind of capability has to have an answer to "where do I change it", and that answer has to be

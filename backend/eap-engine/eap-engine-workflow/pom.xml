@@ -23,6 +23,13 @@
             <artifactId>eap-engine-local</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- P0-P4 transitional dependency: Code stores and business services still reference
+             adapters not yet split out. Removed when P4 completes the port extraction. -->
+        <dependency>
+            <groupId>com.lh</groupId>
+            <artifactId>eap-engine-persistence-jdbc</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.lh</groupId>
             <artifactId>eap-api</artifactId>

@@ -1,5 +1,5 @@
 package com.lh.eap.application.service;
-import com.lh.eap.persistence.mapper.StateBindings;
+import com.lh.eap.persistence.jdbc.StateBindings;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;

@@ -14,7 +14,7 @@ import com.lh.eap.common.SensitiveData;
 import com.lh.eap.rules.RulePackQuery;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
-import com.lh.eap.persistence.mapper.ExpertDefinitionMapper;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;

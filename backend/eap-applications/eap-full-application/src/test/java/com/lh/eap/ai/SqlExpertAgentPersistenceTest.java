@@ -29,6 +29,8 @@ import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import com.lh.eap.persistence.jdbc.TaskRepository;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
 
 /** Existing localhost DB, random fixtures only, real parser/metadata/plan/Task stores; Fake model, no SQL execution or DDL. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_EXPERT_AGENT_PERSISTENCE", matches = "true")

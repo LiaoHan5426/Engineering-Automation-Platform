@@ -13,6 +13,8 @@ import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.springframework.transaction.support.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
 
 /** Service calls without HTTP still own the transaction; no real datasource or schema changes. */
 class ManagementTransactionBoundaryTest {

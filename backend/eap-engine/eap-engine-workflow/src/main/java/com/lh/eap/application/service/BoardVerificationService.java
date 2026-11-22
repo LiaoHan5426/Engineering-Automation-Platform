@@ -1,6 +1,6 @@
 package com.lh.eap.application.service;
 import com.lh.eap.common.SensitiveData;
-import com.lh.eap.persistence.mapper.StateBindings;
+import com.lh.eap.persistence.jdbc.StateBindings;
 import com.lh.eap.error.BoardErrors;
 import com.lh.eap.error.BoardVerificationErrors;
 import com.lh.eap.error.ToolErrors;

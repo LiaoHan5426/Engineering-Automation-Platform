@@ -58,7 +58,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
         var proposal = boundProposal();
         var taskLocked = new java.util.concurrent.CountDownLatch(1); var release = new java.util.concurrent.CountDownLatch(1);
         var tasks = new BoardTaskService(jdbc);
-        var binding = new com.lh.eap.application.service.BoardCodeTaskBinding(tasks, new com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore(jdbc)) {
+        var binding = new com.lh.eap.application.service.BoardCodeTaskBinding(tasks, new com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore(jdbc)) {
             @Override public void validateLocked(CodeGenerationStore.TaskSnapshot expected) {
                 super.validateLocked(expected); taskLocked.countDown();
                 try { assertTrue(release.await(5, java.util.concurrent.TimeUnit.SECONDS)); } catch (InterruptedException e) { throw new RuntimeException(e); }
@@ -130,8 +130,8 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
     }
     @Test void savedPrototypeFullInputIsCapturedAndCallerCannotSilentlyOverrideIt() throws Exception {
         var tasks = new BoardTaskService(jdbc);
-        var versions = new com.lh.eap.application.service.PrototypeVersionService(new com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore(jdbc),
-                new com.lh.eap.persistence.mapper.JdbcPrototypeDeliveryStore(jdbc));
+        var versions = new com.lh.eap.application.service.PrototypeVersionService(new com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore(jdbc),
+                new com.lh.eap.persistence.jdbc.JdbcPrototypeDeliveryStore(jdbc));
         var version = versions.save(java.util.UUID.randomUUID(),"builder-alpha", "Prototype title", com.lh.eap.application.service.SemanticPrototypeFixture.body( "Prototype body"), List.of("Saved acceptance"));
         try {
             var task = tasks.create(new BoardTaskService.Draft(project, "Title", "", "ready", "Goal", "Criteria", UUID.randomUUID())); taskId = task.id();

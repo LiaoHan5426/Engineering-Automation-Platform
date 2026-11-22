@@ -2,12 +2,12 @@ package com.lh.eap.application.service;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import com.lh.eap.persistence.mapper.StateBindings;
+import com.lh.eap.persistence.jdbc.StateBindings;
 import com.lh.eap.error.BoardErrors;
 import com.lh.eap.error.CodeErrors;
 import com.lh.eap.error.CommonErrors;
 import com.lh.eap.error.ResourceErrors;
-import com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lh.eap.common.SensitiveData;

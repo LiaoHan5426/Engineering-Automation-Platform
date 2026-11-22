@@ -3,7 +3,7 @@ package com.lh.eap.application.service;
 import com.lh.eap.application.dto.ExpertDefinitionRequest;
 import com.lh.eap.core.*;
 import com.lh.eap.domain.model.*;
-import com.lh.eap.persistence.mapper.ExpertDefinitionMapper;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
 import com.lh.eap.rules.RulePackQuery;
 import java.util.*;
 import org.junit.jupiter.api.Test;

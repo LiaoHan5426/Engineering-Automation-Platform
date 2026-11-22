@@ -1,7 +1,7 @@
 package com.lh.eap.application.service;
 import com.lh.eap.core.DatabaseGrantQuery;
 import com.lh.eap.core.ExpertBehaviorCatalog;
-import com.lh.eap.persistence.mapper.CliProgramMapper;
+import com.lh.eap.persistence.jdbc.CliProgramMapper;
 import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.core.ExpertScopedCapabilityQuery;

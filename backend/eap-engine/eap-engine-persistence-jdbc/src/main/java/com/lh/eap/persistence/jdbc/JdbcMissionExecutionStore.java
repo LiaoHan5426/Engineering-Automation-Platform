@@ -1,4 +1,4 @@
-package com.lh.eap.persistence.mapper;
+package com.lh.eap.persistence.jdbc;
 import com.lh.eap.domain.model.MissionExecutionStatus;
 
 import com.lh.eap.domain.model.MissionExecution;

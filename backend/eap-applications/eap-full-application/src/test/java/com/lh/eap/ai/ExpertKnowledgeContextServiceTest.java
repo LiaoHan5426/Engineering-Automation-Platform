@@ -9,6 +9,7 @@ import com.lh.eap.runtime.handler.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
 
 class ExpertKnowledgeContextServiceTest {
     @Test void queryIsBoundedWithoutSilentlyTruncatingTheQuestion() {

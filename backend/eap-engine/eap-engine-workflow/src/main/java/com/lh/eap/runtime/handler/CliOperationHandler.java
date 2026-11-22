@@ -8,7 +8,7 @@ import com.lh.eap.application.service.CliChannels;
 import com.lh.eap.common.SensitiveData;
 import com.lh.eap.core.LocalBinaries;
 import com.lh.eap.domain.model.*;
-import com.lh.eap.persistence.mapper.CliProgramMapper;
+import com.lh.eap.persistence.jdbc.CliProgramMapper;
 import java.util.*;
 import org.springframework.stereotype.Component;
 

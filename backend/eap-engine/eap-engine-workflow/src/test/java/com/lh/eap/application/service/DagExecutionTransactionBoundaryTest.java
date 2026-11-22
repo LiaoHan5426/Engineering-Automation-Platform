@@ -5,7 +5,7 @@ import com.lh.eap.core.ExpertBehaviorCatalog;
 import com.lh.eap.domain.model.ExpertBehaviorBinding;
 import com.lh.eap.domain.model.ExpertManifest;
 import com.lh.eap.domain.model.NodeResult;
-import com.lh.eap.persistence.mapper.TaskRepository;
+import com.lh.eap.persistence.jdbc.TaskRepository;
 import com.lh.eap.runtime.handler.CapabilityHandler;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import java.nio.file.Path;

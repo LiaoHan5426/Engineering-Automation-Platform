@@ -5,7 +5,7 @@ import com.lh.eap.runtime.handler.CapabilityHandler;
 import com.lh.eap.domain.expert.ExpertGraph;
 import com.lh.eap.domain.model.ExpertManifest;
 import com.lh.eap.persistence.mapper.KnowledgeRepository;
-import com.lh.eap.persistence.mapper.TaskRepository;
+import com.lh.eap.persistence.jdbc.TaskRepository;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import com.lh.eap.runtime.handler.DatabaseExplainHandler;
 import com.lh.eap.runtime.handler.DatabaseMetadataHandler;

@@ -3,7 +3,7 @@ import com.lh.eap.api.TaskRef;
 import com.lh.eap.application.service.BoardCodeTaskBinding;
 import com.lh.eap.application.service.BoardTaskService;
 import com.lh.eap.application.service.WorkspaceInterlock;
-import com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
 import java.util.List;
 import java.util.function.Function;
 import org.springframework.beans.factory.annotation.Autowired;

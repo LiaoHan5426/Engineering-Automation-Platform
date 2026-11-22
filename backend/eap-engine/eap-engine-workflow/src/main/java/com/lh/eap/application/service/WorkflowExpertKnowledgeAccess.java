@@ -1,7 +1,7 @@
 package com.lh.eap.application.service;
 
 import com.lh.eap.core.ExpertKnowledgeAccess;
-import com.lh.eap.persistence.mapper.ExpertDefinitionMapper;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;

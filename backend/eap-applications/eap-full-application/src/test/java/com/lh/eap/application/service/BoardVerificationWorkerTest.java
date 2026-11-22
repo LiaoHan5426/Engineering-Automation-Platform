@@ -125,7 +125,7 @@ class BoardVerificationWorkerTest {
         var f = new Fixture();
         var recover = assertDoesNotThrow(() -> BoardVerificationService.class.getMethod("markRestartUnknown"));
         recover.invoke(f.service);
-        verify(f.jdbc).update(argThat((String sql) -> sql.contains("ANY(?::text[])") && sql.contains("jsonb_set") && !sql.contains("DELETE")), eq("UNKNOWN"), eq("BOARD_VERIFICATION_RESTART_UNKNOWN"), eq(com.lh.eap.persistence.mapper.StateBindings.VERIFICATION_ACTIVE));
+        verify(f.jdbc).update(argThat((String sql) -> sql.contains("ANY(?::text[])") && sql.contains("jsonb_set") && !sql.contains("DELETE")), eq("UNKNOWN"), eq("BOARD_VERIFICATION_RESTART_UNKNOWN"), eq(com.lh.eap.persistence.jdbc.StateBindings.VERIFICATION_ACTIVE));
     }
     @Test void sourceChangeBetweenChecksStopsBeforeTheNextProcess() {
         var f = new Fixture(); f.start();

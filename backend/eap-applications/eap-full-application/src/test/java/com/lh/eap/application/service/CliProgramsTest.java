@@ -14,6 +14,8 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.persistence.jdbc.CliProgramMapper;
+import com.lh.eap.persistence.jdbc.CapabilityUsage;
 
 class CliProgramsTest {
     private final CliProgramMapper mapper = mock(CliProgramMapper.class);

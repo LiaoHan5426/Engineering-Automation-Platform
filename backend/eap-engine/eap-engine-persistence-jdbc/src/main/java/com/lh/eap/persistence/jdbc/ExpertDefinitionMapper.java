@@ -1,4 +1,4 @@
-package com.lh.eap.persistence.mapper;
+package com.lh.eap.persistence.jdbc;
 import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;

@@ -22,6 +22,7 @@ import org.springframework.jdbc.datasource.*;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.persistence.jdbc.JdbcToolExecutionStore;
 
 /** Test-only socket host: real service/controller/JDBC with explicit Java-substitute and unchanged-Git fault modes. */
 public final class ToolUnknownReviewFixture {

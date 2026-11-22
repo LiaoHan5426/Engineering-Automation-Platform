@@ -24,6 +24,14 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import com.lh.eap.persistence.jdbc.JdbcToolExecutionStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeDeliveryStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
+import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
+import com.lh.eap.persistence.jdbc.TaskRepository;
+import com.lh.eap.persistence.jdbc.CliProgramMapper;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
+import com.lh.eap.persistence.jdbc.CapabilityUsage;
 
 /** Real Flyway/PostgreSQL/socket HTTP/Git; no model or external service. Mutates only UUID-owned data. */
 @EnabledIfEnvironmentVariable(named="EAP_RUN_SINGLE_CONTRACTS",matches="true")

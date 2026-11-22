@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
 
 class JdbcCliChannelStoreTest {
     @Test void successfulEmptyReadAllowsShippedDefaults() {

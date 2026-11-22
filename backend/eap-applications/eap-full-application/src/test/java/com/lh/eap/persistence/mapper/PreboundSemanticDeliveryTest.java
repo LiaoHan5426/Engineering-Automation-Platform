@@ -12,6 +12,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeDeliveryStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
 
 /** Current semantic constraints, PREBOUND source and durable application catalog in owned schema. */
 @EnabledIfEnvironmentVariable(named="EAP_RUN_SINGLE_CONTRACTS", matches="true")

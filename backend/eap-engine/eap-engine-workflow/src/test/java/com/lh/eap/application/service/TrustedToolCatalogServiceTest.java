@@ -21,7 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 class TrustedToolCatalogServiceTest {
     @Test @SuppressWarnings("unchecked")
     void groupsGitOperationsAndSharesOneProgramProbe(@TempDir Path workspace) {
-        var mapper = mock(com.lh.eap.persistence.mapper.CliProgramMapper.class);
+        var mapper = mock(com.lh.eap.persistence.jdbc.CliProgramMapper.class);
         var program = new com.lh.eap.domain.model.CliProgram("git", "Git", "git", true);
         when(mapper.programs()).thenReturn(List.of(program));
         when(mapper.program("git")).thenReturn(java.util.Optional.of(program));

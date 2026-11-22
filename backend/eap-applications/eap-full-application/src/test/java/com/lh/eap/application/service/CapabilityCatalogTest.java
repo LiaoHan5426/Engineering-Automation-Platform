@@ -31,12 +31,12 @@ class CapabilityCatalogTest {
         try (var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
             context.registerBean(CapabilityHandlerRegistry.class, CapabilityCatalogTest::registry);
             context.registerBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class));
-            context.registerBean(com.lh.eap.persistence.mapper.CliProgramMapper.class,
-                    () -> mock(com.lh.eap.persistence.mapper.CliProgramMapper.class));
+            context.registerBean(com.lh.eap.persistence.jdbc.CliProgramMapper.class,
+                    () -> mock(com.lh.eap.persistence.jdbc.CliProgramMapper.class));
             context.registerBean(CliProgramService.class, () -> mock(CliProgramService.class));
             context.registerBean(CliChannels.class, CliChannels::defaults);
-            context.registerBean(com.lh.eap.persistence.mapper.CapabilityUsage.class,
-                    () -> mock(com.lh.eap.persistence.mapper.CapabilityUsage.class));
+            context.registerBean(com.lh.eap.persistence.jdbc.CapabilityUsage.class,
+                    () -> mock(com.lh.eap.persistence.jdbc.CapabilityUsage.class));
             context.registerBean(CapabilitySettings.class, () -> mock(CapabilitySettings.class));
             context.registerBean(com.lh.eap.core.McpCatalogQuery.class, com.lh.eap.core.McpCatalogQuery::empty);
             context.register(CapabilityCatalog.class);

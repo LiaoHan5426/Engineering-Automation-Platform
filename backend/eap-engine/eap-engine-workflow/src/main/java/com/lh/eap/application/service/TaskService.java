@@ -6,7 +6,7 @@ import com.lh.eap.error.MissionErrors;
 
 import com.lh.eap.api.*;
 import com.lh.eap.core.CapabilityRegistry;
-import com.lh.eap.persistence.mapper.TaskRepository;
+import com.lh.eap.persistence.jdbc.TaskRepository;
 import com.lh.eap.common.SensitiveData;
 import com.lh.eap.application.dto.TaskRequest;
 import java.nio.file.Path;

@@ -1,4 +1,4 @@
-package com.lh.eap.persistence.mapper;
+package com.lh.eap.persistence.jdbc;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 

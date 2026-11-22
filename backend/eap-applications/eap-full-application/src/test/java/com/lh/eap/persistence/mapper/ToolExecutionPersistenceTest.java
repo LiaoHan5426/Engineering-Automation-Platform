@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import tools.jackson.databind.json.JsonMapper;
 import com.lh.eap.domain.model.ToolExecution;
 import com.lh.eap.core.ToolExecutionStore;
+import com.lh.eap.persistence.jdbc.JdbcToolExecutionStore;
 
 /** Existing opt-in local test datasource; only a UUID-owned schema is created/dropped. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_BOARD_PERSISTENCE", matches = "true")

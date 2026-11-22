@@ -4,7 +4,7 @@ import com.lh.eap.domain.model.WorkspaceSearchInput;
 import com.lh.eap.domain.model.DatabaseEvidenceInput;
 import com.lh.eap.error.AgentErrors;
 
-import com.lh.eap.persistence.mapper.TaskRepository;
+import com.lh.eap.persistence.jdbc.TaskRepository;
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.ExpertManifest;
 import com.lh.eap.domain.model.NodeResult;

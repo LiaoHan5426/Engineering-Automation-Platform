@@ -2,7 +2,7 @@ package com.lh.eap.application.service;
 
 import com.lh.eap.core.*;
 import com.lh.eap.domain.model.*;
-import com.lh.eap.persistence.mapper.TaskRepository;
+import com.lh.eap.persistence.jdbc.TaskRepository;
 import com.lh.eap.runtime.handler.*;
 import java.nio.file.Path;
 import java.util.*;

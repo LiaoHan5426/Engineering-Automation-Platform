@@ -29,6 +29,9 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import com.lh.eap.persistence.jdbc.JdbcExpertAgentJournal;
+import com.lh.eap.persistence.jdbc.TaskRepository;
+import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
 
 /** Existing localhost DB and disposable workspace; real journal/grants/proposals/files, scripted model only. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_EXPERT_CONTINUATION_PERSISTENCE", matches = "true")

@@ -196,7 +196,7 @@ class ExpertScopedCapabilityTest {
         row.put("builtin", false);
         when(jdbc.queryForList(anyString(), eq(EXPERT))).thenReturn(List.of(row));
         var service = new ExpertDefinitionService(jdbc, new RulePackService(jdbc), servers,
-                new CapabilitySettings(jdbc, new com.lh.eap.persistence.mapper.CapabilityUsage(jdbc)),
+                new CapabilitySettings(jdbc, new com.lh.eap.persistence.jdbc.CapabilityUsage(jdbc)),
                 new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", mock(com.lh.eap.core.ExpertAnalysisPolicy.class)))));
 
         service.activate(EXPERT, true);

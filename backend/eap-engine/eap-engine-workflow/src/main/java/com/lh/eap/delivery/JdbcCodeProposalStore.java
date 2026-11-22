@@ -2,7 +2,7 @@ package com.lh.eap.delivery;
 import com.lh.eap.application.service.BoardCodeTaskBinding;
 import com.lh.eap.application.service.BoardTaskService;
 import com.lh.eap.application.service.WorkspaceInterlock;
-import com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
 import java.util.function.Supplier;
 import java.sql.ResultSet;
 import java.sql.SQLException;

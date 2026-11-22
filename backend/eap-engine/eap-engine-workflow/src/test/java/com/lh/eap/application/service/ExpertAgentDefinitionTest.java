@@ -40,7 +40,7 @@ class ExpertAgentDefinitionTest {
     @Test void legacyWorkflowEndpointCannotExecuteAnAgentBinding() {
         var definitions = mock(ExpertDefinitionService.class);
         when(definitions.require("fixture", true)).thenReturn(manifest("eap/v2", List.of("sql.parse"), List.of()));
-        var tasks = mock(com.lh.eap.persistence.mapper.TaskRepository.class);
+        var tasks = mock(com.lh.eap.persistence.jdbc.TaskRepository.class);
         var executor = new ExpertExecutionService(definitions, tasks, new com.lh.eap.runtime.handler.CapabilityHandlerRegistry(List.of()),
                 policies, java.nio.file.Path.of("."), List.of());
         var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> executor.execute("fixture",

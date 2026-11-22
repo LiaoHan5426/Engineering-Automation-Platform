@@ -29,6 +29,11 @@ import com.lh.eap.domain.model.PrototypeVersion;
 import com.lh.eap.core.MissionStore;
 import com.lh.eap.core.MissionExecutionStore;
 import com.lh.eap.core.HandoffStore;
+import com.lh.eap.persistence.jdbc.JdbcMissionStore;
+import com.lh.eap.persistence.jdbc.JdbcMissionExecutionStore;
+import com.lh.eap.persistence.jdbc.JdbcHandoffStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeDeliveryStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
 
 /** Real PostgreSQL + a newly initialized isolated Git directory; owns only its generated rows. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_BOARD_PERSISTENCE", matches = "true")

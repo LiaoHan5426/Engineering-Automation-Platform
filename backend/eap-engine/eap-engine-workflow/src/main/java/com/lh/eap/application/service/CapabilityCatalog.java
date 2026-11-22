@@ -1,9 +1,9 @@
 package com.lh.eap.application.service;
 import com.lh.eap.core.McpCatalogQuery;
 import com.lh.eap.domain.model.CliOperation;
-import com.lh.eap.persistence.mapper.CliProgramMapper;
+import com.lh.eap.persistence.jdbc.CliProgramMapper;
 
-import com.lh.eap.persistence.mapper.CapabilityUsage;
+import com.lh.eap.persistence.jdbc.CapabilityUsage;
 import com.lh.eap.domain.model.CapabilityAvailability;
 import com.lh.eap.domain.model.CapabilityDescriptor;
 import com.lh.eap.domain.model.CapabilityKind;
@@ -16,6 +16,7 @@ import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
 
 /**
  * The capability catalog.

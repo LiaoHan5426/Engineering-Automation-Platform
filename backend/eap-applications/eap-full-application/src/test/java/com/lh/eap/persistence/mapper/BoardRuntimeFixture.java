@@ -23,6 +23,11 @@ import com.lh.eap.domain.model.Mission;
 import com.lh.eap.core.MissionStore;
 import com.lh.eap.core.MissionExecutionStore;
 import com.lh.eap.core.HandoffStore;
+import com.lh.eap.persistence.jdbc.JdbcMissionStore;
+import com.lh.eap.persistence.jdbc.JdbcMissionExecutionStore;
+import com.lh.eap.persistence.jdbc.JdbcHandoffStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeDeliveryStore;
+import com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore;
 
 /** Test-only host: real core BoardRun/Mission/Git and production read observation. */
 public final class BoardRuntimeFixture {

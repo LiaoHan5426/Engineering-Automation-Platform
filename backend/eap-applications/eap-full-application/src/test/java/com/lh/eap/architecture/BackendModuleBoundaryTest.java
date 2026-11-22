@@ -363,6 +363,38 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void jdbcAdaptersLiveInDedicatedModuleAfterP0P2() throws Exception {
+        var adapters = List.of(
+                "JdbcMissionStore", "JdbcMissionExecutionStore", "JdbcHandoffStore", "JdbcToolExecutionStore",
+                "JdbcPrototypeDeliveryStore", "JdbcPrototypeVersionStore", "JdbcExpertAgentJournal", "JdbcCliChannelStore",
+                "TaskRepository", "CliProgramMapper", "ExpertDefinitionMapper", "CapabilityUsage", "StateBindings");
+        var target = backend.resolve("eap-engine/eap-engine-persistence-jdbc/src/main/java/com/lh/eap/persistence/jdbc");
+        assertTrue(Files.isDirectory(target), "persistence-jdbc adapter package missing");
+        var oldMapper = backend.resolve("eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/persistence/mapper");
+        var oldService = backend.resolve("eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service");
+        for (String name : adapters) {
+            assertTrue(Files.exists(target.resolve(name + ".java")), name + " missing in persistence-jdbc");
+            assertFalse(Files.exists(oldMapper.resolve(name + ".java")), name + " still in workflow mapper package");
+            assertFalse(Files.exists(oldService.resolve(name + ".java")), name + " still in workflow service package");
+        }
+        // Only real import statements are checked; string literals in guards are ignored.
+        try (var sources = Files.walk(backend)) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java") && !p.toString().contains("target")).toList()) {
+                for (String line : Files.readAllLines(source)) {
+                    if (!line.trim().startsWith("import ")) continue;
+                    for (String name : adapters) {
+                        assertFalse(line.contains("com.lh.eap.persistence.mapper." + name), source + " still imports old mapper package: " + name);
+                        assertFalse(line.contains("com.lh.eap.application.service." + name), source + " still imports old service package: " + name);
+                    }
+                }
+            }
+        }
+        var pom = Files.readString(backend.resolve("eap-engine/eap-engine-persistence-jdbc/pom.xml"));
+        assertTrue(pom.contains("<artifactId>eap-engine-core</artifactId>"), "adapter module must depend on core");
+        assertTrue(pom.contains("<artifactId>spring-boot-starter-jdbc</artifactId>"), "adapter module must own JDBC");
+        assertFalse(pom.contains("<artifactId>eap-engine-workflow</artifactId>"), "adapter module must not depend upward on workflow");
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");
