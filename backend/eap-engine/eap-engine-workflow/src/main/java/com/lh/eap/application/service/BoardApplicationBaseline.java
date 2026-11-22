@@ -3,6 +3,7 @@ package com.lh.eap.application.service;
 import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.capability.GitCapability;
 import com.lh.eap.common.SensitiveData;
+import com.lh.eap.core.BoardBaselineStore;
 import com.lh.eap.core.CapabilityRegistry;
 import com.lh.eap.delivery.CodeChangeService;
 import com.lh.eap.error.BoardDeliveryErrors;
@@ -11,7 +12,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 import static com.lh.eap.application.service.BoardVerificationSource.denied;
@@ -21,12 +21,12 @@ import static com.lh.eap.application.service.BoardVerificationSource.denied;
 public class BoardApplicationBaseline {
     public record Baseline(String workspacePath, String baseCommit, BoardVerificationSource.Source source, Instant capturedAt) {}
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private final JdbcTemplate jdbc;
+    private final BoardBaselineStore store;
     private final ProcessExecutor executor;
     private final CapabilityRegistry registry;
     private final BoardVerificationSource sources;
-    public BoardApplicationBaseline(JdbcTemplate jdbc, ProcessExecutor executor, CapabilityRegistry registry, BoardVerificationSource sources) {
-        this.jdbc=jdbc; this.executor=executor; this.registry=registry; this.sources=sources;
+    public BoardApplicationBaseline(BoardBaselineStore store, ProcessExecutor executor, CapabilityRegistry registry, BoardVerificationSource sources) {
+        this.store=store; this.executor=executor; this.registry=registry; this.sources=sources;
     }
     public Baseline capture(CodeChangeService.Proposal proposal) {
         // Other code application purposes remain outside frontend delivery coverage.
@@ -53,11 +53,10 @@ public class BoardApplicationBaseline {
         return new Baseline(proposal.workspace(),head,source,Instant.now());
     }
     public Baseline required(String principal, UUID conversation, UUID proposal, String workspace) {
-        var rows=jdbc.query("SELECT application_baseline FROM eap.code_proposal WHERE principal=? AND conversation_id=? AND id=? AND workspace=?",
-                (rs,n)->Optional.ofNullable(rs.getString(1)),principal,conversation,proposal,workspace);
-        if(rows.isEmpty()) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_NOT_FOUND.code());
-        if(rows.getFirst().isEmpty()) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_BASELINE_REQUIRED.code());
-        var baseline=JSON.readValue(rows.getFirst().orElseThrow(),Baseline.class);
+        var row=store.findApplicationBaseline(principal,conversation,proposal,workspace);
+        if(row.isEmpty()) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_NOT_FOUND.code());
+        if(row.get().json()==null) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_BASELINE_REQUIRED.code());
+        var baseline=JSON.readValue(row.get().json(),Baseline.class);
         if(!workspace.equals(baseline.workspacePath()) || baseline.source()==null || baseline.capturedAt()==null)
             throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_BASELINE_REQUIRED.code());
         return baseline;

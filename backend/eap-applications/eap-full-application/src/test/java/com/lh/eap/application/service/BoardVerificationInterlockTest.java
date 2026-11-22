@@ -31,10 +31,10 @@ class BoardVerificationInterlockTest {
     @Test @SuppressWarnings("unchecked") void reviewCannotCaptureWhileAnotherTaskVerifiesTheSameWorkspace() {
         var jdbc = mock(JdbcTemplate.class); var tasks = mock(BoardTaskService.class); var executions = mock(MissionExecutionStore.class);
         var task = UUID.randomUUID(); var run = UUID.randomUUID();
-        when(jdbc.query(anyString(), any(RowMapper.class), eq(task), eq(run))).thenReturn(List.of(Optional.empty()));
+        when(jdbc.query(anyString(), any(RowMapper.class), eq(task), eq(run))).thenReturn(List.of(new com.lh.eap.core.BoardReviewStore.SnapshotRow(null)));
         var execution = mock(MissionExecution.class); when(execution.workspacePath()).thenReturn("workspace"); when(executions.find(run)).thenReturn(Optional.of(execution));
         when(tasks.hasActiveVerification("workspace")).thenReturn(true);
-        var service = new BoardReviewService(jdbc, tasks, executions, mock(MissionGitExecutionService.class), mock(com.lh.eap.core.CapabilityRegistry.class), mock(com.lh.eap.runtime.handler.CapabilityHandlerRegistry.class), mock(CapabilitySettings.class), mock(GitReviewCapture.class));
+        var service = new BoardReviewService(new com.lh.eap.persistence.jdbc.JdbcBoardReviewStore(jdbc), tasks, executions, mock(MissionGitExecutionService.class), mock(com.lh.eap.core.CapabilityRegistry.class), mock(com.lh.eap.runtime.handler.CapabilityHandlerRegistry.class), mock(CapabilitySettings.class), mock(GitReviewCapture.class));
         assertEquals("BOARD_VERIFICATION_WORKSPACE_BUSY", assertThrows(ResponseStatusException.class, () -> service.collect(task, run, new BoardReviewService.Request("p", "workspace"))).getReason());
         verify(tasks).lockWorkspace("workspace");
     }

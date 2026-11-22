@@ -45,7 +45,7 @@ class PreboundSemanticDeliveryTest {
             assertEquals(version,captured.taskSnapshot().prototype());
             var proposal=changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,captured.id(),
                 JsonMapper.builder().build().writeValueAsString(Map.of("files",List.of(Map.of("path",target,"content","<p>After</p>\n")))),true);
-            var catalog=new BoardApplicationCatalog(jdbc);
+            var catalog=new BoardApplicationCatalog(new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc));
             assertTrue(catalog.list(ref,root.toString()).items().isEmpty());
             var applied=changes.apply(RuntimeWorkspace.OPERATOR_LABEL,conversation,proposal.id(),true);
             assertEquals("APPLIED",applied.status());assertEquals("<p>After</p>\n",Files.readString(root.resolve(target)));

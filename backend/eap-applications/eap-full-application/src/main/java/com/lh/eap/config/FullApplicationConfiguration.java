@@ -38,7 +38,13 @@ import com.lh.eap.application.service.ExpertExecutionService;
 import com.lh.eap.application.service.ExpertManagementService;
 import com.lh.eap.application.service.GitReviewCapture;
 import com.lh.eap.application.service.HandoffService;
+import com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery;
+import com.lh.eap.persistence.jdbc.JdbcBoardBaselineStore;
+import com.lh.eap.persistence.jdbc.JdbcBoardPrototypeSelectionStore;
+import com.lh.eap.persistence.jdbc.JdbcBoardReviewStore;
+import com.lh.eap.persistence.jdbc.JdbcBoardRuntimeQuery;
 import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
+import com.lh.eap.persistence.jdbc.JdbcScenarioStore;
 import com.lh.eap.application.service.KnowledgeManagementService;
 import com.lh.eap.application.service.McpServerService;
 import com.lh.eap.application.service.MissionExecutionRecovery;
@@ -153,6 +159,12 @@ import org.springframework.context.annotation.Import;
     ProblemResponses.class,
     ToolExecutionService.class,
     JdbcToolExecutionStore.class,
+    JdbcBoardBaselineStore.class,
+    JdbcBoardApplicationCatalogQuery.class,
+    JdbcBoardPrototypeSelectionStore.class,
+    JdbcBoardReviewStore.class,
+    JdbcBoardRuntimeQuery.class,
+    JdbcScenarioStore.class,
     ToolExecutionController.class,
     SqlExpertAnalysisPolicy.class,
     WorkflowExpertKnowledgeAccess.class,

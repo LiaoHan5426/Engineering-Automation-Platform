@@ -135,7 +135,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
         var version = versions.save(java.util.UUID.randomUUID(),"builder-alpha", "Prototype title", com.lh.eap.application.service.SemanticPrototypeFixture.body( "Prototype body"), List.of("Saved acceptance"));
         try {
             var task = tasks.create(new BoardTaskService.Draft(project, "Title", "", "ready", "Goal", "Criteria", UUID.randomUUID())); taskId = task.id();
-            var selected = new TransactionTemplate(manager).execute(tx -> new com.lh.eap.application.service.BoardPrototypeService(jdbc, tasks, versions)
+            var selected = new TransactionTemplate(manager).execute(tx -> new com.lh.eap.application.service.BoardPrototypeService(new com.lh.eap.persistence.jdbc.JdbcBoardPrototypeSelectionStore(jdbc), tasks, versions)
                     .select(taskId, new com.lh.eap.application.service.BoardPrototypeService.Selection(project, 1, version.id())));
             var ref = new com.lh.eap.api.TaskRef(project, taskId, selected.revision()); var changes = service(store());
             assertEquals("CODE_TASK_PROTOTYPE_MISMATCH", assertThrows(org.springframework.web.server.ResponseStatusException.class,

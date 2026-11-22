@@ -4,12 +4,12 @@ import com.lh.eap.error.BoardVerificationErrors;
 import com.lh.eap.error.ToolErrors;
 
 import com.lh.eap.capability.GitCapability;
+import com.lh.eap.core.BoardReviewStore;
 import com.lh.eap.core.CapabilityRegistry;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import com.lh.eap.runtime.handler.GitInspectionHandler;
 import java.nio.file.Path;
 import java.util.*;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
@@ -22,7 +22,7 @@ public class BoardReviewService {
     public record Request(String projectId, String workspacePath) {}
     public record Page(GitReviewCapture.Evidence evidence, boolean captureAllowed, String reason) {}
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private final JdbcTemplate jdbc;
+    private final BoardReviewStore store;
     private final BoardTaskService tasks;
     private final MissionExecutionStore executions;
     private final MissionGitExecutionService git;
@@ -30,9 +30,9 @@ public class BoardReviewService {
     private final CapabilityHandlerRegistry handlers;
     private final CapabilitySettings settings;
     private final GitReviewCapture capture;
-    public BoardReviewService(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git,
+    public BoardReviewService(BoardReviewStore store, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git,
                               CapabilityRegistry registry, CapabilityHandlerRegistry handlers, CapabilitySettings settings, GitReviewCapture capture) {
-        this.jdbc=jdbc; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.handlers=handlers; this.settings=settings; this.capture=capture;
+        this.store=store; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.handlers=handlers; this.settings=settings; this.capture=capture;
     }
     public Page get(UUID taskId, UUID executionId, String projectId) {
         requireProject(projectId); var task = tasks.find(taskId, projectId, false); var saved = read(taskId, executionId);
@@ -53,7 +53,7 @@ public class BoardReviewService {
         var reason = denial(executionId);
         if (!reason.isEmpty()) throw conflict(reason);
         var evidence = capture.capture(Path.of(run.workspacePath()), capability());
-        jdbc.update("UPDATE eap.board_task_run SET review_snapshot=?::jsonb WHERE task_id=? AND execution_id=? AND review_snapshot IS NULL", JSON.writeValueAsString(evidence), taskId, executionId);
+        store.saveSnapshotIfAbsent(JSON.writeValueAsString(evidence), taskId, executionId);
         return evidence;
     }
     private String denial(UUID executionId) {
@@ -69,11 +69,9 @@ public class BoardReviewService {
     }
     private GitCapability capability() { return registry.all().stream().filter(item -> item.name().equals("git-diff") && item instanceof GitCapability).map(item -> (GitCapability)item).findFirst().orElse(null); }
     private GitReviewCapture.Evidence read(UUID taskId, UUID executionId) {
-        var rows = jdbc.query("SELECT review_snapshot FROM eap.board_task_run WHERE task_id=? AND execution_id=?", (rs, row) -> {
-            String value = rs.getString(1); return value == null ? Optional.<GitReviewCapture.Evidence>empty() : Optional.of(JSON.readValue(value, GitReviewCapture.Evidence.class));
-        }, taskId, executionId);
-        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, BoardErrors.BOARD_RUN_NOT_FOUND.code());
-        return rows.getFirst().orElse(null);
+        var row = store.findSnapshot(taskId, executionId);
+        if (row.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, BoardErrors.BOARD_RUN_NOT_FOUND.code());
+        return row.get().json() == null ? null : JSON.readValue(row.get().json(), GitReviewCapture.Evidence.class);
     }
     private static void requireProject(String id) { if (id == null || id.isBlank() || id.length() > 120) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_FIELD.code()); }
     private static ResponseStatusException conflict(String reason) { return new ResponseStatusException(HttpStatus.CONFLICT, reason); }

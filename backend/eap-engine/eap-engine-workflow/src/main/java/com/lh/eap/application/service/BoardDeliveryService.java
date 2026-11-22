@@ -8,6 +8,7 @@ import com.lh.eap.error.BoardDeliveryErrors;
 import com.lh.eap.error.BoardVerificationErrors;
 
 import com.lh.eap.capability.GitCapability;
+import com.lh.eap.core.BoardApplicationCatalogQuery;
 import com.lh.eap.core.CapabilityRegistry;
 import com.lh.eap.common.SensitiveData;
 import java.nio.file.Path;
@@ -46,6 +47,7 @@ public class BoardDeliveryService {
     private record Stored(Delivery delivery, String requestHash, String decisionHash, long revision, BoardRunService.Snapshot task, BoardVerificationService.Record verification) {}
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private final JdbcTemplate jdbc;
+    private final BoardApplicationCatalogQuery catalogQuery;
     private final BoardTaskService tasks;
     private final MissionExecutionStore executions;
     private final MissionGitExecutionService git;
@@ -53,19 +55,19 @@ public class BoardDeliveryService {
     private final BoardVerificationService verification;
     private final BoardDeliveryCapture capture;
     private final BoardApplicationEvidence applications;
-    public BoardDeliveryService(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture) {
-        this(jdbc, tasks, executions, git, registry, verification, capture, null);
+    public BoardDeliveryService(JdbcTemplate jdbc, BoardApplicationCatalogQuery catalogQuery, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture) {
+        this(jdbc, catalogQuery, tasks, executions, git, registry, verification, capture, null);
     }
     @Autowired
-    public BoardDeliveryService(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture, BoardApplicationEvidence applications) {
-        this.jdbc=jdbc; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.verification=verification; this.capture=capture; this.applications=applications;
+    public BoardDeliveryService(JdbcTemplate jdbc, BoardApplicationCatalogQuery catalogQuery, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture, BoardApplicationEvidence applications) {
+        this.jdbc=jdbc; this.catalogQuery=catalogQuery; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.verification=verification; this.capture=capture; this.applications=applications;
     }
     public BoardApplicationCatalog.Page applications(UUID taskId, UUID executionId, String projectId) {
         project(projectId);
         var task = tasks.find(taskId, projectId, false);
         var saved = read(taskId, executionId);
         var execution = executions.find(executionId).orElseThrow();
-        return new BoardApplicationCatalog(jdbc).list(
+        return new BoardApplicationCatalog(catalogQuery).list(
                 new TaskRef(task.projectId(), task.id(), saved.revision()), execution.workspacePath());
     }
     public Page get(UUID taskId, UUID executionId, String projectId) {

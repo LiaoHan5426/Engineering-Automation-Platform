@@ -18,6 +18,6 @@ public final class ApplicationBaselineFixture {
             return new Observation("git-status",true,0,command.contains("--show-toplevel")?root.toRealPath().toString():"a".repeat(40),"",
                     Map.of("processExited",true,"processTreeCleanup",true));
         });
-        return new BoardApplicationBaseline(jdbc,process,new CapabilityRegistry().register(new GitCapability("status")),new BoardVerificationSource());
+        return new BoardApplicationBaseline(new com.lh.eap.persistence.jdbc.JdbcBoardBaselineStore(jdbc),process,new CapabilityRegistry().register(new GitCapability("status")),new BoardVerificationSource());
     }
 }

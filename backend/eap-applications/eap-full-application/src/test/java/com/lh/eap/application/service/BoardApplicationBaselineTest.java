@@ -41,7 +41,7 @@ class BoardApplicationBaselineTest {
     }
     @Test void capturesFullDirtyBaselineWithoutSourceBodiesAndDeliversOnlyGenerationBefore() throws Exception {
         files();var process=process();
-        var baseline=new BoardApplicationBaseline(mock(JdbcTemplate.class),process,new CapabilityRegistry().register(git),sources).capture(proposal());
+        var baseline=new BoardApplicationBaseline(new com.lh.eap.persistence.jdbc.JdbcBoardBaselineStore(mock(JdbcTemplate.class)),process,new CapabilityRegistry().register(git),sources).capture(proposal());
         assertEquals(2,baseline.source().files().size()); assertEquals(head,baseline.baseCommit());
         Files.writeString(root.resolve("frontend/Page.vue"),"after");
         var capture=new BoardDeliveryCapture(process,sources);
@@ -52,7 +52,7 @@ class BoardApplicationBaselineTest {
     @ParameterizedTest @ValueSource(strings={"add","delete","change","head","acceptChange"})
     void anyUnselectedMutationOrHeadChangeBlocksCaptureAndAcceptanceRecapture(String mutation) throws Exception {
         files();var process=process();
-        var baseline=new BoardApplicationBaseline(mock(JdbcTemplate.class),process,new CapabilityRegistry().register(git),sources).capture(proposal());
+        var baseline=new BoardApplicationBaseline(new com.lh.eap.persistence.jdbc.JdbcBoardBaselineStore(mock(JdbcTemplate.class)),process,new CapabilityRegistry().register(git),sources).capture(proposal());
         Files.writeString(root.resolve("frontend/Page.vue"),"after");
         var capture=new BoardDeliveryCapture(process,sources);var verified=sources.snapshot(root);
         if(mutation.equals("acceptChange")) assertEquals(1,capture.captureApplication(root,git,head,verified,List.of("frontend/Page.vue"),baseline,proposal().files()).size());
@@ -67,7 +67,7 @@ class BoardApplicationBaselineTest {
     }
     @Test void changedSelectedSourceFailsClaimCaptureBeforeAnyWrite() throws Exception {
         files();Files.writeString(root.resolve("frontend/Page.vue"),"externally changed");
-        var baselines=new BoardApplicationBaseline(mock(JdbcTemplate.class),process(),new CapabilityRegistry().register(git),sources);
+        var baselines=new BoardApplicationBaseline(new com.lh.eap.persistence.jdbc.JdbcBoardBaselineStore(mock(JdbcTemplate.class)),process(),new CapabilityRegistry().register(git),sources);
         assertEquals("BOARD_DELIVERY_APPLICATION_SOURCE_MISMATCH",assertThrows(ResponseStatusException.class,()->baselines.capture(proposal())).getReason());
         assertEquals("externally changed",Files.readString(root.resolve("frontend/Page.vue")));
     }

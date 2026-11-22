@@ -65,7 +65,7 @@ class BoardRuntimeAcceptanceTest {
             assertTrue(String.valueOf(saved.get("stdout")).contains("file-0-"));assertNotNull(saved.get("exit_evidence"));
             assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM eap.board_task_run WHERE task_id=?",Integer.class,UUID.fromString((String)task.get("id"))));
             assertTrue(processExited(), "Captured Git identity must have exited");
-            var core=new BoardRuntimeService(jdbc).inspect("local-eap");assertEquals(1,core.taskCount());assertEquals(1,core.runCount());assertEquals(0,core.activeRunCount());
+            var core=new BoardRuntimeService(new com.lh.eap.persistence.jdbc.JdbcBoardRuntimeQuery(jdbc)).inspect("local-eap");assertEquals(1,core.taskCount());assertEquals(1,core.runCount());assertEquals(0,core.activeRunCount());
             write("result.json",Map.of("passed",true,"schema",schema,"executionId",id,"core",core,"browser",read("browser-result.json"),
                     "readScope",read("scope-result.json"),"actualGitSucceededWhileUiDisabled",true));
         } finally {
@@ -109,7 +109,7 @@ class BoardRuntimeAcceptanceTest {
             jdbc.update("INSERT INTO eap.code_proposal(id,generation_id,principal,conversation_id,workspace,proposal,status,started_at) VALUES (?,?,'fixture',?,?,?::jsonb,?,now())",
                     proposal,gen,conversation,"owned-"+state,ToolUnknownReviewFixture.JSON.writeValueAsString(Map.of("id",proposal,"conversationId",conversation,"workspace","owned-"+state,"generation",Map.of("id",gen),"files",List.of(Map.of()))),state);
         }
-        var before=digests(jdbc,"eap");var service=new BoardRuntimeService(jdbc);var snapshot=service.inspect("scope-matrix");
+        var before=digests(jdbc,"eap");var service=new BoardRuntimeService(new com.lh.eap.persistence.jdbc.JdbcBoardRuntimeQuery(jdbc));var snapshot=service.inspect("scope-matrix");
         assertEquals(1,snapshot.taskCount());assertEquals(26,snapshot.runCount());assertEquals(1,snapshot.activeRunCount());assertEquals(25,snapshot.unknownRunCount());
         assertEquals(1,snapshot.activeVerificationCount());assertEquals(1,snapshot.unknownVerificationCount());assertEquals(1,snapshot.activeWriteCount());assertEquals(1,snapshot.unknownWriteCount());
         assertEquals(20,snapshot.items().size());assertTrue(snapshot.truncated());assertTrue(snapshot.items().stream().allMatch(a->a.status().equals("UNKNOWN")));

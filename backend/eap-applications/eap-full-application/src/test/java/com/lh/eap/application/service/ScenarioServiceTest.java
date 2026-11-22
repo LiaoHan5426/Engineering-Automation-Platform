@@ -6,6 +6,7 @@ import com.lh.eap.application.dto.ScenarioConfiguration;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.web.server.ResponseStatusException;
 
 class ScenarioServiceTest {
@@ -15,7 +16,7 @@ class ScenarioServiceTest {
     }
     @Test void rejectsPresetIdsAndInvalidConfigurationBeforeStorage() {
         var jdbc = mock(JdbcTemplate.class);
-        var service = new ScenarioService(jdbc);
+        var service = new ScenarioService(new com.lh.eap.persistence.jdbc.JdbcScenarioStore(jdbc));
         for (String id : List.of("prototype-to-code", "../custom-a", "custom-")) {
             assertThrows(ResponseStatusException.class, () -> service.save(id, new ScenarioConfiguration.Write(0L, definition("name"))));
         }
@@ -25,8 +26,8 @@ class ScenarioServiceTest {
     }
     @Test void staleWriteAndDeleteNeverBecomeUnconditionalUpdates() {
         var jdbc = mock(JdbcTemplate.class);
-        var service = new ScenarioService(jdbc);
-        when(jdbc.queryForList(anyString(), org.mockito.ArgumentMatchers.<Object[]>any())).thenReturn(List.of());
+        var service = new ScenarioService(new com.lh.eap.persistence.jdbc.JdbcScenarioStore(jdbc));
+        when(jdbc.query(anyString(), any(RowMapper.class), org.mockito.ArgumentMatchers.<Object[]>any())).thenReturn(List.of());
         var error = assertThrows(ResponseStatusException.class, () -> service.save("custom-test", new ScenarioConfiguration.Write(2L, definition("name"))));
         assertEquals("SCENARIO_STALE", error.getReason());
         when(jdbc.update(anyString(), org.mockito.ArgumentMatchers.<Object[]>any())).thenReturn(0);
@@ -34,14 +35,14 @@ class ScenarioServiceTest {
     }
     @Test void databaseFailureIsNotAnEmptyCatalog() {
         var jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForList(anyString())).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private database address"));
-        var error = assertThrows(ResponseStatusException.class, () -> new ScenarioService(jdbc).list());
+        when(jdbc.query(anyString(), any(RowMapper.class))).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private database address"));
+        var error = assertThrows(ResponseStatusException.class, () -> new ScenarioService(new com.lh.eap.persistence.jdbc.JdbcScenarioStore(jdbc)).list());
         assertEquals("SCENARIO_STORE_UNAVAILABLE", error.getReason());
         assertEquals(503, error.getStatusCode().value());
     }
     @Test void trustedWorkflowDependenciesAreReadOnlyAndNeverAcceptPersistedInstalledLabelsAsProof() {
         var jdbc = mock(JdbcTemplate.class);
-        var service = new ScenarioService(jdbc);
+        var service = new ScenarioService(new com.lh.eap.persistence.jdbc.JdbcScenarioStore(jdbc));
         when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(2L);
         var snapshot = service.dependencies("prototype-to-code");
         assertEquals(1, snapshot.contractVersion());

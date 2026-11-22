@@ -37,7 +37,7 @@ public final class DesignerLifecycleFixture {
     static class Host {
         @Bean DataSource source(){return ToolUnknownReviewFixture.scopedDataSource(schema);}
         @Bean JdbcTemplate jdbc(DataSource source){return new JdbcTemplate(source);}
-        @Bean ScenarioService scenarios(JdbcTemplate jdbc){return new ScenarioService(jdbc);}
+        @Bean ScenarioService scenarios(JdbcTemplate jdbc){return new ScenarioService(new com.lh.eap.persistence.jdbc.JdbcScenarioStore(jdbc));}
         @Bean PrototypeVersionService versions(JdbcTemplate jdbc){return new PrototypeVersionService(new JdbcPrototypeVersionStore(jdbc),new JdbcPrototypeDeliveryStore(jdbc));}
         @Bean OncePerRequestFilter publishLatch(){
             var first=new java.util.concurrent.atomic.AtomicBoolean();

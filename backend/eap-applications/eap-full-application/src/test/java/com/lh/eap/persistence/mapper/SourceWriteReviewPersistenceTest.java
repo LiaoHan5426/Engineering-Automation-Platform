@@ -144,7 +144,7 @@ class SourceWriteReviewPersistenceTest {
                         () -> review.close(proposal.id(), new SourceWriteReview.Close(
                                 audit.requestId(), audit.observation().digest(), "replacement", true))).getReason());
                 assertThrows(DataAccessException.class, () -> jdbc.update("UPDATE eap.code_proposal SET reason='changed' WHERE id=?", proposal.id()));
-                var catalog = new BoardApplicationCatalog(jdbc);
+                var catalog = new BoardApplicationCatalog(new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc));
                 assertTrue(catalog.list(binding, root.toString()).items().isEmpty());
 
                 var fresh = liveChanges.prepareGeneration(OPERATOR, conversation, PAGE, "", "", binding, List.of(CHILD));

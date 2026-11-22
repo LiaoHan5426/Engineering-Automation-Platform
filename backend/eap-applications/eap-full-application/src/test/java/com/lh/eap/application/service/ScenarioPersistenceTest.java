@@ -26,7 +26,7 @@ class ScenarioPersistenceTest {
         var url = env.getProperty("spring.datasource.url");
         assertTrue(url != null && (url.startsWith("jdbc:postgresql://localhost:") || url.startsWith("jdbc:postgresql://127.0.0.1:")));
         jdbc = new JdbcTemplate(new DriverManagerDataSource(url, env.getProperty("spring.datasource.username"), env.getProperty("spring.datasource.password")));
-        service = new ScenarioService(jdbc);
+        service = new ScenarioService(new com.lh.eap.persistence.jdbc.JdbcScenarioStore(jdbc));
     }
     @AfterEach void cleanup() {
         if (jdbc != null) jdbc.update("DELETE FROM eap.scenario_definition WHERE id=?", id);
@@ -35,7 +35,7 @@ class ScenarioPersistenceTest {
         var definition = ScenarioServiceTest.definition("Fixture");
         var saved = service.save(id, new ScenarioConfiguration.Write(0L, definition));
         assertEquals(1, saved.revision());
-        var reopened = new ScenarioService(jdbc).get(id);
+        var reopened = new ScenarioService(new com.lh.eap.persistence.jdbc.JdbcScenarioStore(jdbc)).get(id);
         assertEquals(saved, reopened);
         assertTrue(service.list().contains(saved));
         assertEquals("SCENARIO_STALE", assertThrows(ResponseStatusException.class,

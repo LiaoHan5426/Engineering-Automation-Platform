@@ -49,7 +49,7 @@ public final class BoardRuntimeFixture {
         @Bean DataSource source(){return ToolUnknownReviewFixture.scopedDataSource(schema);}
         @Bean JdbcTemplate jdbc(DataSource source){return new JdbcTemplate(source);}
         @Bean PlatformTransactionManager manager(DataSource source){return new DataSourceTransactionManager(source);}
-        @Bean BoardRuntimeService runtime(JdbcTemplate jdbc){return new BoardRuntimeService(jdbc);}
+        @Bean BoardRuntimeService runtime(JdbcTemplate jdbc){return new BoardRuntimeService(new com.lh.eap.persistence.jdbc.JdbcBoardRuntimeQuery(jdbc));}
         @Bean BoardTaskService tasks(JdbcTemplate jdbc){return new BoardTaskService(jdbc);}
         @Bean HandoffStore handoffs(JdbcTemplate jdbc){return new JdbcHandoffStore(jdbc);}
         @Bean MissionStore missions(JdbcTemplate jdbc){return new JdbcMissionStore(jdbc);}
@@ -81,7 +81,7 @@ public final class BoardRuntimeFixture {
                     RuntimeWorkspace.colocated(session.resolve("workspace"),""));
         }
         @Bean PrototypeVersionService versions(JdbcTemplate jdbc){return new PrototypeVersionService(new JdbcPrototypeVersionStore(jdbc),new JdbcPrototypeDeliveryStore(jdbc));}
-        @Bean BoardPrototypeService prototypes(JdbcTemplate jdbc,BoardTaskService tasks,PrototypeVersionService versions){return new BoardPrototypeService(jdbc,tasks,versions);}
+        @Bean BoardPrototypeService prototypes(JdbcTemplate jdbc,BoardTaskService tasks,PrototypeVersionService versions){return new BoardPrototypeService(new com.lh.eap.persistence.jdbc.JdbcBoardPrototypeSelectionStore(jdbc),tasks,versions);}
         @Bean BoardRunService runs(JdbcTemplate jdbc,BoardTaskService tasks,HandoffStore handoffs,MissionService missions,
                 MissionExecutionStore executions,MissionGitExecutionService git,PlatformTransactionManager manager,BoardPrototypeService prototypes){
             return new BoardRunService(jdbc,tasks,handoffs,missions,executions,git,manager,prototypes);

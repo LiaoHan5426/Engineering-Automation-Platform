@@ -5,11 +5,11 @@ import com.lh.eap.application.dto.ScenarioConfiguration;
 import com.lh.eap.application.dto.ScenarioConfiguration.Snapshot;
 import com.lh.eap.application.dto.ScenarioConfiguration.Write;
 import com.lh.eap.application.dto.ScenarioWorkflowDependencies;
+import com.lh.eap.core.ScenarioStore;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
@@ -20,15 +20,15 @@ import com.lh.eap.domain.model.ScenarioStatus;
 @Service
 public class ScenarioService {
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private final JdbcTemplate jdbc;
-    public ScenarioService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final ScenarioStore store;
+    public ScenarioService(ScenarioStore store) { this.store = store; }
 
     /** Plugin enablement belongs to the local UI host, not stored scenario dependency labels. */
     public ScenarioWorkflowDependencies dependencies(String workflow) {
         if (!"prototype-to-code".equals(workflow))
             throw failure(HttpStatus.NOT_FOUND, ResourceErrors.SCENARIO_WORKFLOW_NOT_FOUND.code());
         try {
-            long count = jdbc.queryForObject("SELECT count(*) FROM eap.prototype_version WHERE source_ref IN ('builder-alpha','builder-beta')", Long.class);
+            long count = store.countPrototypeVersions();
             return new ScenarioWorkflowDependencies(1, workflow, Instant.now(),
                     List.of(new ScenarioWorkflowDependencies.Plugin("builder", true),
                             new ScenarioWorkflowDependencies.Plugin("board", false)),
@@ -41,15 +41,13 @@ public class ScenarioService {
 
     public List<Snapshot> list() {
         try {
-            return jdbc.queryForList("SELECT id,revision,definition::text AS definition FROM eap.scenario_definition WHERE NOT deleted ORDER BY id")
-                    .stream().map(this::snapshot).toList();
+            return store.list().stream().map(this::snapshot).toList();
         } catch (DataAccessException error) { throw unavailable(); }
     }
     public Snapshot get(String id) {
         validateId(id);
         try {
-            return jdbc.queryForList("SELECT id,revision,definition::text AS definition FROM eap.scenario_definition WHERE id=? AND NOT deleted", id)
-                    .stream().map(this::snapshot).findFirst().orElseThrow(() -> failure(HttpStatus.NOT_FOUND, ResourceErrors.SCENARIO_NOT_FOUND.code()));
+            return store.find(id).map(this::snapshot).orElseThrow(() -> failure(HttpStatus.NOT_FOUND, ResourceErrors.SCENARIO_NOT_FOUND.code()));
         } catch (DataAccessException error) { throw unavailable(); }
     }
     public Snapshot save(String id, Write request) {
@@ -60,24 +58,27 @@ public class ScenarioService {
         String json = JSON.writeValueAsString(request.definition());
         try {
             // Atomic CAS includes deletion state. A deleted ID cannot be recreated at revision zero (ABA).
-            var rows = request.revision() == 0
-                    ? jdbc.queryForList("INSERT INTO eap.scenario_definition(id,revision,definition) VALUES (?,1,?::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,revision,definition::text AS definition", id, json)
-                    : jdbc.queryForList("UPDATE eap.scenario_definition SET definition=?::jsonb,revision=revision+1,updated_at=now() WHERE id=? AND revision=? AND NOT deleted RETURNING id,revision,definition::text AS definition", json, id, request.revision());
-            if (rows.isEmpty()) throw failure(HttpStatus.CONFLICT, ResourceErrors.SCENARIO_STALE.code());
-            return snapshot(rows.getFirst());
+            var stored = request.revision() == 0 ? store.insert(id, json) : store.update(id, request.revision(), json);
+            if (stored.isEmpty()) throw failure(HttpStatus.CONFLICT, ResourceErrors.SCENARIO_STALE.code());
+            return snapshot(stored.get());
         } catch (DataAccessException error) { throw unavailable(); }
     }
     public void delete(String id, long revision) {
         validateId(id);
         if (revision < 1 || revision == Long.MAX_VALUE) throw invalid();
         try {
-            if (jdbc.update("UPDATE eap.scenario_definition SET deleted=true,revision=revision+1,updated_at=now() WHERE id=? AND revision=? AND NOT deleted", id, revision) != 1)
-                throw failure(HttpStatus.CONFLICT, ResourceErrors.SCENARIO_STALE.code());
+            if (!store.delete(id, revision)) throw failure(HttpStatus.CONFLICT, ResourceErrors.SCENARIO_STALE.code());
         } catch (DataAccessException error) { throw unavailable(); }
     }
-    private Snapshot snapshot(Map<String,Object> row) {
-        return new Snapshot(row.get("id").toString(), ((Number) row.get("revision")).longValue(),
-                JSON.readValue(row.get("definition").toString(), ScenarioConfiguration.class));
+    private Snapshot snapshot(ScenarioStore.Snapshot row) {
+        var definition = row.definition();
+        var dependencies = definition.dependencies().stream()
+                .map(dep -> new ScenarioConfiguration.Dependency(dep.name(), dep.state(), dep.where()))
+                .toList();
+        return new Snapshot(row.id(), row.revision(),
+                new ScenarioConfiguration(definition.name(), definition.status(), definition.modes(), definition.summary(),
+                        definition.instructions(), definition.tools(), definition.skills(), definition.mcp(),
+                        dependencies, definition.workflow()));
     }
     private static void validateId(String id) {
         if (id == null || !id.matches("custom-[A-Za-z0-9][A-Za-z0-9-]{0,92}")) throw invalid();

@@ -395,6 +395,29 @@ class BackendModuleBoundaryTest {
         assertFalse(pom.contains("<artifactId>eap-engine-workflow</artifactId>"), "adapter module must not depend upward on workflow");
     }
 
+    @Test void p3QueryServicesUseDedicatedPorts() throws Exception {
+        var ports = List.of("BoardBaselineStore", "BoardApplicationCatalogQuery", "BoardPrototypeSelectionStore",
+                "BoardReviewStore", "BoardRuntimeQuery", "ScenarioStore");
+        var adapters = List.of("JdbcBoardBaselineStore", "JdbcBoardApplicationCatalogQuery",
+                "JdbcBoardPrototypeSelectionStore", "JdbcBoardReviewStore", "JdbcBoardRuntimeQuery", "JdbcScenarioStore");
+        var core = backend.resolve("eap-engine/eap-engine-core/src/main/java/com/lh/eap/core");
+        var jdbc = backend.resolve("eap-engine/eap-engine-persistence-jdbc/src/main/java/com/lh/eap/persistence/jdbc");
+        for (String port : ports)
+            assertTrue(Files.exists(core.resolve(port + ".java")), "P3 core port missing: " + port);
+        for (String adapter : adapters)
+            assertTrue(Files.exists(jdbc.resolve(adapter + ".java")), "P3 jdbc adapter missing: " + adapter);
+        var services = List.of("BoardApplicationBaseline.java", "BoardApplicationCatalog.java", "BoardPrototypeService.java",
+                "BoardReviewService.java", "BoardRuntimeService.java", "ScenarioService.java");
+        var serviceDir = backend.resolve("eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service");
+        for (String service : services) {
+            var text = Files.readString(serviceDir.resolve(service));
+            assertFalse(text.contains("import org.springframework.jdbc.core.JdbcTemplate;"), service + " still owns JDBC");
+        }
+        var delivery = Files.readString(backend.resolve(
+                "eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/BoardDeliveryService.java"));
+        assertFalse(delivery.contains("new BoardApplicationCatalog(jdbc)"), "catalog must not be constructed from JdbcTemplate");
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");
