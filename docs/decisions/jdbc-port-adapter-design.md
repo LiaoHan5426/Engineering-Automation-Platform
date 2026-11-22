@@ -1,6 +1,6 @@
 # JDBC 端口化方案设计（编排层持久化实现归位）
 
-> 状态：P0–P3 已实施（2026-11-22），P4–P5 待实施
+> 状态：P0–P3 已实施并提交（2026-11-22）；P4–P5 代码与依赖边界已迁移，离线全量回归 1216 项（0 失败、0 错误、153 跳过）通过；真实 PostgreSQL 等门控集成验收未纳入本轮；实现已阶段提交（d105abbf）
 > 日期：2026-11-22
 > 范围：`eap-engine-workflow` 编排层混入的持久化实现（30 个直用 `JdbcTemplate` 的类）
 
@@ -75,10 +75,10 @@ eap-api ──→ eap-engine-core ──→ eap-engine-workflow ──→ eap-we
 | `PrototypeVersionStore` | `JdbcPrototypeVersionStore` | 同上 |
 | `ExpertAgentJournal` | `JdbcExpertAgentJournal` | 同上 |
 | `CliChannelStore` | `JdbcCliChannelStore` | 同上 |
-| `CodeGenerationStore` | `JdbcCodeGenerationStore` | 同上 |
-| `CodeProposalStore` | `JdbcCodeProposalStore` | 同上 |
+| `CodeGenerationStore` | `JdbcCodeGenerationStore` | JDBC 证据实现迁至 `persistence-jdbc`；workflow 保留纯映射 `CodeGenerationStoreAdapter` |
+| `CodeProposalStore` | `JdbcCodeProposalStore` | JDBC 证据实现迁至 `persistence-jdbc`；workflow 保留纯映射 `CodeProposalStoreAdapter` |
 
-这 10 个是**纯机械迁移**：端口签名不动，只需 `git mv` + 改包声明 + 更新 `@Import` 与测试构造，测试行为零变更。
+前 8 个可直接物理迁移；后 2 个原实现依赖 workflow 的任务绑定/应用基线，P4 通过 core 证据端口与 workflow 纯映射适配器拆分，不能作为机械迁移处理。
 
 ### 4.2 待抽取端口（业务服务中的 SQL，建议命名）
 
@@ -117,8 +117,8 @@ eap-api ──→ eap-engine-core ──→ eap-engine-workflow ──→ eap-we
 | **P1 已有端口迁移** ✅已实施（8 个） | 4.1 节中 8 个无反向依赖的实现类；2 个 Code Store 留 P4 | `git mv` 到新模块，包名改 `com.lh.eap.persistence.jdbc`；更新 `@Import`、测试 import；core 端口不动 | 全量 `test-compile` EXIT=0 |
 | **P2 Mapper/辅助迁移** ✅已实施 | `TaskRepository`、`CliProgramMapper`、`ExpertDefinitionMapper`、`CapabilityUsage`、`StateBindings` | 随 P1 同批迁移；`StateBindings` 去掉无用 `application.service.*` 通配 import；`CapabilityUsage` 去掉对 `CapabilitySettings` 的 Javadoc 链接；`TaskStore`/`CliProgramStore`/`ExpertDefinitionQuery` 端口抽取推迟到 P3（当前仅物理迁移，无行为变更） | 全量 `test-compile` EXIT=0 |
 | **P3 查询型服务** ✅已实施 | 6 个只读/轻写服务（Baseline/Catalog/Prototype/Review/Runtime/Scenario） | 抽 `BoardBaselineStore`/`BoardApplicationCatalogQuery`/`BoardPrototypeSelectionStore`/`BoardReviewStore`/`BoardRuntimeQuery`/`ScenarioStore` 到 core，6 个 `Jdbc*` 适配器落新模块；服务只保留输入校验、JSON 领域映射与编排；`BoardDeliveryService` 不再用 JdbcTemplate 现造 Catalog | 对应持久化测试；契约脚本 |
-| **P4 混合型服务拆分** | 11 个重服务（BoardTask/Verification/Run/Delivery/CapabilitySettings/ExpertApproval/ExpertDefinition 等） | SQL + RowMapper 抽到适配器；消除 `new JdbcXxxStore(jdbc)`；服务保留规则/事务 | 全量 wire/验收/持久化测试（这一期改动最大，必须与 P3 分开验证） |
-| **P5 收口** | workflow 移除 `spring-boot-starter-jdbc`（显式保留 `spring-tx` 给 `@Transactional`/`TransactionTemplate`）；守卫加终态断言 | 守卫断言 workflow main 源码无 `org.springframework.jdbc`、pom 无 starter-jdbc；所有 `Jdbc*` 类必须在新模块且实现 core 端口 | **全量 `mvn -o test`** + 契约脚本 + `git diff --check` |
+| **P4 混合型服务拆分** ⏳验证中 | BoardTask/Verification/Run/Delivery/CodeProposal/CapabilityCatalog/Settings/WorkspaceInterlock/ExpertApproval/Definition 与 2 个 Code Store | core 新增业务端口；SQL/RowMapper 迁至 JDBC 适配器；Code Store 的业务映射留 workflow 纯层，组合根显式注册 | 生产编译已通过；测试编译、定向/全量回归与阶段提交待验证 |
+| **P5 收口** ⏳验证中 | CLI、专家定义/访问、任务存储改依赖 core 端口；workflow 移除 `persistence-jdbc` 与 `spring-boot-starter-jdbc` 依赖并显式保留 `spring-tx` | 守卫断言 workflow main 零 JDBC/适配器 import、pom 无两项依赖；JDBC 适配器测试归位新模块 | 生产编译已通过；**全量 `mvn -o test`** + 契约脚本 + `git diff --check` 待验证 |
 
 **本轮（P0–P2）实际落地记录**：
 
@@ -134,6 +134,10 @@ eap-api ──→ eap-engine-core ──→ eap-engine-workflow ──→ eap-we
 - 6 个服务不再注入 `JdbcTemplate`；对外 record（如 `BoardRuntimeService.Snapshot`、`BoardApplicationCatalog.Page`、`BoardReviewService.Page`）保持原名，由服务层做端口 record → 对外 record 映射，web 契约不变。
 - `BoardDeliveryService.applications` 改为消费注入的 `BoardApplicationCatalogQuery`，删除 `new BoardApplicationCatalog(jdbc)` 反模式；其自身剩余 SQL 留待 P4。
 - 测试构造全部改为显式注入适配器；组合根 `@Import` 增加 6 个新适配器；守卫 `p3QueryServicesUseDedicatedPorts` 断言端口/适配器存在且六个服务零 JDBC import。
+
+**P4 待验证的实现事实**：BoardTask/Verification/Run/Delivery/CodeProposal、CapabilityCatalog/Settings/WorkspaceInterlock、ExpertApproval/Definition 等服务已切到 core 端口；新 JDBC 适配器落 `persistence-jdbc`。原 workflow 两个 `JdbcCode*Store` 已替换为该模块的证据存储和 workflow 的 `Code*StoreAdapter` 纯映射层（不含 JDBC）；`SourceWriteReview` 消费新映射层。组合根增加显式注册。`BackendModuleBoundaryTest.p4MixedServicesNoLongerOwnJdbc` 只约束 P4 已迁移类，避免把 P5 尚未完成的 CLI/Task/Expert 管理依赖误判为 P4 已收口。上述为代码状态，不代表回归或用户验收；P4 需测试编译、行为回归及阶段提交后才能标记完成。
+
+**P5 定向验证后的代码状态（非终态）**：`CliProgramMapper` 实现 core `CliProgramStore`，CLI 三个调用方改依赖端口；`ExpertDefinitionMapper` 实现独立 `ExpertDefinitionManagementStore`，保留 FOR SHARE/修订号和原草稿写入 SQL；`TaskRepository` 实现 core `TaskStore`，任务服务、执行服务与 Agent 访问服务改依赖接口。workflow main 已无 Spring JDBC/`persistence.jdbc` import，workflow pom 移除 JDBC starter 和适配器模块，仅保留显式 `spring-tx`；`JdbcCliChannelStoreTest` 归位适配器模块并为其原 CliChannels 场景增加 test-scope local 依赖。全应用 reactor 的生产编译、测试编译、契约脚本及边界守卫均通过；全量后端测试先出现两类测试桩迁移遗漏（专家知识、看板验证），修正后对应定向测试分别通过，但全量进程被终止，未获得全量退出码 0。此前更大的定向组也被终止，已拆小组复验，不能将其视作通过；P4–P5 尚待其余相关回归及全量测试，不宣称终态。
 
 每期结束一个本地提交（文档/实现/台账分笔），不跨期混提；P1–P4 任一期望逐期回滚时，只需回退该期提交。
 
