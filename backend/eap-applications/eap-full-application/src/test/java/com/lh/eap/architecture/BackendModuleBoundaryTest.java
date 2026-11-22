@@ -268,6 +268,18 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void machineErrorCodesLiveInCoreAndWorkflowKeepsNoDuplicates() throws Exception {
+        // Machine error-code enums are pure contracts (PlatformErrorCode) and belong in core's
+        // com.lh.eap.error package alongside AgentErrors/ChatErrors/CodeErrors etc. The workflow
+        // module keeps only behaviour. Package name is unchanged, so no import rewiring is needed.
+        String coreError = "eap-engine/eap-engine-core/src/main/java/com/lh/eap/error/";
+        String workflowError = "eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/error/";
+        for (String code : List.of("BoardErrors", "BoardDeliveryErrors", "BoardVerificationErrors", "MissionErrors")) {
+            assertTrue(Files.isRegularFile(backend.resolve(coreError + code + ".java")), "core must own error code " + code);
+            assertFalse(Files.exists(backend.resolve(workflowError + code + ".java")), "workflow must not duplicate error code " + code);
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");
