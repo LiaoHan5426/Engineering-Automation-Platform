@@ -1,6 +1,7 @@
 package com.lh.eap.runtime.handler;
 
 import com.lh.eap.persistence.mapper.KnowledgeRepository;
+import com.lh.eap.core.KnowledgeQueryEnricher;
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.CapabilityDescriptor;
 import com.lh.eap.domain.model.NodeResult;

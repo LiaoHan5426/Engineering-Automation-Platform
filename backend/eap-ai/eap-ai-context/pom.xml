@@ -13,10 +13,14 @@
             <artifactId>eap-engine-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Only KnowledgeContextCompositionTest needs KnowledgeRepository for a real-wiring check.
+             The main ExpertKnowledgeAccess port now lives in core, so production code does not depend
+             on the knowledge implementation module. -->
         <dependency>
             <groupId>com.lh</groupId>
             <artifactId>eap-engine-knowledge</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.lh</groupId>

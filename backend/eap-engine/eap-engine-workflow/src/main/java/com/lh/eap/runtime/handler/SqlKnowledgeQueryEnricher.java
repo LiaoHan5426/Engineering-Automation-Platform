@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.handler;
+import com.lh.eap.core.KnowledgeQueryEnricher;
 import com.lh.eap.domain.model.CapabilityContext;
 import java.util.List;
 import org.springframework.stereotype.Component;

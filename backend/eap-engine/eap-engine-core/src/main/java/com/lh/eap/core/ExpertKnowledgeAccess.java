@@ -1,4 +1,4 @@
-package com.lh.eap.knowledge;
+package com.lh.eap.core;
 
 import java.util.List;
 import java.util.Map;

@@ -149,6 +149,39 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void knowledgeAccessPortLivesInCoreAndConsumersDoNotDependOnKnowledgeImplementation() throws Exception {
+        // ExpertKnowledgeAccess is a pure port; both its consumer (ai-context) and its adapter
+        // (workflow) must depend on core, not on the knowledge implementation module.
+        for (String port : List.of("core/ExpertKnowledgeAccess.java", "core/KnowledgeQueryEnricher.java")) {
+            assertTrue(Files.isRegularFile(backend.resolve("eap-engine/eap-engine-core/src/main/java/com/lh/eap/" + port)),
+                    "core must own " + port);
+        }
+        for (String stale : List.of(
+                "eap-engine/eap-engine-knowledge/src/main/java/com/lh/eap/knowledge/ExpertKnowledgeAccess.java",
+                "eap-engine/eap-engine-knowledge/src/main/java/com/lh/eap/runtime/handler/KnowledgeQueryEnricher.java")) {
+            assertFalse(Files.exists(backend.resolve(stale)), "knowledge must not keep a duplicate port: " + stale);
+        }
+
+        String workflowPom = Files.readString(backend.resolve("eap-engine/eap-engine-workflow/pom.xml"));
+        assertFalse(workflowPom.contains("<artifactId>eap-engine-knowledge</artifactId>"),
+                "workflow must not declare any dependency on the knowledge implementation module");
+
+        String contextPom = Files.readString(backend.resolve("eap-ai/eap-ai-context/pom.xml"));
+        var knowledgeBlock = java.util.regex.Pattern.compile(
+                "<dependency>(?:(?!</dependency>).)*<artifactId>eap-engine-knowledge</artifactId>(?:(?!</dependency>).)*</dependency>",
+                java.util.regex.Pattern.DOTALL).matcher(contextPom);
+        assertTrue(knowledgeBlock.find(), "ai-context should keep a scoped test-only knowledge dependency");
+        assertTrue(knowledgeBlock.group().contains("<scope>test</scope>"),
+                "ai-context production code must not depend on the knowledge implementation module");
+
+        try (var sources = Files.walk(backend.resolve("eap-engine/eap-engine-workflow/src"))) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                assertFalse(Files.readString(source).contains("import com.lh.eap.knowledge."),
+                        source + " imports the knowledge implementation package");
+            }
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");

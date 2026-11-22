@@ -1,7 +1,7 @@
 package com.lh.eap.ai;
 
 import com.lh.eap.domain.model.ExpertManifest;
-import com.lh.eap.knowledge.ExpertKnowledgeAccess;
+import com.lh.eap.core.ExpertKnowledgeAccess;
 import com.lh.eap.persistence.mapper.KnowledgeRepository;
 import com.lh.eap.runtime.handler.*;
 import java.util.*;

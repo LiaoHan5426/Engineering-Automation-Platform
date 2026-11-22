@@ -5,7 +5,7 @@ import com.lh.eap.error.ProtocolErrors;
 import com.lh.eap.error.SecurityErrors;
 import com.lh.eap.error.ToolErrors;
 
-import com.lh.eap.knowledge.ExpertKnowledgeAccess;
+import com.lh.eap.core.ExpertKnowledgeAccess;
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.ExpertManifest;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
