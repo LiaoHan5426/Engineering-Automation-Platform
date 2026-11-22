@@ -1,6 +1,7 @@
 package com.lh.eap.error;
 
 import com.lh.eap.api.error.PlatformErrorCode;
+import com.lh.eap.domain.model.Mission;
 
 /** Mission operation errors. */
 public enum MissionErrors implements PlatformErrorCode {

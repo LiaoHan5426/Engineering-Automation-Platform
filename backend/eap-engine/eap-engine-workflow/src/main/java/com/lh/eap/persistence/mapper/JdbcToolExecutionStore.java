@@ -1,10 +1,10 @@
 package com.lh.eap.persistence.mapper;
 import java.util.Map;
-import com.lh.eap.application.service.ToolExecutionStatus;
+import com.lh.eap.domain.model.ToolExecutionStatus;
 import com.lh.eap.error.ExecutionErrors;
 
-import com.lh.eap.application.service.ToolExecution;
-import com.lh.eap.application.service.ToolExecutionStore;
+import com.lh.eap.domain.model.ToolExecution;
+import com.lh.eap.core.ToolExecutionStore;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

@@ -8,7 +8,7 @@ import com.lh.eap.error.ExecutionErrors;
 import com.lh.eap.error.CommonErrors;
 import com.lh.eap.error.ToolErrors;
 
-import com.lh.eap.application.service.ToolExecution;
+import com.lh.eap.domain.model.ToolExecution;
 import com.lh.eap.application.service.ToolExecutionService;
 import com.lh.eap.application.service.ToolProcessReview;
 import com.lh.eap.application.service.ToolExecutionReadiness;

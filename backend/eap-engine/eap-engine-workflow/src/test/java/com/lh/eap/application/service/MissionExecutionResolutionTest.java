@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import com.lh.eap.domain.model.MissionExecution;
+import com.lh.eap.domain.model.MissionExecutionStatus;
 
 class MissionExecutionResolutionTest {
     private static final Instant NOW = Instant.parse("2026-11-21T10:00:00Z");

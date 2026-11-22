@@ -9,6 +9,9 @@ import com.lh.eap.domain.model.CodeProposalStatus;
 import com.lh.eap.web.i18n.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
+import com.lh.eap.domain.model.Mission;
+import com.lh.eap.domain.model.MissionExecutionStatus;
+import com.lh.eap.domain.model.ToolExecutionStatus;
 
 class DomainWireAndMessagesTest {
     @Test void unknownAndActivityRemainDomainSpecificAndInvalidValuesAreNotCoerced() {

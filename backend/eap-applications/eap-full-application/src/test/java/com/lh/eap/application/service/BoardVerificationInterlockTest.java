@@ -9,6 +9,9 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
 import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.domain.model.MissionExecution;
+import com.lh.eap.core.MissionExecutionStore;
+import com.lh.eap.core.HandoffStore;
 
 class BoardVerificationInterlockTest {
     @Test void existingRunStartRefusesAnotherTasksWorkspaceVerification() {

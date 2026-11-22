@@ -1,4 +1,4 @@
-package com.lh.eap.application.service;
+package com.lh.eap.domain.model;
 
 import java.time.Instant;
 import java.util.UUID;

@@ -1,7 +1,7 @@
 package com.lh.eap.persistence.mapper;
 
-import com.lh.eap.application.service.PrototypeDelivery;
-import com.lh.eap.application.service.PrototypeDeliveryStore;
+import com.lh.eap.domain.model.PrototypeDelivery;
+import com.lh.eap.core.PrototypeDeliveryStore;
 import java.sql.Timestamp;
 import java.util.Optional;
 import java.util.UUID;

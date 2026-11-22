@@ -43,6 +43,9 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.domain.model.MissionExecution;
+import com.lh.eap.core.MissionStore;
+import com.lh.eap.core.MissionExecutionStore;
 
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_MISSION_GIT_ACCEPTANCE", matches = "true")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

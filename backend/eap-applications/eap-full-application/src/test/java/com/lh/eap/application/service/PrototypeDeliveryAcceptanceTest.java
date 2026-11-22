@@ -25,6 +25,9 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import com.lh.eap.domain.model.PrototypeDelivery;
+import com.lh.eap.core.PrototypeDeliveryStore;
+import com.lh.eap.core.PrototypeVersionStore;
 
 /** Disposable-database acceptance. Ordinary runs skip this class and do not open a connection. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_CLI_INTEGRATION", matches = "true")

@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.lh.eap.application.service.MissionExecution;
+import com.lh.eap.domain.model.MissionExecution;
 import com.lh.eap.application.service.MissionGitExecutionService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

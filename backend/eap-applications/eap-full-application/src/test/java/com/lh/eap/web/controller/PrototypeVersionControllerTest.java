@@ -4,11 +4,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.lh.eap.application.service.PrototypeDelivery;
-import com.lh.eap.application.service.PrototypeDeliveryStore;
+import com.lh.eap.domain.model.PrototypeDelivery;
+import com.lh.eap.core.PrototypeDeliveryStore;
 import com.lh.eap.domain.model.PrototypeVersion;
 import com.lh.eap.application.service.PrototypeVersionService;
-import com.lh.eap.application.service.PrototypeVersionStore;
+import com.lh.eap.core.PrototypeVersionStore;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

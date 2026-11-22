@@ -16,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.lh.eap.domain.model.Mission;
 
 /**
  * Applies V1+V2+V3+V4 to a throwaway UUID-owned schema and verifies the Mission UNKNOWN manual

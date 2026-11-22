@@ -19,6 +19,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.domain.model.ToolExecution;
+import com.lh.eap.core.ToolExecutionStore;
 
 class ToolExecutionServiceTest {
     @TempDir Path workspace;

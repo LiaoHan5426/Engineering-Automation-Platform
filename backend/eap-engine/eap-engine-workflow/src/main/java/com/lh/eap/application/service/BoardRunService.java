@@ -17,6 +17,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.Mission;
+import com.lh.eap.domain.model.MissionExecution;
+import com.lh.eap.domain.model.MissionExecutionStatus;
+import com.lh.eap.domain.model.Handoff;
+import com.lh.eap.core.MissionExecutionStore;
+import com.lh.eap.core.HandoffStore;
 
 /** Associates board snapshots with the existing Mission executor, without inventing completion. */
 @Service

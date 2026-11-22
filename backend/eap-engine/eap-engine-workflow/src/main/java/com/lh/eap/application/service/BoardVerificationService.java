@@ -25,6 +25,8 @@ import org.springframework.transaction.support.*;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 import static com.lh.eap.application.service.BoardVerificationSource.denied;
+import com.lh.eap.domain.model.MissionExecutionStatus;
+import com.lh.eap.core.MissionExecutionStore;
 
 /** One immutable verification identity per Run; never advances Task or claims human acceptance. */
 @Service

@@ -19,6 +19,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import com.lh.eap.domain.model.Mission;
+import com.lh.eap.core.MissionStore;
+import com.lh.eap.core.MissionExecutionStore;
+import com.lh.eap.core.HandoffStore;
 
 /** Test-only host: real core BoardRun/Mission/Git and production read observation. */
 public final class BoardRuntimeFixture {

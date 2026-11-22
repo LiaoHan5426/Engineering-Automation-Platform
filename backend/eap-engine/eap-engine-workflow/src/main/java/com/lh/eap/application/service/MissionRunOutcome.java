@@ -2,6 +2,7 @@ package com.lh.eap.application.service;
 import com.lh.eap.error.ExecutionErrors;
 
 import java.util.Map;
+import com.lh.eap.domain.model.MissionExecutionStatus;
 
 /** Maps executor observations onto durable statuses only with process-tree termination evidence. */
 public final class MissionRunOutcome {

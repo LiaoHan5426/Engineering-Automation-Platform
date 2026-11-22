@@ -6,6 +6,8 @@ import com.lh.eap.domain.model.CodeProposalStatus;
 import java.util.Arrays;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import com.lh.eap.domain.model.MissionExecutionStatus;
+import com.lh.eap.domain.model.ToolExecutionStatus;
 
 /** PostgreSQL array parameters derived from the owning state machine, never SQL fragments. */
 public final class StateBindings {

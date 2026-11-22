@@ -6,11 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.lh.eap.application.service.Handoff;
-import com.lh.eap.application.service.HandoffStore;
-import com.lh.eap.application.service.Mission;
+import com.lh.eap.domain.model.Handoff;
+import com.lh.eap.core.HandoffStore;
+import com.lh.eap.domain.model.Mission;
 import com.lh.eap.application.service.MissionService;
-import com.lh.eap.application.service.MissionStore;
+import com.lh.eap.core.MissionStore;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;

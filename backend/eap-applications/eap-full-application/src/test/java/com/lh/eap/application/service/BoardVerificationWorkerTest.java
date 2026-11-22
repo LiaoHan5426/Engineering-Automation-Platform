@@ -16,6 +16,8 @@ import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.MissionExecution;
+import com.lh.eap.core.MissionExecutionStore;
 
 class BoardVerificationWorkerTest {
     private static final JsonMapper JSON = JsonMapper.builder().build();

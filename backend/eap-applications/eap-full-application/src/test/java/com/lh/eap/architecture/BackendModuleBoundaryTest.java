@@ -223,6 +223,51 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void domainContractsLiveInCoreAndWorkflowKeepsNoDuplicates() throws Exception {
+        // Pure domain records/enums and Store ports belong in core; the workflow module keeps only
+        // behavioural services and JDBC adapters. These 13 contracts were relocated from the
+        // com.lh.eap.application.service package (delivery/JDBC decoupling groundwork).
+        String coreModel = "eap-engine/eap-engine-core/src/main/java/com/lh/eap/domain/model/";
+        String corePort = "eap-engine/eap-engine-core/src/main/java/com/lh/eap/core/";
+        String workflowOld = "eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/";
+        for (String model : List.of("Mission", "MissionExecution", "MissionExecutionStatus",
+                "Handoff", "ToolExecution", "ToolExecutionStatus", "PrototypeDelivery")) {
+            assertTrue(Files.isRegularFile(backend.resolve(coreModel + model + ".java")), "core must own model " + model);
+            assertFalse(Files.exists(backend.resolve(workflowOld + model + ".java")), "workflow must not duplicate " + model);
+        }
+        for (String port : List.of("MissionStore", "MissionExecutionStore", "HandoffStore",
+                "ToolExecutionStore", "PrototypeDeliveryStore", "PrototypeVersionStore")) {
+            assertTrue(Files.isRegularFile(backend.resolve(corePort + port + ".java")), "core must own port " + port);
+            assertFalse(Files.exists(backend.resolve(workflowOld + port + ".java")), "workflow must not duplicate " + port);
+        }
+        // Check real import statements line-by-line so this guard's own string literals listing
+        // old imports are not mistaken for imports.
+        var oldImports = List.of(
+                "import com.lh.eap.application.service.Mission;",
+                "import com.lh.eap.application.service.MissionExecution;",
+                "import com.lh.eap.application.service.MissionExecutionStatus;",
+                "import com.lh.eap.application.service.MissionStore;",
+                "import com.lh.eap.application.service.MissionExecutionStore;",
+                "import com.lh.eap.application.service.Handoff;",
+                "import com.lh.eap.application.service.HandoffStore;",
+                "import com.lh.eap.application.service.ToolExecution;",
+                "import com.lh.eap.application.service.ToolExecutionStatus;",
+                "import com.lh.eap.application.service.ToolExecutionStore;",
+                "import com.lh.eap.application.service.PrototypeDelivery;",
+                "import com.lh.eap.application.service.PrototypeDeliveryStore;",
+                "import com.lh.eap.application.service.PrototypeVersionStore;");
+        try (var sources = Files.walk(backend)) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java") && !p.toString().contains("target")).toList()) {
+                for (String line : Files.readAllLines(source)) {
+                    String trimmed = line.trim();
+                    for (String oldImport : oldImports) {
+                        assertFalse(trimmed.equals(oldImport), source + " still imports relocated contract: " + oldImport);
+                    }
+                }
+            }
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");

@@ -16,6 +16,8 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.MissionExecution;
+import com.lh.eap.core.MissionExecutionStore;
 
 class BoardVerificationServiceTest {
     @Test void commitsQueuedRecordBeforeDispatchAndDuplicateDoesNotDispatchAgain() throws Exception {

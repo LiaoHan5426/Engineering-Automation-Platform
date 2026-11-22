@@ -1,9 +1,10 @@
-package com.lh.eap.application.service;
+package com.lh.eap.core;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.lh.eap.domain.model.MissionExecution;
 
 public interface MissionExecutionStore {
     void insertOpen(MissionExecution execution);

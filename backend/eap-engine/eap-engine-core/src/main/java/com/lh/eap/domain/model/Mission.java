@@ -1,11 +1,12 @@
-package com.lh.eap.application.service;
+package com.lh.eap.domain.model;
 
 import java.time.Instant;
 import java.util.UUID;
 
-/** A recorded intent. The fixed fields are not an execution result or a grant. */
-public record Handoff(
+/** A mission shell linked to one handoff. Fixed fields are not execution, approval, or a grant. */
+public record Mission(
         UUID id,
+        UUID handoffId,
         String source,
         String sourceRef,
         String summary,
@@ -13,4 +14,5 @@ public record Handoff(
         String execution,
         String approval,
         String grant,
+        String verification,
         Instant createdAt) {}

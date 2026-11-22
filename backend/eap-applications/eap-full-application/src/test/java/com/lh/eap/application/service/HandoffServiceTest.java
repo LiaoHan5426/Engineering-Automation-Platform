@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import com.lh.eap.domain.model.Handoff;
+import com.lh.eap.core.HandoffStore;
 
 class HandoffServiceTest {
     @Test

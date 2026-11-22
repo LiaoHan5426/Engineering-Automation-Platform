@@ -1,9 +1,10 @@
-package com.lh.eap.application.service;
+package com.lh.eap.core;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+import com.lh.eap.domain.model.ToolExecution;
 
 public interface ToolExecutionStore {
     void insert(ToolExecution execution);

@@ -12,6 +12,8 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import com.lh.eap.domain.model.MissionExecution;
+import com.lh.eap.core.MissionExecutionStore;
 
 /** In-memory database boundary double; actual transaction coverage remains gated PostgreSQL tests. */
 class BoardDeliveryApplicationTest {

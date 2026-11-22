@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.ToolExecution;
 
 class ToolExecutionJsonTest {
     @Test void durableSnapshotRoundTripsTimeAndStepEvidence() {

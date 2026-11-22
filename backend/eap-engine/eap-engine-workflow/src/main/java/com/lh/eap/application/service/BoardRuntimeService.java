@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.MissionExecutionStatus;
 
 /** One database snapshot of existing board state; never probes executors, dispatches or changes work. */
 @Service

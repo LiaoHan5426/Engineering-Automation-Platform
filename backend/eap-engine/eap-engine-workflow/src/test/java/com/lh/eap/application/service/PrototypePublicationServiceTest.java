@@ -5,6 +5,7 @@ import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 import com.lh.eap.domain.model.PrototypeVersion;
+import com.lh.eap.core.PrototypeVersionStore;
 
 class PrototypePublicationServiceTest {
     static final String BODY="""

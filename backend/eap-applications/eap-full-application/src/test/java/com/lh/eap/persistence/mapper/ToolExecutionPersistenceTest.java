@@ -28,6 +28,8 @@ import org.springframework.jdbc.datasource.*;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.ToolExecution;
+import com.lh.eap.core.ToolExecutionStore;
 
 /** Existing opt-in local test datasource; only a UUID-owned schema is created/dropped. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_BOARD_PERSISTENCE", matches = "true")

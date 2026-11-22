@@ -16,8 +16,8 @@ class CodeStoreProxyTest {
         try (var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
             context.registerBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class));
             context.registerBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class));
-            context.registerBean(com.lh.eap.application.service.PrototypeVersionStore.class,
-                    () -> mock(com.lh.eap.application.service.PrototypeVersionStore.class));
+            context.registerBean(com.lh.eap.core.PrototypeVersionStore.class,
+                    () -> mock(com.lh.eap.core.PrototypeVersionStore.class));
             context.registerBean(com.lh.eap.application.service.BoardApplicationBaseline.class, () -> mock(com.lh.eap.application.service.BoardApplicationBaseline.class));
             context.register(com.lh.eap.application.service.BoardTaskService.class,
                     com.lh.eap.application.service.BoardCodeTaskBinding.class, JdbcCodeGenerationStore.class, JdbcCodeProposalStore.class);

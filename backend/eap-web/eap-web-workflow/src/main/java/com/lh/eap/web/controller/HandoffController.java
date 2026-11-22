@@ -1,7 +1,7 @@
 package com.lh.eap.web.controller;
 import com.lh.eap.error.MissionErrors;
 
-import com.lh.eap.application.service.Handoff;
+import com.lh.eap.domain.model.Handoff;
 import com.lh.eap.application.service.HandoffService;
 import java.util.LinkedHashMap;
 import java.util.List;

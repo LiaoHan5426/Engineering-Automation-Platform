@@ -1,7 +1,7 @@
 package com.lh.eap.web.controller;
 import com.lh.eap.error.MissionErrors;
 
-import com.lh.eap.application.service.Mission;
+import com.lh.eap.domain.model.Mission;
 import com.lh.eap.application.service.MissionService;
 import java.util.LinkedHashMap;
 import java.util.List;

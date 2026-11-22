@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.ToolExecution;
 
 class PlatformProblemContractTest {
     private final ProblemResponses problems = new ProblemResponses(PlatformMessagesConfiguration.source(PlatformMessagesConfiguration.PRODUCT_BASENAMES));
