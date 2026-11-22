@@ -280,6 +280,39 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void wireValueEnumsLiveInCoreAndWorkflowKeepsNoDuplicates() throws Exception {
+        // WireValue enums are wire-protocol vocabulary shared with the frontend and persistence;
+        // they belong in core's domain.model alongside MissionExecutionStatus/ToolExecutionStatus.
+        String coreModel = "eap-engine/eap-engine-core/src/main/java/com/lh/eap/domain/model/";
+        String workflowOld = "eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/";
+        var enums = List.of("BoardDeliveryDecision", "BoardDeliverySource", "BoardTaskColumn",
+                "BoardVerificationCheckStatus", "BoardVerificationStatus", "PrototypeActionType",
+                "ScenarioDependencyStatus", "ScenarioStatus");
+        for (String name : enums) {
+            assertTrue(Files.isRegularFile(backend.resolve(coreModel + name + ".java")), "core must own wire enum " + name);
+            assertFalse(Files.exists(backend.resolve(workflowOld + name + ".java")), "workflow must not duplicate wire enum " + name);
+        }
+        var oldImports = List.of(
+                "import com.lh.eap.application.service.BoardDeliveryDecision;",
+                "import com.lh.eap.application.service.BoardDeliverySource;",
+                "import com.lh.eap.application.service.BoardTaskColumn;",
+                "import com.lh.eap.application.service.BoardVerificationCheckStatus;",
+                "import com.lh.eap.application.service.BoardVerificationStatus;",
+                "import com.lh.eap.application.service.PrototypeActionType;",
+                "import com.lh.eap.application.service.ScenarioDependencyStatus;",
+                "import com.lh.eap.application.service.ScenarioStatus;");
+        try (var sources = Files.walk(backend)) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java") && !p.toString().contains("target")).toList()) {
+                for (String line : Files.readAllLines(source)) {
+                    String trimmed = line.trim();
+                    for (String oldImport : oldImports) {
+                        assertFalse(trimmed.equals(oldImport), source + " still imports relocated wire enum: " + oldImport);
+                    }
+                }
+            }
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");

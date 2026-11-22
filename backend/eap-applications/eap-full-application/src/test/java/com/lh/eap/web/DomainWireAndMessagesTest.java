@@ -12,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import com.lh.eap.domain.model.Mission;
 import com.lh.eap.domain.model.MissionExecutionStatus;
 import com.lh.eap.domain.model.ToolExecutionStatus;
+import com.lh.eap.domain.model.BoardTaskColumn;
+import com.lh.eap.domain.model.BoardVerificationCheckStatus;
+import com.lh.eap.domain.model.BoardVerificationStatus;
 
 class DomainWireAndMessagesTest {
     @Test void unknownAndActivityRemainDomainSpecificAndInvalidValuesAreNotCoerced() {

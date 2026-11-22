@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 import com.lh.eap.domain.model.MissionExecutionStatus;
+import com.lh.eap.domain.model.BoardVerificationStatus;
 
 /** One database snapshot of existing board state; never probes executors, dispatches or changes work. */
 @Service

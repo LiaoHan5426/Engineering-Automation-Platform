@@ -7,6 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.HashSet;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.BoardTaskColumn;
+import com.lh.eap.domain.model.PrototypeActionType;
 
 /** Server-side publication boundary for the same semantic schema rendered by the workbench. */
 public final class SemanticPrototype {

@@ -1,5 +1,5 @@
 package com.lh.eap.application.dto;
-import com.lh.eap.application.service.ScenarioDependencyStatus;
+import com.lh.eap.domain.model.ScenarioDependencyStatus;
 
 import java.util.List;
 

@@ -13,6 +13,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.ScenarioDependencyStatus;
+import com.lh.eap.domain.model.ScenarioStatus;
 
 /** Local scenario configuration, separate from resource activation and execution permissions. */
 @Service

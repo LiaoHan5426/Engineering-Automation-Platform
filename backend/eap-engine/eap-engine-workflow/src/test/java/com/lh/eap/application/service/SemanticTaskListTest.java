@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.BoardTaskColumn;
 
 class SemanticTaskListTest {
     private static final JsonMapper JSON = JsonMapper.builder().build();

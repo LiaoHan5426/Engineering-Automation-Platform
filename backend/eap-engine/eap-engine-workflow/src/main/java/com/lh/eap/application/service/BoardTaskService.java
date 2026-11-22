@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.BoardTaskColumn;
 
 /** Durable preparation only: no process ownership, execution or acceptance is inferred. */
 @Service

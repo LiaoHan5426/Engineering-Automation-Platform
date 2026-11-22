@@ -27,6 +27,8 @@ import tools.jackson.databind.json.JsonMapper;
 import static com.lh.eap.application.service.BoardVerificationSource.denied;
 import com.lh.eap.domain.model.MissionExecutionStatus;
 import com.lh.eap.core.MissionExecutionStore;
+import com.lh.eap.domain.model.BoardVerificationCheckStatus;
+import com.lh.eap.domain.model.BoardVerificationStatus;
 
 /** One immutable verification identity per Run; never advances Task or claims human acceptance. */
 @Service
