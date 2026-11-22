@@ -1,6 +1,6 @@
-package com.lh.eap.delivery;
+package com.lh.eap.core;
 
-import com.lh.eap.application.service.PrototypeVersion;
+import com.lh.eap.domain.model.PrototypeVersion;
 import java.util.UUID;
 
 /** Read-only access to a saved, immutable prototype version for delivery context. */

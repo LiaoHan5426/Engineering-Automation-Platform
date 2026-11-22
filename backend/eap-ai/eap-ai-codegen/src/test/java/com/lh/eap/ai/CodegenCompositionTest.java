@@ -1,8 +1,8 @@
 package com.lh.eap.ai;
 
 import com.lh.eap.application.service.FileExecutionArtifactStore;
-import com.lh.eap.application.service.PrototypeVersion;
-import com.lh.eap.delivery.PrototypeVersionQuery;
+import com.lh.eap.domain.model.PrototypeVersion;
+import com.lh.eap.core.PrototypeVersionQuery;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import java.nio.file.Path;
 import java.time.Instant;

@@ -2,7 +2,7 @@ package com.lh.eap.persistence.mapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import com.lh.eap.application.service.PrototypeVersion;
+import com.lh.eap.domain.model.PrototypeVersion;
 import com.lh.eap.application.service.PrototypeVersionStore;
 import java.sql.Timestamp;
 import java.util.List;

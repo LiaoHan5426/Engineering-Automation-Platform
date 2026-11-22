@@ -38,7 +38,7 @@ class EngineeringTaskFlowTest {
         ReflectionTestUtils.setField(app, "codeChanges", changes);
         var versions = org.mockito.Mockito.mock(com.lh.eap.application.service.PrototypeVersionService.class);
         var versionId = UUID.fromString("116967fb-fcc8-49ec-a8a4-2042ae80ecb0");
-        org.mockito.Mockito.when(versions.find(versionId)).thenReturn(new com.lh.eap.application.service.PrototypeVersion(
+        org.mockito.Mockito.when(versions.find(versionId)).thenReturn(new com.lh.eap.domain.model.PrototypeVersion(
                 versionId, java.util.UUID.randomUUID(), "builder-alpha", "Saved checkout", "A saved design", List.of("Accessible button"), "hash", java.time.Instant.now()));
         ReflectionTestUtils.setField(app, "prototypes", versions);
         var id = app.open("{}").conversationId();

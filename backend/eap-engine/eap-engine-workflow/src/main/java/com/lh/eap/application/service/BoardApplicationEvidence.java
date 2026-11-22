@@ -2,7 +2,7 @@ package com.lh.eap.application.service;
 import com.lh.eap.api.TaskRef;
 import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.delivery.CodeChangeService;
-import com.lh.eap.delivery.CodeProposalStatus;
+import com.lh.eap.domain.model.CodeProposalStatus;
 import com.lh.eap.error.BoardDeliveryErrors;
 import com.lh.eap.delivery.CodeProposalStore;
 import com.lh.eap.delivery.CodeGenerationStore;

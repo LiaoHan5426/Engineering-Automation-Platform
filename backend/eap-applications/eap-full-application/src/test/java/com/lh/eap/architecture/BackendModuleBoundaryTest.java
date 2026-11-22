@@ -182,6 +182,47 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void deliveryPureContractsLiveInCoreAndDeliveryKeepsNoDuplicates() throws Exception {
+        // Pure value/enum/error/port contracts belong in core. Behavioural delivery services
+        // (CodeChangeService/CodeVerificationService) and spring-coupled values (ComponentGraph)
+        // legitimately stay in the delivery module and are intentionally not guarded here.
+        for (String contract : List.of(
+                "domain/model/CodeProposalStatus.java",
+                "domain/model/SourceDependencyKind.java",
+                "domain/model/PrototypeVersion.java",
+                "core/PrototypeVersionQuery.java",
+                "error/CodeErrors.java")) {
+            assertTrue(Files.isRegularFile(backend.resolve("eap-engine/eap-engine-core/src/main/java/com/lh/eap/" + contract)),
+                    "core must own " + contract);
+        }
+        for (String stale : List.of(
+                "eap-engine/eap-engine-delivery/src/main/java/com/lh/eap/delivery/CodeProposalStatus.java",
+                "eap-engine/eap-engine-delivery/src/main/java/com/lh/eap/delivery/SourceDependencyKind.java",
+                "eap-engine/eap-engine-delivery/src/main/java/com/lh/eap/application/service/PrototypeVersion.java",
+                "eap-engine/eap-engine-delivery/src/main/java/com/lh/eap/delivery/PrototypeVersionQuery.java",
+                "eap-engine/eap-engine-delivery/src/main/java/com/lh/eap/error/CodeErrors.java")) {
+            assertFalse(Files.exists(backend.resolve(stale)), "delivery must not keep a duplicate contract: " + stale);
+        }
+        // No source anywhere may still import the old contract packages. Check actual import
+        // statements line-by-line (not raw substring) so this guard's own string literals
+        // listing the old imports are not mistaken for real imports.
+        var oldImports = List.of(
+                "import com.lh.eap.delivery.CodeProposalStatus;",
+                "import com.lh.eap.delivery.SourceDependencyKind;",
+                "import com.lh.eap.delivery.PrototypeVersionQuery;",
+                "import com.lh.eap.application.service.PrototypeVersion;");
+        try (var sources = Files.walk(backend)) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java") && !p.toString().contains("target")).toList()) {
+                for (String line : Files.readAllLines(source)) {
+                    String trimmed = line.trim();
+                    for (String oldImport : oldImports) {
+                        assertFalse(trimmed.equals(oldImport), source + " still imports relocated contract: " + oldImport);
+                    }
+                }
+            }
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");

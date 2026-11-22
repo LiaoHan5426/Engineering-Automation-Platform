@@ -2,7 +2,7 @@ package com.lh.eap.persistence.mapper;
 
 import com.lh.eap.api.contract.WireValue;
 import com.lh.eap.application.service.*;
-import com.lh.eap.delivery.CodeProposalStatus;
+import com.lh.eap.domain.model.CodeProposalStatus;
 import java.util.Arrays;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;

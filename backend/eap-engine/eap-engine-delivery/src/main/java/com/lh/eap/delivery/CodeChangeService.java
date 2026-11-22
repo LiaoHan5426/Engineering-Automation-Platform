@@ -27,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.CodeProposalStatus;
 
 /** Small review-and-save boundary. No shell, agent loop, scheduling, or automatic execution. */
 @Service

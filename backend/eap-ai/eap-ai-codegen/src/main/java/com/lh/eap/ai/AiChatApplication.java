@@ -5,7 +5,7 @@ import com.lh.eap.ai.graph.MessageGraphWriter;
 import com.lh.eap.ai.dto.ChatMessageNodeView;
 import com.lh.eap.ai.dto.AiConversationReconnectResponse;
 import com.lh.eap.application.dto.AiConnectionAssignment;
-import com.lh.eap.delivery.PrototypeVersionQuery;
+import com.lh.eap.core.PrototypeVersionQuery;
 import com.lh.eap.skill.SkillService;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;

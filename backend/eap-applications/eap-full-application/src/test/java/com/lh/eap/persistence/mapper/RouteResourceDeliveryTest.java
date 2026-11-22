@@ -30,7 +30,7 @@ class RouteResourceDeliveryTest {
         String page = "<script setup>\nimport './detail.css'\nimport copy from './copy.json'\n</script>";
         String entry = "export const detail = () => import('./DetailPage.vue')\n";
         var graph = ComponentGraph.validate(ENTRY, files(entry, page, ".detail {color: red}", "{}"));
-        assertEquals(com.lh.eap.delivery.SourceDependencyKind.LAZY_MODULE, graph.getFirst().kind());
+        assertEquals(com.lh.eap.domain.model.SourceDependencyKind.LAZY_MODULE, graph.getFirst().kind());
         assertEquals(PAGE, graph.getFirst().to());
         for (String value : List.of("import(path)", "import(" + (char)96 + "./DetailPage.vue" + (char)96 + ")",
                 "import('./' + 'DetailPage.vue')", "import('./DetailPage.vue', {with:{type:'json'}})",

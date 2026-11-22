@@ -1,7 +1,7 @@
 package com.lh.eap.application.service;
 import java.security.NoSuchAlgorithmException;
 import com.lh.eap.core.ExpertAgentState;
-import com.lh.eap.delivery.CodeProposalStatus;
+import com.lh.eap.domain.model.CodeProposalStatus;
 import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.core.*;

@@ -1,5 +1,5 @@
 package com.lh.eap.application.service;
-import com.lh.eap.delivery.CodeProposalStatus;
+import com.lh.eap.domain.model.CodeProposalStatus;
 import com.lh.eap.persistence.mapper.StateBindings;
 import com.lh.eap.error.BoardErrors;
 

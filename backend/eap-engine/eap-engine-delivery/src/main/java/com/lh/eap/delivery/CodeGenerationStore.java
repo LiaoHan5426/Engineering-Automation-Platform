@@ -1,6 +1,6 @@
 package com.lh.eap.delivery;
 import com.lh.eap.api.TaskRef;
-import com.lh.eap.application.service.PrototypeVersion;
+import com.lh.eap.domain.model.PrototypeVersion;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;

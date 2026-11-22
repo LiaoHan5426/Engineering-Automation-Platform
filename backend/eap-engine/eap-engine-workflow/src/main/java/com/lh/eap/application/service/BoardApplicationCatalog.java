@@ -1,6 +1,6 @@
 package com.lh.eap.application.service;
 import tools.jackson.databind.json.JsonMapper;
-import com.lh.eap.delivery.CodeProposalStatus;
+import com.lh.eap.domain.model.CodeProposalStatus;
 
 import com.lh.eap.api.TaskRef;
 import com.lh.eap.config.RuntimeWorkspace;

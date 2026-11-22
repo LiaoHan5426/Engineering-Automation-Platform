@@ -22,6 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.CodeProposalStatus;
 
 @Repository
 public class JdbcCodeProposalStore implements CodeProposalStore {

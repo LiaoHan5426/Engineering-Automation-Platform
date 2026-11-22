@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.CodeProposalStatus;
 
 /** Workspace-scoped recovery of the original durable intent. No source writes or delivery evidence. */
 @Service

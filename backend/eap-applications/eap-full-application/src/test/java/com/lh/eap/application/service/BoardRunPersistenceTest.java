@@ -25,6 +25,7 @@ import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.core.*;
 import com.lh.eap.persistence.mapper.*;
 import com.lh.eap.runtime.handler.*;
+import com.lh.eap.domain.model.PrototypeVersion;
 
 /** Real PostgreSQL + a newly initialized isolated Git directory; owns only its generated rows. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_BOARD_PERSISTENCE", matches = "true")

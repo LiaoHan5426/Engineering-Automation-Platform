@@ -1,5 +1,5 @@
 package com.lh.eap.application.service;
-import com.lh.eap.delivery.PrototypeVersionQuery;
+import com.lh.eap.core.PrototypeVersionQuery;
 import java.time.temporal.ChronoUnit;
 import com.lh.eap.error.CommonErrors;
 import com.lh.eap.error.ResourceErrors;
@@ -12,6 +12,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.domain.model.PrototypeVersion;
 
 @Service
 public class PrototypeVersionService implements PrototypeVersionQuery {

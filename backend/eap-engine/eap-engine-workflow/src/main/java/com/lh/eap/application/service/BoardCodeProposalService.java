@@ -1,6 +1,6 @@
 package com.lh.eap.application.service;
 import com.lh.eap.error.WorkspaceErrors;
-import com.lh.eap.delivery.CodeProposalStatus;
+import com.lh.eap.domain.model.CodeProposalStatus;
 import com.lh.eap.error.BoardErrors;
 
 import com.lh.eap.config.RuntimeWorkspace;

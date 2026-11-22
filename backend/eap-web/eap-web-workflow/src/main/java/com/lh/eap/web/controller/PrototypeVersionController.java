@@ -2,7 +2,7 @@ package com.lh.eap.web.controller;
 import com.lh.eap.error.BoardErrors;
 
 import com.lh.eap.application.service.PrototypeDelivery;
-import com.lh.eap.application.service.PrototypeVersion;
+import com.lh.eap.domain.model.PrototypeVersion;
 import com.lh.eap.application.service.PrototypeVersionService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

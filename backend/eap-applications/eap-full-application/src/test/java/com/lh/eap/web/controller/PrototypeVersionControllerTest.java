@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.lh.eap.application.service.PrototypeDelivery;
 import com.lh.eap.application.service.PrototypeDeliveryStore;
-import com.lh.eap.application.service.PrototypeVersion;
+import com.lh.eap.domain.model.PrototypeVersion;
 import com.lh.eap.application.service.PrototypeVersionService;
 import com.lh.eap.application.service.PrototypeVersionStore;
 import java.util.ArrayList;

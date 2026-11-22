@@ -5,7 +5,7 @@ import com.lh.eap.api.ProcessIdentityStatus;
 import com.lh.eap.api.error.PlatformErrorCode;
 import com.lh.eap.application.service.*;
 import com.lh.eap.core.ExpertAgentState;
-import com.lh.eap.delivery.CodeProposalStatus;
+import com.lh.eap.domain.model.CodeProposalStatus;
 import com.lh.eap.web.i18n.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;

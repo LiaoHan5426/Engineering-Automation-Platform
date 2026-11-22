@@ -5,6 +5,7 @@ import com.lh.eap.delivery.CodeChangeService;
 
 import java.util.Optional;
 import java.util.UUID;
+import com.lh.eap.domain.model.CodeProposalStatus;
 
 /** Durable single-file proposal authority. No task/run attribution is inferred. */
 public interface CodeProposalStore {
