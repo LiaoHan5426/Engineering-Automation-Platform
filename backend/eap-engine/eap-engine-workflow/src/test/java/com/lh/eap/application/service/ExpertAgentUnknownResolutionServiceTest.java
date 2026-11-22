@@ -7,16 +7,15 @@ import static org.mockito.Mockito.*;
 import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.core.ExpertAgentAccess;
 import com.lh.eap.core.ExpertAgentJournal;
+import com.lh.eap.core.ExpertApprovalStore;
 import com.lh.eap.delivery.CodeChangeService;
 import com.lh.eap.error.AgentErrors;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -32,10 +31,10 @@ class ExpertAgentUnknownResolutionServiceTest {
 
     private static final String NOTE = "Checked the workspace file and the durable review record.";
 
-    private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
+    private final ExpertApprovalStore store = mock(ExpertApprovalStore.class);
     private final ExpertAgentJournal journal = mock(ExpertAgentJournal.class);
     private final ExpertAgentApprovalService service = spy(new ExpertAgentApprovalService(
-            mock(CodeChangeService.class), journal, mock(ExpertAgentAccess.class), jdbc,
+            mock(CodeChangeService.class), journal, mock(ExpertAgentAccess.class), store,
             new LocalTransactions()));
 
     private ExpertAgentApprovalService ready(UUID id) {
@@ -58,7 +57,7 @@ class ExpertAgentUnknownResolutionServiceTest {
         var api = ready(id);
         var error = failure(AgentErrors.AGENT_INPUT_INVALID.code(), () -> api.resolveUnknown("sql-readonly-agent", id, " too short "));
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
-        verifyNoInteractions(jdbc);
+        verifyNoInteractions(store);
     }
 
     @Test
@@ -66,27 +65,31 @@ class ExpertAgentUnknownResolutionServiceTest {
         var id = UUID.randomUUID();
         var api = ready(id);
         failure(AgentErrors.AGENT_INPUT_INVALID.code(), () -> api.resolveUnknown("sql-readonly-agent", id, "   "));
-        verifyNoInteractions(jdbc);
+        verifyNoInteractions(store);
     }
 
     @Test
     void missingV5ColumnsRefusesExplicitlyWithoutSqlFailure() {
         var id = UUID.randomUUID();
         var api = ready(id);
-        when(jdbc.queryForObject(anyString(), eq(Boolean.class))).thenReturn(false);
+        when(store.hasResolutionColumns()).thenReturn(false);
         var error = failure(AgentErrors.AGENT_UNKNOWN_NOT_RESOLVABLE.code(), () -> api.resolveUnknown("sql-readonly-agent", id, NOTE));
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
-        verify(jdbc, never()).update(anyString(), any(Object[].class));
+        verify(store, never()).resolveUnknown(any(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(store, never()).markTaskNeedsReview(any(), anyString());
     }
 
     @Test
     void conditionalUpdateMismatchDoesNotProjectTask() {
         var id = UUID.randomUUID();
         var api = ready(id);
-        when(jdbc.queryForObject(anyString(), eq(Boolean.class))).thenReturn(true);
-        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(0);
+        when(store.hasResolutionColumns()).thenReturn(true);
+        when(store.resolveUnknown(eq(id), eq("sql-readonly-agent"), eq("closed-unconfirmed"), eq("unknown"), eq(NOTE),
+                eq(RuntimeWorkspace.OPERATOR_LABEL))).thenReturn(0);
         failure(AgentErrors.AGENT_UNKNOWN_NOT_RESOLVABLE.code(), () -> api.resolveUnknown("sql-readonly-agent", id, NOTE));
-        verify(jdbc, times(1)).update(anyString(), any(Object[].class));
+        verify(store, times(1)).resolveUnknown(id, "sql-readonly-agent", "closed-unconfirmed", "unknown", NOTE,
+                RuntimeWorkspace.OPERATOR_LABEL);
+        verify(store, never()).markTaskNeedsReview(any(), anyString());
     }
 
     @Test
@@ -94,30 +97,22 @@ class ExpertAgentUnknownResolutionServiceTest {
         var id = UUID.randomUUID();
         var expert = "sql-readonly-agent";
         var api = ready(id);
-        when(jdbc.queryForObject(anyString(), eq(Boolean.class))).thenReturn(true);
-        var updates = new ArrayList<List<Object>>();
-        when(jdbc.update(anyString(), any(Object[].class))).thenAnswer(call -> {
-            assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive());
-            var row = new ArrayList<Object>();
-            for (Object argument : call.getArguments()) row.add(argument);
-            updates.add(row);
+        when(store.hasResolutionColumns()).thenReturn(true);
+        when(store.resolveUnknown(any(), anyString(), anyString(), anyString(), anyString(), anyString())).thenAnswer(call -> {
+            assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
+            return 1;
+        });
+        when(store.markTaskNeedsReview(any(), anyString())).thenAnswer(call -> {
+            assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
             return 1;
         });
         var result = api.resolveUnknown(expert, id, "  " + NOTE + "  ");
         assertEquals(Map.of("run", Map.of("state", "closed-unconfirmed")), result);
 
-        assertEquals(2, updates.size());
-        var run = updates.getFirst();
-        assertTrue(run.getFirst().toString().contains("resolution_note"));
-        assertEquals("closed-unconfirmed", run.get(1));
-        assertEquals(NOTE, run.get(2)); // trimmed, not the raw request
-        assertEquals(RuntimeWorkspace.OPERATOR_LABEL, run.get(3));
-        assertEquals(id, run.get(4));
-        assertEquals(expert, run.get(5));
-        assertEquals("unknown", run.get(6));
-        var task = updates.get(1);
-        assertTrue(task.getFirst().toString().contains("UPDATE eap.task"));
-        assertEquals("closed-unconfirmed", task.get(1));
-        assertEquals(id, task.get(2));
+        InOrder writes = inOrder(store);
+        writes.verify(store).resolveUnknown(id, expert, "closed-unconfirmed", "unknown", NOTE,
+                RuntimeWorkspace.OPERATOR_LABEL); // trimmed, not the raw request
+        writes.verify(store).markTaskNeedsReview(id, "closed-unconfirmed");
+        writes.verifyNoMoreInteractions();
     }
 }

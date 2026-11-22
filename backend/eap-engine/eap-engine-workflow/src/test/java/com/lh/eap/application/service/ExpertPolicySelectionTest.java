@@ -2,7 +2,6 @@ package com.lh.eap.application.service;
 
 import com.lh.eap.core.*;
 import com.lh.eap.domain.model.*;
-import com.lh.eap.persistence.jdbc.TaskRepository;
 import com.lh.eap.runtime.handler.*;
 import java.nio.file.Path;
 import java.util.*;
@@ -16,7 +15,7 @@ import static org.mockito.Mockito.*;
 
 class ExpertPolicySelectionTest {
     private final ExpertDefinitionService definitions = mock(ExpertDefinitionService.class);
-    private final TaskRepository tasks = mock(TaskRepository.class);
+    private final TaskStore tasks = mock(TaskStore.class);
     private final ExecutionResource resource = mock(ExecutionResource.class);
     private final ExecutionResource.Scope scope = mock(ExecutionResource.Scope.class);
 

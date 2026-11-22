@@ -38,6 +38,7 @@ class FullApplicationCompositionTest {
                     assertThat(context.getBean(com.lh.eap.domain.model.CliChannelStore.class))
                             .isInstanceOf(com.lh.eap.persistence.jdbc.JdbcCliChannelStore.class);
                     assertThat(context).hasSingleBean(com.lh.eap.core.PrototypeVersionQuery.class);
+                    assertThat(context).hasSingleBean(com.lh.eap.core.DatabaseGrantQuery.class);
                     assertThat(context).hasSingleBean(com.lh.eap.core.ExpertAnalysisPolicyResolver.class);
                     assertThat(context).hasSingleBean(com.lh.eap.core.ExpertAgentAccess.class)
                             .hasSingleBean(com.lh.eap.ai.SqlExpertAgentService.class)

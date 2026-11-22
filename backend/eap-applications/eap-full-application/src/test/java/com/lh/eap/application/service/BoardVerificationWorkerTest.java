@@ -5,13 +5,12 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import com.lh.eap.api.*;
 import com.lh.eap.capability.GitCapability;
+import com.lh.eap.core.BoardVerificationStore;
 import com.lh.eap.core.CapabilityRegistry;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,7 +21,7 @@ import com.lh.eap.core.MissionExecutionStore;
 class BoardVerificationWorkerTest {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static class Fixture {
-        final JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        final BoardVerificationStore store = mock(BoardVerificationStore.class);
         final BoardTaskService tasks = mock(BoardTaskService.class);
         final MissionExecutionStore executions = mock(MissionExecutionStore.class);
         final MissionGitExecutionService git = mock(MissionGitExecutionService.class);
@@ -55,21 +54,21 @@ class BoardVerificationWorkerTest {
             when(executions.find(run)).thenReturn(Optional.of(execution));
             when(git.availability()).thenReturn(new MissionGitExecutionService.Availability(true, workspace, "ws", ""));
             when(plans.availability()).thenReturn(""); when(plans.prepare(any(), any())).thenReturn(plan);
-            when(jdbc.query(anyString(), any(RowMapper.class), eq(task), eq(run))).thenAnswer(call -> List.of(Optional.ofNullable(saved)));
-            when(jdbc.update(contains("verification_snapshot=?::jsonb"), any(), eq(task), eq(run))).thenAnswer(call -> {
-                if (saved != null) return 0;
-                saved = JSON.readValue((String)call.getArgument(1), BoardVerificationService.Record.class); writes.add(saved); return 1;
+            when(store.findSnapshot(task, run)).thenAnswer(call -> Optional.of(new BoardVerificationStore.SnapshotRow(saved == null ? null : JSON.writeValueAsString(saved))));
+            when(store.saveIfAbsent(anyString(), eq(task), eq(run))).thenAnswer(call -> {
+                if (saved != null) return false;
+                saved = JSON.readValue((String)call.getArgument(0), BoardVerificationService.Record.class); writes.add(saved); return true;
             });
-            when(jdbc.update(contains("verification_snapshot=?::jsonb"), any(), eq(task), eq(run), anyString())).thenAnswer(call -> {
-                if (saved == null || !saved.status().equals(call.getArgument(4))) return 0;
-                saved = JSON.readValue((String)call.getArgument(1), BoardVerificationService.Record.class); writes.add(saved); return 1;
+            when(store.saveIfStatus(anyString(), eq(task), eq(run), anyString())).thenAnswer(call -> {
+                if (saved == null || !saved.status().equals(call.getArgument(3))) return false;
+                saved = JSON.readValue((String)call.getArgument(0), BoardVerificationService.Record.class); writes.add(saved); return true;
             });
             when(process.runIsolated(eq("vp"), any(), anyList(), anyMap())).thenAnswer(call -> {
                 assertEquals("RUNNING", saved.status()); assertEquals("RUNNING", saved.checks().getLast().status());
                 assertFalse(TransactionSynchronizationManager.isActualTransactionActive());
                 return result("SUCCEEDED", 0, true, "ok");
             });
-            service = new BoardVerificationService(jdbc, tasks, executions, git, registry, settings, plans, process, manager,
+            service = new BoardVerificationService(store, tasks, executions, git, registry, settings, plans, process, manager,
                 override != null ? override : command -> { assertTrue(committed); assertEquals("QUEUED", saved.status()); queue.add(command); });
         }
         BoardVerificationService.Start request() { return new BoardVerificationService.Start("p", workspace, plan.planHash()); }
@@ -125,7 +124,7 @@ class BoardVerificationWorkerTest {
         var f = new Fixture();
         var recover = assertDoesNotThrow(() -> BoardVerificationService.class.getMethod("markRestartUnknown"));
         recover.invoke(f.service);
-        verify(f.jdbc).update(argThat((String sql) -> sql.contains("ANY(?::text[])") && sql.contains("jsonb_set") && !sql.contains("DELETE")), eq("UNKNOWN"), eq("BOARD_VERIFICATION_RESTART_UNKNOWN"), eq(com.lh.eap.persistence.jdbc.StateBindings.VERIFICATION_ACTIVE));
+        verify(f.store).markRestartUnknown("BOARD_VERIFICATION_RESTART_UNKNOWN");
     }
     @Test void sourceChangeBetweenChecksStopsBeforeTheNextProcess() {
         var f = new Fixture(); f.start();

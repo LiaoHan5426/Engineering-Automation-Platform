@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -23,6 +22,7 @@ import com.lh.eap.domain.model.MissionExecutionStatus;
 import com.lh.eap.domain.model.Handoff;
 import com.lh.eap.core.MissionExecutionStore;
 import com.lh.eap.core.HandoffStore;
+import com.lh.eap.core.BoardRunStore;
 
 /** Associates board snapshots with the existing Mission executor, without inventing completion. */
 @Service
@@ -32,7 +32,7 @@ public class BoardRunService {
     public record Run(UUID requestId, long taskRevision, Snapshot task, MissionExecution execution) {}
     public record Page(MissionGitExecutionService.Availability availability, List<Run> items) {}
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private final JdbcTemplate jdbc;
+    private final BoardRunStore store;
     private final BoardTaskService tasks;
     private final BoardPrototypeService prototypes;
     private final HandoffStore handoffs;
@@ -44,16 +44,16 @@ public class BoardRunService {
     private final ExecutorService ownedDispatcher;
 
     @Autowired
-    public BoardRunService(JdbcTemplate jdbc, BoardTaskService tasks, HandoffStore handoffs, MissionService missions,
+    public BoardRunService(BoardRunStore store, BoardTaskService tasks, HandoffStore handoffs, MissionService missions,
                            MissionExecutionStore executions, MissionGitExecutionService git, PlatformTransactionManager manager, BoardPrototypeService prototypes) {
-        this(jdbc, tasks, handoffs, missions, executions, git, manager, prototypes,
+        this(store, tasks, handoffs, missions, executions, git, manager, prototypes,
             new ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(16),
                 Thread.ofPlatform().daemon().name("board-git-", 0).factory(), new ThreadPoolExecutor.AbortPolicy()), true);
     }
-    BoardRunService(JdbcTemplate jdbc, BoardTaskService tasks, HandoffStore handoffs, MissionService missions,
+    BoardRunService(BoardRunStore store, BoardTaskService tasks, HandoffStore handoffs, MissionService missions,
                     MissionExecutionStore executions, MissionGitExecutionService git, PlatformTransactionManager manager, BoardPrototypeService prototypes,
                     Executor dispatcher, boolean ownsDispatcher) {
-        this.jdbc = jdbc; this.tasks = tasks; this.prototypes = prototypes; this.handoffs = handoffs; this.missions = missions;
+        this.store = store; this.tasks = tasks; this.prototypes = prototypes; this.handoffs = handoffs; this.missions = missions;
         this.executions = executions; this.git = git; this.transaction = new TransactionTemplate(manager);
         this.dispatcher = dispatcher; this.ownedDispatcher = ownsDispatcher ? (ExecutorService) dispatcher : null;
     }
@@ -62,7 +62,7 @@ public class BoardRunService {
     public Page list(UUID taskId, String projectId) {
         requireProject(projectId);
         tasks.find(taskId, projectId, false);
-        return new Page(git.availability(), read("WHERE task_id=? ORDER BY created_at DESC, execution_id DESC LIMIT 30", taskId));
+        return new Page(git.availability(), read(store.list(taskId)));
     }
     public Run start(UUID taskId, Start request) {
         requireProject(request.projectId());
@@ -71,7 +71,7 @@ public class BoardRunService {
         }
         return transaction.execute(status -> {
             var task = tasks.find(taskId, request.projectId(), true);
-            var prior = read("WHERE task_id=? AND request_id=?", taskId, request.requestId());
+            var prior = read(store.findByRequest(taskId, request.requestId()));
             if (!prior.isEmpty()) {
                 var run = prior.getFirst();
                 if (run.taskRevision() != request.revision() || !run.execution().workspacePath().equals(request.workspacePath())) throw conflict(BoardErrors.BOARD_RUN_REQUEST_CONFLICT.code());
@@ -88,8 +88,7 @@ public class BoardRunService {
             // Authorization is rechecked here, and again in the worker before any process starts.
             var execution = git.reserve(mission.id(), UUID.randomUUID(), request.workspacePath());
             var snapshot = new Snapshot(task.title(), task.goal(), task.acceptanceCriteria(), prototypes.reference(task.prototypeVersionId()));
-            jdbc.update("INSERT INTO eap.board_task_run(execution_id,task_id,request_id,task_revision,task_snapshot) VALUES (?,?,?,?,?::jsonb)",
-                    execution.id(), taskId, request.requestId(), task.revision(), JSON.writeValueAsString(snapshot));
+            store.insert(execution.id(), taskId, request.requestId(), task.revision(), JSON.writeValueAsString(snapshot));
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override public void afterCommit() { dispatch(execution); }
             });
@@ -114,13 +113,11 @@ public class BoardRunService {
             cleanup.executeWithoutResult(status -> executions.failSameRow(execution.id(), execution.missionId(), BoardErrors.BOARD_QUEUE_FULL.code()));
         }
     }
-    private List<Run> read(String suffix, Object... parameters) {
-        record Link(UUID requestId, long revision, Snapshot task, UUID executionId) {}
-        var links = jdbc.query("SELECT * FROM eap.board_task_run " + suffix, (rs, row) ->
-            new Link(rs.getObject("request_id", UUID.class), rs.getLong("task_revision"), JSON.readValue(rs.getString("task_snapshot"), Snapshot.class),
-                rs.getObject("execution_id", UUID.class)), parameters);
-        // Release the result set before reading execution records from the shared store.
-        return links.stream().map(link -> new Run(link.requestId(), link.revision(), link.task(), executions.find(link.executionId()).orElseThrow())).toList();
+    private List<Run> read(List<BoardRunStore.Row> rows) {
+        // Rows are fully materialized before execution records are read from the shared store.
+        return rows.stream().map(row -> new Run(row.requestId(), row.taskRevision(),
+            JSON.readValue(row.taskSnapshotJson(), Snapshot.class),
+            executions.find(row.executionId()).orElseThrow())).toList();
     }
     private static void requireProject(String project) { if (project == null || project.isBlank() || project.length() > 120) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_FIELD.code()); }
     private static ResponseStatusException conflict(String reason) { return new ResponseStatusException(HttpStatus.CONFLICT, reason); }

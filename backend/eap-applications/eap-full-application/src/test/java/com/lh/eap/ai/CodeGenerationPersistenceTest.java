@@ -1,5 +1,4 @@
 package com.lh.eap.ai;
-import com.lh.eap.delivery.JdbcCodeGenerationStore;
 import com.lh.eap.delivery.CodeChangeService;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,7 +31,7 @@ class CodeGenerationPersistenceTest {
         var dataSource = new DriverManagerDataSource(url, env.getProperty("spring.datasource.username"), env.getProperty("spring.datasource.password"));
         jdbc = new JdbcTemplate(dataSource);
         var manager = new DataSourceTransactionManager(dataSource);
-        var store = new JdbcCodeGenerationStore(jdbc, manager);
+        var store = com.lh.eap.application.service.P4TestWiring.generations(jdbc, manager);
         var service = new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString()), null, null, store);
         Files.writeString(root.resolve("Page.vue"), "<template>persistent baseline</template>");
         var conversation = UUID.randomUUID();
@@ -48,7 +47,7 @@ class CodeGenerationPersistenceTest {
             status.setRollbackOnly();
             return snapshot;
         });
-        var reopened = new JdbcCodeGenerationStore(new JdbcTemplate(dataSource), manager).find(saved.id()).orElseThrow();
+        var reopened = com.lh.eap.application.service.P4TestWiring.generations(new JdbcTemplate(dataSource), manager).find(saved.id()).orElseThrow();
         assertEquals(saved, reopened);
         assertThrows(org.springframework.dao.DuplicateKeyException.class, () -> store.save(saved));
         assertEquals(saved, store.find(saved.id()).orElseThrow());

@@ -40,6 +40,14 @@ class CapabilityManagementTest {
     private static JdbcTemplate jdbcWhere(String fragment, List<Map<String, Object>> rows) {
         var jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(argThat((String sql) -> sql != null && sql.contains(fragment)))).thenReturn(rows);
+        if (fragment.equals("capability_setting")) {
+            var settingsRows = rows.stream().map(row -> new com.lh.eap.core.CapabilitySettingsStore.Row(
+                    (String) row.get("capability"), (Boolean) row.get("enabled"),
+                    (String) row.get("notes"), (String) row.get("updated_at"))).toList();
+            when(jdbc.query(contains("FROM eap.capability_setting"),
+                    org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<com.lh.eap.core.CapabilitySettingsStore.Row>>any()))
+                    .thenReturn(settingsRows);
+        }
         return jdbc;
     }
 
@@ -70,6 +78,12 @@ class CapabilityManagementTest {
                 new WorkspaceSearchHandler(new CapabilityRegistry(), mock(ProcessExecutor.class))), settings);
     }
 
+    private static CapabilityCatalog catalog(JdbcTemplate jdbc, CapabilitySettings settings) {
+        return new CapabilityCatalog(registry(jdbc, settings), mcpCatalog(jdbc),
+                new CliChannels(new JdbcCliChannelStore(jdbc)), new CapabilityUsage(jdbc), settings,
+                com.lh.eap.core.CapabilityCatalogQuery.empty(), null);
+    }
+
     private static Map<String, Object> settingRow(String capability, boolean enabled) {
         var row = new LinkedHashMap<String, Object>();
         row.put("capability", capability);
@@ -84,7 +98,7 @@ class CapabilityManagementTest {
     /** Turning off a capability an enabled expert runs would break that expert, so it is refused. */
     @Test void disablingACapabilityAnEnabledExpertRunsIsRefused() {
         var jdbc = jdbcWhere(EXPERT_SQL, List.of(expert("orders-sql", true, manifestWith("sql.parse"))));
-        var settings = new CapabilitySettings(jdbc, new CapabilityUsage(jdbc));
+        var settings = com.lh.eap.application.service.P4TestWiring.settings(jdbc, new CapabilityUsage(jdbc));
 
         var error = assertThrows(IllegalStateException.class, () -> settings.save("sql.parse", false, "不需要"));
         assertEquals("CAPABILITY_IN_USE", error.getMessage());
@@ -95,7 +109,7 @@ class CapabilityManagementTest {
     /** A draft that references it does not block anything: drafts do not run. */
     @Test void aDraftReferenceDoesNotBlockTheSwitch() {
         var jdbc = jdbcWhere(EXPERT_SQL, List.of(expert("draft-sql", false, manifestWith("sql.parse"))));
-        var settings = new CapabilitySettings(jdbc, new CapabilityUsage(jdbc));
+        var settings = com.lh.eap.application.service.P4TestWiring.settings(jdbc, new CapabilityUsage(jdbc));
 
         settings.save("sql.parse", false, "暂时停用");
         verify(jdbc).update(argThat((String sql) -> sql != null && sql.contains("capability_setting")),
@@ -106,9 +120,8 @@ class CapabilityManagementTest {
     @Test void theSwitchStoresTheReasonAndTheCatalogReportsIt() {
         var jdbc = jdbcWhere("capability_setting", List.of(settingRow("database.explain", false)));
         var usage = new CapabilityUsage(jdbc);
-        var settings = new CapabilitySettings(jdbc, usage);
-        var catalog = new CapabilityCatalog(registry(jdbc, settings), jdbc, mcpCatalog(jdbc),
-                new CliChannels(new JdbcCliChannelStore(jdbc)), usage).catalog();
+        var settings = com.lh.eap.application.service.P4TestWiring.settings(jdbc, usage);
+        var catalog = catalog(jdbc, settings).catalog();
 
         var item = itemNamed(catalog, "database.explain");
         assertEquals(false, item.get("enabled"));
@@ -137,7 +150,7 @@ class CapabilityManagementTest {
     /** Even though the handler exists, a disabled capability resolves to nothing for every expert. */
     @Test void aDisabledCapabilityDoesNotResolveAtRuntime() {
         var jdbc = jdbcWhere("capability_setting", List.of(settingRow("sql.parse", false)));
-        var settings = new CapabilitySettings(jdbc, new CapabilityUsage(jdbc));
+        var settings = com.lh.eap.application.service.P4TestWiring.settings(jdbc, new CapabilityUsage(jdbc));
         var handlers = registry(jdbc, settings);
         var manifest = ExpertManifest.parse(manifestWith("sql.parse"));
 
@@ -150,8 +163,7 @@ class CapabilityManagementTest {
 
     @Test void everyKindDeclaresHowItsCapabilitiesComeIntoExistence() {
         var jdbc = mock(JdbcTemplate.class);
-        var catalog = new CapabilityCatalog(registry(jdbc, new CapabilitySettings(jdbc, new CapabilityUsage(jdbc))),
-                jdbc).catalog();
+        var catalog = catalog(jdbc, com.lh.eap.application.service.P4TestWiring.settings(jdbc, new CapabilityUsage(jdbc))).catalog();
 
         var kinds = kindList(catalog);
         for (var kind : kinds) {
@@ -175,8 +187,7 @@ class CapabilityManagementTest {
      */
     @Test void akindWithAManagementSurfaceIsVisibleEvenWhenEmpty() {
         var jdbc = mock(JdbcTemplate.class);
-        var catalog = new CapabilityCatalog(registry(jdbc, new CapabilitySettings(jdbc, new CapabilityUsage(jdbc))),
-                jdbc).catalog();
+        var catalog = catalog(jdbc, com.lh.eap.application.service.P4TestWiring.settings(jdbc, new CapabilityUsage(jdbc))).catalog();
         var kinds = kindList(catalog);
 
         assertEquals(0, kindOf(kinds, "mcp").get("count"), "没有服务器时如实报告 0");
@@ -190,8 +201,7 @@ class CapabilityManagementTest {
     @Test void kindAvailabilityCountsAreReported() {
         var jdbc = jdbcWhere("capability_setting", List.of(settingRow("sql.parse", false)));
         var usage = new CapabilityUsage(jdbc);
-        var catalog = new CapabilityCatalog(registry(jdbc, new CapabilitySettings(jdbc, usage)), jdbc,
-                mcpCatalog(jdbc), new CliChannels(new JdbcCliChannelStore(jdbc)), usage).catalog();
+        var catalog = catalog(jdbc, com.lh.eap.application.service.P4TestWiring.settings(jdbc, usage)).catalog();
 
         @SuppressWarnings("unchecked") var availability = (Map<String, Object>) kindOf(kindList(catalog), "command").get("availability");
         assertEquals(5, availability.get("total"));
@@ -411,8 +421,7 @@ class CapabilityManagementTest {
         when(jdbc.queryForList(argThat((String sql) -> sql != null && sql.contains("jsonb_array_elements"))))
                 .thenReturn(List.of(serverRow));
         var usage = new CapabilityUsage(jdbc);
-        var catalog = new CapabilityCatalog(registry(jdbc, new CapabilitySettings(jdbc, usage)), jdbc,
-                mcpCatalog(jdbc), new CliChannels(new JdbcCliChannelStore(jdbc)), usage).catalog();
+        var catalog = catalog(jdbc, com.lh.eap.application.service.P4TestWiring.settings(jdbc, usage)).catalog();
 
         var item = itemNamed(catalog, "mcp.files.search");
         assertEquals(false, item.get("registered"), "没有处理器时必须承认");

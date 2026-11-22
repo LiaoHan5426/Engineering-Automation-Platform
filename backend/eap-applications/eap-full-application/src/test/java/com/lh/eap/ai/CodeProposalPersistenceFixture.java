@@ -1,8 +1,6 @@
 package com.lh.eap.ai;
 import com.lh.eap.delivery.CodeProposalStore;
-import com.lh.eap.delivery.JdbcCodeGenerationStore;
 import com.lh.eap.delivery.CodeChangeService;
-import com.lh.eap.delivery.JdbcCodeProposalStore;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Path;
@@ -34,12 +32,13 @@ abstract class CodeProposalPersistenceFixture {
     }
 
     CodeProposalStore store() {
-        return new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
+        return com.lh.eap.application.service.P4TestWiring.proposals(jdbc, manager,
+                com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
     }
 
     CodeChangeService service(CodeProposalStore store) {
         return new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString()), null, null,
-                new JdbcCodeGenerationStore(jdbc, manager), store);
+                com.lh.eap.application.service.P4TestWiring.generations(jdbc, manager), store);
     }
 
     @AfterEach void cleanup() {

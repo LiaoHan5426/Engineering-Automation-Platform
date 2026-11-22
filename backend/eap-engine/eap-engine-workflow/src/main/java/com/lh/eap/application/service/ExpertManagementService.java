@@ -14,7 +14,7 @@ import com.lh.eap.common.SensitiveData;
 import com.lh.eap.rules.RulePackQuery;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
-import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
+import com.lh.eap.core.ExpertDefinitionManagementStore;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
@@ -23,11 +23,11 @@ import tools.jackson.databind.json.JsonMapper;
 
 public class ExpertManagementService {
     private static final JsonMapper JSON=JsonMapper.builder().build();
-    private final ExpertDefinitionMapper mapper;
+    private final ExpertDefinitionManagementStore mapper;
     private final ExpertDefinitionService definitions;
     private final RulePackQuery rulePacks;
     private final CapabilityCatalog capabilities;
-    public ExpertManagementService(ExpertDefinitionMapper mapper, ExpertDefinitionService definitions, RulePackQuery rulePacks, CapabilityCatalog capabilities) {
+    public ExpertManagementService(ExpertDefinitionManagementStore mapper, ExpertDefinitionService definitions, RulePackQuery rulePacks, CapabilityCatalog capabilities) {
         this.mapper=mapper;this.definitions=definitions;this.rulePacks=rulePacks;this.capabilities=capabilities;
     }
 
@@ -36,12 +36,12 @@ public class ExpertManagementService {
     public Map<String,Object> list() {
         var items=new ArrayList<String>();
         var states=new LinkedHashMap<String,Object>();
-        for(var row:mapper.list()){
-            items.add((String)row.get("manifest"));
-            states.put((String)row.get("id"),Map.of(
-                    "enabled",Boolean.TRUE.equals(row.get("enabled")),
-                    "builtin",Boolean.TRUE.equals(row.get("builtin")),
-                    "revision",row.get("revision")));
+        for(var row:mapper.listDefinitions()){
+            items.add(row.manifest());
+            states.put(row.id(),Map.of(
+                    "enabled",row.enabled(),
+                    "builtin",row.builtin(),
+                    "revision",row.revision()));
         }
         return Map.of("items",items,"states",states);
     }

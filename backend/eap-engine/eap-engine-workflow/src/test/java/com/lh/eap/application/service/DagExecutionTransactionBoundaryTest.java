@@ -5,7 +5,7 @@ import com.lh.eap.core.ExpertBehaviorCatalog;
 import com.lh.eap.domain.model.ExpertBehaviorBinding;
 import com.lh.eap.domain.model.ExpertManifest;
 import com.lh.eap.domain.model.NodeResult;
-import com.lh.eap.persistence.jdbc.TaskRepository;
+import com.lh.eap.core.TaskStore;
 import com.lh.eap.runtime.handler.CapabilityHandler;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import java.nio.file.Path;
@@ -64,11 +64,11 @@ class DagExecutionTransactionBoundaryTest {
         return policy;
     }
 
-    private record Harness(ExpertExecutionService service, TaskRepository tasks,
+    private record Harness(ExpertExecutionService service, TaskStore tasks,
             AtomicBoolean handlerSawNoTransaction, AtomicBoolean saveSawTransaction) { }
 
     private static Harness harness(Transactions manager, ExpertDefinitionService definitions) {
-        var tasks = mock(TaskRepository.class);
+        var tasks = mock(TaskStore.class);
         var handlerSawNoTransaction = new AtomicBoolean(false);
         var saveSawTransaction = new AtomicBoolean(false);
 

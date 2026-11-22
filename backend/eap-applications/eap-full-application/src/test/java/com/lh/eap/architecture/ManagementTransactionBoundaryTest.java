@@ -41,7 +41,7 @@ class ManagementTransactionBoundaryTest {
         when(usage.enabledExpertsUsing("git.diff")).thenAnswer(call -> {
             assertTrue(TransactionSynchronizationManager.isActualTransactionActive()); return List.of();
         });
-        transactional(new CapabilitySettings(jdbc, usage), transactions).save("git.diff", false, "disabled");
+        transactional(com.lh.eap.application.service.P4TestWiring.settings(jdbc, usage), transactions).save("git.diff", false, "disabled");
         new CliChannels(transactional(new JdbcCliChannelStore(jdbc), transactions)).configure("git", "git");
         assertEquals(2, transactions.committed);
         assertEquals(0, transactions.rolledBack);

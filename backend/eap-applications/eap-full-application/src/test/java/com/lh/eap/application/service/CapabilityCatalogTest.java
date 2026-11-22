@@ -39,10 +39,17 @@ class CapabilityCatalogTest {
                     () -> mock(com.lh.eap.persistence.jdbc.CapabilityUsage.class));
             context.registerBean(CapabilitySettings.class, () -> mock(CapabilitySettings.class));
             context.registerBean(com.lh.eap.core.McpCatalogQuery.class, com.lh.eap.core.McpCatalogQuery::empty);
+            context.registerBean(com.lh.eap.core.CapabilityCatalogQuery.class, com.lh.eap.core.CapabilityCatalogQuery::empty);
             context.register(CapabilityCatalog.class);
             assertDoesNotThrow(context::refresh);
             assertNotNull(context.getBean(CapabilityCatalog.class));
         }
+    }
+
+    private static CapabilityCatalog catalog(JdbcTemplate jdbc) {
+        var settings = mock(CapabilitySettings.class);
+        when(settings.all()).thenReturn(Map.of());
+        return new CapabilityCatalog(registry(), new com.lh.eap.persistence.jdbc.CapabilityUsage(jdbc), settings);
     }
 
     private static CapabilityHandlerRegistry registry() {
@@ -65,7 +72,7 @@ class CapabilityCatalogTest {
     }
 
     @Test void everyCapabilityIsDescribedWithAKindAndAnExplicitAvailability() {
-        var catalog = new CapabilityCatalog(registry(), mock(JdbcTemplate.class)).catalog();
+        var catalog = catalog(mock(JdbcTemplate.class)).catalog();
         var kinds = new CapabilityKind[]{CapabilityKind.COMMAND, CapabilityKind.CLI, CapabilityKind.MCP, CapabilityKind.HTTP};
         var knownKindIds = Arrays.stream(kinds).map(CapabilityKind::id).toList();
 
@@ -81,7 +88,7 @@ class CapabilityCatalogTest {
     }
 
     @Test void capabilityKindsSeparateBuiltInCommandsFromLocalCliTools() {
-        var catalog = new CapabilityCatalog(registry(), mock(JdbcTemplate.class)).catalog();
+        var catalog = catalog(mock(JdbcTemplate.class)).catalog();
         assertEquals(CapabilityKind.COMMAND.id(), item(catalog, "sql.parse").get("kind"));
         assertEquals(CapabilityKind.COMMAND.id(), item(catalog, "database.explain").get("kind"));
         assertEquals(CapabilityKind.CLI.id(), item(catalog, "git-status").get("kind"));
@@ -96,7 +103,7 @@ class CapabilityCatalogTest {
     /** The fact vocabulary and the handlers' declared publications must agree in both directions. */
     @SuppressWarnings("unchecked")
     @Test void declaredFactsAndPublishedFactsAgree() {
-        var catalog = new CapabilityCatalog(registry(), mock(JdbcTemplate.class)).catalog();
+        var catalog = catalog(mock(JdbcTemplate.class)).catalog();
         for (var producer : SqlFactVocabulary.producers()) {
             var entry = item(catalog, producer);
             var declared = SqlFactVocabulary.factsOf(producer).stream().map(SqlFactVocabulary.Fact::key).sorted().toList();
@@ -114,7 +121,7 @@ class CapabilityCatalogTest {
     }
 
     @Test void declaredVocabularyAndRegisteredHandlersNeverDiverge() {
-        var catalog = new CapabilityCatalog(registry(), mock(JdbcTemplate.class)).catalog();
+        var catalog = catalog(mock(JdbcTemplate.class)).catalog();
         assertEquals(List.of(), catalog.get("unregistered"), "声明的能力必须都有实现");
         assertEquals(List.of(), catalog.get("undeclared"), "实现的能力必须都在声明词表中");
     }
@@ -136,7 +143,7 @@ class CapabilityCatalogTest {
                 """);
         when(jdbc.queryForList(anyString())).thenAnswer(call ->
                 call.<String>getArgument(0).contains("FROM eap.expert_definition") ? List.of(row) : List.of());
-        var catalog = new CapabilityCatalog(registry(), jdbc).catalog();
+        var catalog = catalog(jdbc).catalog();
         assertEquals(List.of("orders-sql"), item(catalog, "sql.parse").get("usedBy"));
         assertEquals(List.of(), item(catalog, "rg-search").get("usedBy"));
     }

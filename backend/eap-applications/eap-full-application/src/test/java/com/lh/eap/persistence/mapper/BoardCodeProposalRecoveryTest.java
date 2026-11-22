@@ -25,10 +25,10 @@ class BoardCodeProposalRecoveryTest {
             CurrentContractTestSchema.migrate(directory,schema);
             var jdbc=new JdbcTemplate(ToolUnknownReviewFixture.scopedDataSource(schema));
             var manager=new DataSourceTransactionManager(ToolUnknownReviewFixture.scopedDataSource(schema));
-            var tasks=new BoardTaskService(jdbc);var root=Files.createDirectory(directory.resolve("workspace")).toRealPath();
+            var tasks=com.lh.eap.application.service.P4TestWiring.tasks(jdbc);var root=Files.createDirectory(directory.resolve("workspace")).toRealPath();
             Files.createDirectory(root.resolve("frontend"));Files.writeString(root.resolve("frontend/Page.vue"),"<p>Before</p>\n");
             var runtime=new RuntimeWorkspace(root,root.toString());
-            var generations=new JdbcCodeGenerationStore(jdbc,manager);var proposals=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
+            var generations=P4TestWiring.generations(jdbc,manager);var proposals=P4TestWiring.proposals(jdbc,manager,ApplicationBaselineFixture.create(jdbc));
             var changes=new CodeChangeService(runtime,null,ignored->"",generations,proposals);
             var task=tasks.create(new BoardTaskService.Draft("recovery","Recover source review","","ready","Goal","Criteria",UUID.randomUUID()));
             var conversation=UUID.randomUUID();var ref=new TaskRef(task.projectId(),task.id(),task.revision());
@@ -36,8 +36,8 @@ class BoardCodeProposalRecoveryTest {
             var json=JsonMapper.builder().build();
             var proposal=changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,snapshot.id(),json.writeValueAsString(Map.of("files",List.of(Map.of("path","frontend/Page.vue","content","<p>Recovered</p>\n")))),true);
             // Fresh services: no AiConversationRegistry is constructed or reconnected.
-            var recoveredChanges=new CodeChangeService(runtime,null,ignored->"",new JdbcCodeGenerationStore(jdbc,manager),new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc)));
-            var board=new BoardCodeProposalService(tasks,jdbc,runtime,recoveredChanges);
+            var recoveredChanges=new CodeChangeService(runtime,null,ignored->"",P4TestWiring.generations(jdbc,manager),P4TestWiring.proposals(jdbc,manager,ApplicationBaselineFixture.create(jdbc)));
+            var board=new BoardCodeProposalService(tasks,com.lh.eap.application.service.P4TestWiring.codeProposalStore(jdbc),runtime,recoveredChanges);
             var listing=board.list(task.id(),task.projectId());assertEquals(1,listing.items().size());assertFalse(listing.truncated());
             assertEquals("PROPOSED",board.get(task.id(),proposal.id(),task.projectId()).status());
             var action=new BoardCodeProposalService.Action(task.projectId(),task.revision(),true);
@@ -49,7 +49,7 @@ class BoardCodeProposalRecoveryTest {
             assertEquals(404,assertThrows(ResponseStatusException.class,()->board.get(other.id(),proposal.id(),other.projectId())).getStatusCode().value());
             assertThrows(ResponseStatusException.class,()->board.get(task.id(),proposal.id(),"another-project"));
             var otherRuntime=new RuntimeWorkspace(root.resolve("another"),root.toString());Files.createDirectory(otherRuntime.workspace());
-            var otherBoard=new BoardCodeProposalService(tasks,jdbc,otherRuntime,recoveredChanges);
+            var otherBoard=new BoardCodeProposalService(tasks,com.lh.eap.application.service.P4TestWiring.codeProposalStore(jdbc),otherRuntime,recoveredChanges);
             assertTrue(otherBoard.list(task.id(),task.projectId()).items().isEmpty());
             assertEquals(404,assertThrows(ResponseStatusException.class,()->otherBoard.get(task.id(),proposal.id(),task.projectId())).getStatusCode().value());
             // Read-only, stale and refused candidates remain independently reviewable.

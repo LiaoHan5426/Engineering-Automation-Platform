@@ -1,4 +1,6 @@
 package com.lh.eap.application.service;
+import com.lh.eap.core.CapabilityUsageQuery;
+import com.lh.eap.core.CliProgramStore;
 import com.lh.eap.core.LocalBinaries;
 import com.lh.eap.error.CommonErrors;
 import com.lh.eap.error.CliProgramErrors;
@@ -7,8 +9,6 @@ import com.lh.eap.common.SensitiveData;
 import com.lh.eap.domain.expert.ExpertGraph;
 import com.lh.eap.domain.model.CliOperation;
 import com.lh.eap.domain.model.CliProgram;
-import com.lh.eap.persistence.jdbc.CapabilityUsage;
-import com.lh.eap.persistence.jdbc.CliProgramMapper;
 import com.lh.eap.application.dto.CliOperationRequest;
 import com.lh.eap.application.dto.CliProgramRequest;
 import java.nio.file.Path;
@@ -20,10 +20,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CliProgramService {
-    private final CliProgramMapper mapper;
+    private final CliProgramStore mapper;
     private final CliChannels channels;
-    private final CapabilityUsage usage;
-    public CliProgramService(CliProgramMapper mapper, CliChannels channels, CapabilityUsage usage) {
+    private final CapabilityUsageQuery usage;
+    public CliProgramService(CliProgramStore mapper, CliChannels channels, CapabilityUsageQuery usage) {
         this.mapper = mapper; this.channels = channels; this.usage = usage;
     }
 

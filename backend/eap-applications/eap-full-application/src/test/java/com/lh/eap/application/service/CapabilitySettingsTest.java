@@ -3,21 +3,22 @@ package com.lh.eap.application.service;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import com.lh.eap.runtime.handler.SqlParseHandler;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.BadSqlGrammarException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.lh.eap.core.CapabilitySettingsStore;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class CapabilitySettingsTest {
-    private static final String QUERY = "SELECT capability,enabled,notes,updated_at FROM eap.capability_setting";
+    private static CapabilitySettings settings(CapabilitySettingsStore store) {
+        return new CapabilitySettings(store, null);
+    }
 
     static Stream<RuntimeException> queryFailures() {
         return Stream.of(new DataAccessResourceFailureException("fixture connection unavailable"),
@@ -28,9 +29,9 @@ class CapabilitySettingsTest {
     @ParameterizedTest
     @MethodSource("queryFailures")
     void queryFailureIsUnavailableRatherThanAnEmptyOptOutList(RuntimeException failure) {
-        var jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForList(QUERY)).thenThrow(failure);
-        var settings = new CapabilitySettings(jdbc, null);
+        var store = mock(CapabilitySettingsStore.class);
+        when(store.loadAll()).thenThrow(failure);
+        var settings = settings(store);
         assertUnavailable(settings::all);
         assertUnavailable(() -> settings.setting("sql.parse"));
         assertUnavailable(() -> settings.enabled("sql.parse"));
@@ -42,9 +43,9 @@ class CapabilitySettingsTest {
 
     @Test
     void successfulEmptyQueryKeepsTheDocumentedDefaultOn() {
-        var jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForList(QUERY)).thenReturn(List.of());
-        var settings = new CapabilitySettings(jdbc, null);
+        var store = mock(CapabilitySettingsStore.class);
+        when(store.loadAll()).thenReturn(List.of());
+        var settings = settings(store);
         assertTrue(settings.all().isEmpty());
         assertTrue(settings.enabled("sql.parse"));
         assertTrue(settings.disabled().isEmpty());
@@ -54,10 +55,10 @@ class CapabilitySettingsTest {
 
     @Test
     void storedSwitchesRemainAuthoritativeAndMissingRowsStillDefaultOn() {
-        var jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForList(QUERY)).thenReturn(List.of(Map.of("capability", "sql.parse", "enabled", false),
-                Map.of("capability", "git-status", "enabled", true)));
-        var settings = new CapabilitySettings(jdbc, null);
+        var store = mock(CapabilitySettingsStore.class);
+        when(store.loadAll()).thenReturn(List.of(new CapabilitySettingsStore.Row("sql.parse", false, null, null),
+                new CapabilitySettingsStore.Row("git-status", true, null, null)));
+        var settings = settings(store);
         assertFalse(settings.enabled("sql.parse"));
         assertTrue(settings.enabled("git-status"));
         assertTrue(settings.enabled("git-diff"));
@@ -71,18 +72,18 @@ class CapabilitySettingsTest {
 
     @Test
     void nullQueryResultIsNotProofOfAnEmptySettingsTable() {
-        var jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForList(QUERY)).thenReturn(null);
-        assertUnavailable(() -> new CapabilitySettings(jdbc, null).enabled("sql.parse"));
+        var store = mock(CapabilitySettingsStore.class);
+        when(store.loadAll()).thenReturn(null);
+        assertUnavailable(() -> settings(store).enabled("sql.parse"));
     }
 
     @Test
     void successfulReadDoesNotPermitAStaleAllowDuringAnOutage() {
-        var jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForList(QUERY)).thenReturn(List.of())
+        var store = mock(CapabilitySettingsStore.class);
+        when(store.loadAll()).thenReturn(List.of())
                 .thenThrow(new DataAccessResourceFailureException("fixture outage"))
-                .thenReturn(List.of(Map.of("capability", "sql.parse", "enabled", false)));
-        var settings = new CapabilitySettings(jdbc, null);
+                .thenReturn(List.of(new CapabilitySettingsStore.Row("sql.parse", false, null, null)));
+        var settings = settings(store);
         assertTrue(settings.enabled("sql.parse"));
         assertUnavailable(() -> settings.enabled("sql.parse"));
         assertFalse(settings.enabled("sql.parse"));

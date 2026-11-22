@@ -9,7 +9,7 @@ import com.lh.eap.runtime.handler.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
+import com.lh.eap.core.ExpertDefinitionManagementStore;
 
 class ExpertKnowledgeContextServiceTest {
     @Test void queryIsBoundedWithoutSilentlyTruncatingTheQuestion() {
@@ -27,7 +27,7 @@ class ExpertKnowledgeContextServiceTest {
             var f = new Fixture();
             when(f.knowledge.searchAuthorized(anyString(), anyInt(), anyList())).thenAnswer(call -> {
                 if (change.equals("grants")) when(f.experts.knowledgeGrants("expert-a")).thenReturn(List.of());
-                if (change.equals("revision")) when(f.definitions.lockForKnowledge("expert-a")).thenReturn(Optional.of(f.row(true, 3, "expert-a")));
+                if (change.equals("revision")) when(f.definitions.lockDefinition("expert-a")).thenReturn(Optional.of(f.row(true, 3, "expert-a")));
                 if (change.equals("capability")) when(f.settings.enabled("knowledge.search")).thenReturn(false);
                 return List.of();
             });
@@ -46,7 +46,7 @@ class ExpertKnowledgeContextServiceTest {
         assertEquals(200, result.references().getFirst().knowledgeBase().length());
     }
     static class Fixture {
-        final ExpertDefinitionMapper definitions = mock(ExpertDefinitionMapper.class);
+        final ExpertDefinitionManagementStore definitions = mock(ExpertDefinitionManagementStore.class);
         final ExpertDefinitionService experts = mock(ExpertDefinitionService.class);
         final KnowledgeRepository knowledge = mock(KnowledgeRepository.class);
         final com.lh.eap.application.service.CapabilitySettings settings = mock(com.lh.eap.application.service.CapabilitySettings.class);
@@ -54,12 +54,12 @@ class ExpertKnowledgeContextServiceTest {
         final KnowledgeExpertRef ref = new KnowledgeExpertRef("expert-a", 2);
         final ExpertKnowledgeContextService service = new ExpertKnowledgeContextService(new com.lh.eap.application.service.WorkflowExpertKnowledgeAccess(definitions, experts),
                 new CapabilityHandlerRegistry(List.of(new KnowledgeSearchHandler(knowledge)), settings));
-        Map<String,Object> row(boolean enabled, long revision, String manifestId) {
+        ExpertDefinitionManagementStore.LockedDefinition row(boolean enabled, long revision, String manifestId) {
             var manifest = new ExpertManifest("v1", "Expert", manifestId, "A", List.of(base.toString()), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
-            return Map.of("id", "expert-a", "manifest", ExpertManifest.serialize(manifest), "enabled", enabled, "revision", revision);
+            return new ExpertDefinitionManagementStore.LockedDefinition("expert-a", ExpertManifest.serialize(manifest), enabled, revision);
         }
         Fixture() {
-            when(definitions.lockForKnowledge("expert-a")).thenReturn(Optional.of(row(true, 2, "expert-a")));
+            when(definitions.lockDefinition("expert-a")).thenReturn(Optional.of(row(true, 2, "expert-a")));
             when(experts.knowledgeGrants("expert-a")).thenReturn(List.of(base));
             when(settings.enabled("knowledge.search")).thenReturn(true);
         }
@@ -68,12 +68,12 @@ class ExpertKnowledgeContextServiceTest {
         for (String reason : List.of("NOT_FOUND", "STALE", "DISABLED", "NOT_AUTHORIZED", "CAPABILITY_UNAVAILABLE", "IDENTITY_MISMATCH")) {
             var f = new Fixture();
             switch (reason) {
-                case "NOT_FOUND" -> when(f.definitions.lockForKnowledge("expert-a")).thenReturn(Optional.empty());
-                case "STALE" -> when(f.definitions.lockForKnowledge("expert-a")).thenReturn(Optional.of(f.row(true, 3, "expert-a")));
-                case "DISABLED" -> when(f.definitions.lockForKnowledge("expert-a")).thenReturn(Optional.of(f.row(false, 2, "expert-a")));
+                case "NOT_FOUND" -> when(f.definitions.lockDefinition("expert-a")).thenReturn(Optional.empty());
+                case "STALE" -> when(f.definitions.lockDefinition("expert-a")).thenReturn(Optional.of(f.row(true, 3, "expert-a")));
+                case "DISABLED" -> when(f.definitions.lockDefinition("expert-a")).thenReturn(Optional.of(f.row(false, 2, "expert-a")));
                 case "NOT_AUTHORIZED" -> when(f.experts.knowledgeGrants("expert-a")).thenReturn(List.of(UUID.randomUUID()));
                 case "CAPABILITY_UNAVAILABLE" -> when(f.settings.enabled("knowledge.search")).thenReturn(false);
-                case "IDENTITY_MISMATCH" -> when(f.definitions.lockForKnowledge("expert-a")).thenReturn(Optional.of(f.row(true, 2, "expert-b")));
+                case "IDENTITY_MISMATCH" -> when(f.definitions.lockDefinition("expert-a")).thenReturn(Optional.of(f.row(true, 2, "expert-b")));
             }
             var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> f.service.resolve(f.ref, "marker"), reason);
             assertEquals("EXPERT_CONTEXT_" + (reason.equals("IDENTITY_MISMATCH") ? "STALE" : reason), error.getReason());
@@ -89,7 +89,7 @@ class ExpertKnowledgeContextServiceTest {
         when(jdbc.queryForList(anyString(), eq("expert-a"))).thenReturn(List.of(Map.of("id", "expert-a", "manifest", ExpertManifest.serialize(manifest), "enabled", true, "revision", 2L)));
         when(grants.knowledgeGrants("expert-a")).thenReturn(List.of(allowed, undeclared));
         when(knowledge.searchAuthorized(anyString(), eq(5), eq(List.of(allowed)))).thenReturn(List.of(Map.of("id", UUID.randomUUID(), "source", "source.md", "knowledgeBase", "A", "excerpt", "private-a", "retrievalMode", "local-keyword")));
-        var service = new ExpertKnowledgeContextService(new com.lh.eap.application.service.WorkflowExpertKnowledgeAccess(new ExpertDefinitionMapper(jdbc), grants),
+        var service = new ExpertKnowledgeContextService(new com.lh.eap.application.service.WorkflowExpertKnowledgeAccess(new com.lh.eap.persistence.jdbc.ExpertDefinitionMapper(jdbc), grants),
                 new CapabilityHandlerRegistry(List.of(new KnowledgeSearchHandler(knowledge))));
         var result = service.resolve(new KnowledgeExpertRef("expert-a", 2), "marker");
         assertEquals("ready", result.status());

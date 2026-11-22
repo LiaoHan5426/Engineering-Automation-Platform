@@ -163,8 +163,10 @@ class ExpertScopedCapabilityTest {
     @SuppressWarnings("unchecked")
     @Test void theCatalogNeverReportsAnExpertScopedCapabilityAsGloballyRunnable() {
         var sessions = new McpSessionRegistry();
+        var settings = mock(CapabilitySettings.class);
+        when(settings.all()).thenReturn(Map.of());
         var catalog = new CapabilityCatalog(registryWith(new FakeMcpToolHandler(sessions)),
-                mock(JdbcTemplate.class), mcpCatalog(serverRegistry(true))).catalog();
+                mcpCatalog(serverRegistry(true)), new com.lh.eap.persistence.jdbc.CapabilityUsage(mock(JdbcTemplate.class)), settings).catalog();
         var items = (List<Map<String, Object>>) catalog.get("items");
         var scoped = items.stream().filter(item -> FakeMcpToolHandler.CAPABILITY.equals(item.get("name")))
                 .findFirst().orElseThrow();
@@ -195,8 +197,8 @@ class ExpertScopedCapabilityTest {
                 manifest(List.of(FakeMcpToolHandler.CAPABILITY), "sql.parse", FakeMcpToolHandler.CAPABILITY)));
         row.put("builtin", false);
         when(jdbc.queryForList(anyString(), eq(EXPERT))).thenReturn(List.of(row));
-        var service = new ExpertDefinitionService(jdbc, new RulePackService(jdbc), servers,
-                new CapabilitySettings(jdbc, new com.lh.eap.persistence.jdbc.CapabilityUsage(jdbc)),
+        var service = new ExpertDefinitionService(new com.lh.eap.persistence.jdbc.JdbcExpertDefinitionStore(jdbc), new RulePackService(jdbc), servers,
+                com.lh.eap.application.service.P4TestWiring.settings(jdbc, new com.lh.eap.persistence.jdbc.CapabilityUsage(jdbc)),
                 new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", mock(com.lh.eap.core.ExpertAnalysisPolicy.class)))));
 
         service.activate(EXPERT, true);

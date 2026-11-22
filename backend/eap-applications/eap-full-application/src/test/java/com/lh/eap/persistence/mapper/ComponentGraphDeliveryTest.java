@@ -21,8 +21,8 @@ class ComponentGraphDeliveryTest {
    CurrentContractTestSchema.migrate(directory,schema);var ds=ToolUnknownReviewFixture.scopedDataSource(schema);var jdbc=new JdbcTemplate(ds);var manager=new DataSourceTransactionManager(ds);
    var root=Files.createDirectory(directory.resolve("workspace")).toRealPath();Files.createDirectory(root.resolve("frontend"));
    String entry="frontend/Page.vue",child="frontend/Summary.vue";Files.writeString(root.resolve(entry),"<template><p>Before</p></template>\n");Files.writeString(root.resolve(child),"<template><span>Before child</span></template>\n");
-   var task=new BoardTaskService(jdbc).create(new BoardTaskService.Draft("graph","Graph task","","ready","Complete page","Both files checked",UUID.randomUUID()));var ref=new TaskRef(task.projectId(),task.id(),task.revision());
-   var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",new JdbcCodeGenerationStore(jdbc,manager),new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc)));UUID conversation=UUID.randomUUID();
+   var task=com.lh.eap.application.service.P4TestWiring.tasks(jdbc).create(new BoardTaskService.Draft("graph","Graph task","","ready","Complete page","Both files checked",UUID.randomUUID()));var ref=new TaskRef(task.projectId(),task.id(),task.revision());
+   var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",P4TestWiring.generations(jdbc,manager),P4TestWiring.proposals(jdbc,manager,ApplicationBaselineFixture.create(jdbc)));UUID conversation=UUID.randomUUID();
    var snapshot=changes.prepareGeneration(RuntimeWorkspace.OPERATOR_LABEL,conversation,entry,"","",ref,List.of(child));
    assertEquals(2,snapshot.sources().size());assertEquals(1,snapshot.reference().companionFiles().size());
    assertEquals("37",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history ORDER BY installed_rank DESC LIMIT 1",String.class));
@@ -41,18 +41,17 @@ class ComponentGraphDeliveryTest {
    var result=changes.apply(RuntimeWorkspace.OPERATOR_LABEL,conversation,accepted.id(),true);assertEquals(List.of(entry,child),result.written());
    assertEquals(page,Files.readString(root.resolve(entry)));assertEquals(component,Files.readString(root.resolve(child)));
    assertEquals(result,changes.apply(RuntimeWorkspace.OPERATOR_LABEL,conversation,accepted.id(),true));
-   var recovered=new BoardCodeProposalService(new BoardTaskService(jdbc),jdbc,new RuntimeWorkspace(root,root.toString()),changes);
+   var recovered=new BoardCodeProposalService(com.lh.eap.application.service.P4TestWiring.tasks(jdbc),com.lh.eap.application.service.P4TestWiring.codeProposalStore(jdbc),new RuntimeWorkspace(root,root.toString()),changes);
    assertEquals(2,recovered.get(task.id(),accepted.id(),task.projectId()).proposal().files().size());
    assertTrue(recovered.list(task.id(),task.projectId()).items().stream().anyMatch(item->item.id().equals(accepted.id())&&item.fileCount()==2));
    // A database result interruption after all filesystem replacements must retain UNKNOWN,
    // leave the actual bytes for human inspection and block another graph application.
-   var failing=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc)) {
-    @Override public void finish(String principal,UUID chat,UUID id,String status,CodeChangeService.Applied value,String reason) {
-     if(status.equals("APPLIED"))throw new IllegalStateException("controlled result write interruption");
-     super.finish(principal,chat,id,status,value,reason);
-    }
-   };
-   var interrupted=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",new JdbcCodeGenerationStore(jdbc,manager),failing);
+   var delegate=P4TestWiring.proposals(jdbc,manager,ApplicationBaselineFixture.create(jdbc));
+   var failing=org.mockito.Mockito.mock(CodeProposalStore.class,org.mockito.AdditionalAnswers.delegatesTo(delegate));
+   org.mockito.Mockito.doThrow(new IllegalStateException("controlled result write interruption")).when(failing)
+       .finish(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),
+           org.mockito.ArgumentMatchers.eq("APPLIED"),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyString());
+   var interrupted=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",P4TestWiring.generations(jdbc,manager),failing);
    var next=interrupted.prepareGeneration(RuntimeWorkspace.OPERATOR_LABEL,conversation,entry,"","",ref,List.of(child));
    String changedAnswer=answer.replace("After child","Changed child");
    var unknown=interrupted.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,next.id(),changedAnswer,true);

@@ -55,7 +55,7 @@ class ExpertAgentContinuationPersistenceTest extends CodeProposalPersistenceFixt
         policies = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(SqlExpertAgentService.BINDING,
                 "SQL Agent", new SqlExpertAnalysisPolicy(rules, mock(SqlExpertService.class)), "agent", SqlExpertAgentService.TOOLS,
                 Set.of("sql.parse"))));
-        definitions = proxy(new ExpertDefinitionService(jdbc, rules, () -> Set.of(), mock(CapabilitySettings.class), policies));
+        definitions = proxy(new ExpertDefinitionService(new com.lh.eap.persistence.jdbc.JdbcExpertDefinitionStore(jdbc), rules, () -> Set.of(), mock(CapabilitySettings.class), policies));
         var mapper = new ExpertDefinitionMapper(jdbc);
         var manifest = new ExpertManifest("eap/v2", "Expert", expert, "Fixture", List.of(), List.of(), List.of(), List.of(),
                 List.of("database.credentials.never-expose"), List.of(), List.of(), SqlExpertAgentService.BINDING,
@@ -69,7 +69,7 @@ class ExpertAgentContinuationPersistenceTest extends CodeProposalPersistenceFixt
     private void reconstruct() {
         journal = proxy(new JdbcExpertAgentJournal(jdbc, new TaskRepository(jdbc), access));
         changes = service(store());
-        approvals = new ExpertAgentApprovalService(changes, journal, access, jdbc, manager);
+        approvals = new ExpertAgentApprovalService(changes, journal, access, new com.lh.eap.persistence.jdbc.JdbcExpertApprovalStore(jdbc), manager);
     }
     @AfterEach void removeFixtures() {
         schedulers.forEach(SqlExpertAgentScheduler::close);
@@ -193,7 +193,7 @@ class ExpertAgentContinuationPersistenceTest extends CodeProposalPersistenceFixt
             fixture.policies = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(SqlExpertAgentService.BINDING,
                     "SQL Agent", new SqlExpertAnalysisPolicy(rules, mock(SqlExpertService.class)), "agent", SqlExpertAgentService.TOOLS,
                     Set.of("sql.parse"))));
-            fixture.definitions = fixture.proxy(new ExpertDefinitionService(fixture.jdbc, rules, () -> Set.of(), mock(CapabilitySettings.class), fixture.policies));
+            fixture.definitions = fixture.proxy(new ExpertDefinitionService(new com.lh.eap.persistence.jdbc.JdbcExpertDefinitionStore(fixture.jdbc), rules, () -> Set.of(), mock(CapabilitySettings.class), fixture.policies));
             fixture.access = fixture.proxy(new WorkflowExpertAgentAccess(new ExpertDefinitionMapper(fixture.jdbc), fixture.definitions, new TaskRepository(fixture.jdbc)));
             fixture.root = java.nio.file.Path.of(args[2]); fixture.reconstruct();
             var service = fixture.agent(prompt -> {

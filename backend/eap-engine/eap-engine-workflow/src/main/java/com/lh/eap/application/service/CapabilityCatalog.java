@@ -1,9 +1,9 @@
 package com.lh.eap.application.service;
+import com.lh.eap.core.CapabilityCatalogQuery;
+import com.lh.eap.core.CapabilityUsageQuery;
 import com.lh.eap.core.McpCatalogQuery;
 import com.lh.eap.domain.model.CliOperation;
-import com.lh.eap.persistence.jdbc.CliProgramMapper;
 
-import com.lh.eap.persistence.jdbc.CapabilityUsage;
 import com.lh.eap.domain.model.CapabilityAvailability;
 import com.lh.eap.domain.model.CapabilityDescriptor;
 import com.lh.eap.domain.model.CapabilityKind;
@@ -13,10 +13,8 @@ import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import com.lh.eap.domain.expert.ExpertGraph;
 
 import java.util.*;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
 
 /**
  * The capability catalog.
@@ -40,49 +38,38 @@ import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
 @Service
 public class CapabilityCatalog {
     private final CapabilityHandlerRegistry handlers;
-    private final JdbcTemplate jdbc;
     private final McpCatalogQuery mcpCatalog;
     private final CliChannels cliChannels;
     private final CapabilitySettings settings;
-    private final CapabilityUsage usage;
-    private CliProgramMapper cliPrograms;
-    private CliProgramService cliProgramService;
+    private final CapabilityUsageQuery usage;
+    private final CapabilityCatalogQuery catalogQuery;
+    private final CliProgramService cliProgramService;
 
-    @Autowired
-    public void setCliPrograms(CliProgramMapper mapper, CliProgramService service) {
-        this.cliPrograms = mapper; this.cliProgramService = service;
+    /** Convenience for compositions with no MCP or CLI registry: empty views and default CLI channels. */
+    public CapabilityCatalog(CapabilityHandlerRegistry handlers, CapabilityUsageQuery usage, CapabilitySettings settings) {
+        this(handlers, McpCatalogQuery.empty(), CliChannels.defaults(), usage, settings,
+                CapabilityCatalogQuery.empty(), null);
     }
 
-    /** Convenience for compositions/tests with no MCP module: an honest empty MCP catalog. */
-    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc) {
-        this(handlers, jdbc, McpCatalogQuery.empty(), new CliChannels(new JdbcCliChannelStore(jdbc)),
-                new CapabilityUsage(jdbc));
-    }
-
-    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpCatalogQuery mcpCatalog) {
-        this(handlers, jdbc, mcpCatalog, new CliChannels(new JdbcCliChannelStore(jdbc)), new CapabilityUsage(jdbc));
-    }
-
-    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpCatalogQuery mcpCatalog,
-                      CliChannels cliChannels, CapabilityUsage usage) {
-        this.handlers = handlers;
-        this.jdbc = jdbc;
-        this.mcpCatalog = mcpCatalog;
-        this.cliChannels = cliChannels;
-        this.usage = usage;
-        this.settings = new CapabilitySettings(jdbc, usage);
+    /** Convenience for compositions that supply an MCP catalog but no CLI registry. */
+    public CapabilityCatalog(CapabilityHandlerRegistry handlers, McpCatalogQuery mcpCatalog,
+                             CapabilityUsageQuery usage, CapabilitySettings settings) {
+        this(handlers, mcpCatalog, CliChannels.defaults(), usage, settings,
+                CapabilityCatalogQuery.empty(), null);
     }
 
     /** Production uses the configured beans, including custom stores and transaction proxies. */
     @Autowired
-    public CapabilityCatalog(CapabilityHandlerRegistry handlers, JdbcTemplate jdbc, McpCatalogQuery mcpCatalog,
-            CliChannels cliChannels, CapabilityUsage usage, CapabilitySettings settings) {
+    public CapabilityCatalog(CapabilityHandlerRegistry handlers, McpCatalogQuery mcpCatalog,
+            CliChannels cliChannels, CapabilityUsageQuery usage, CapabilitySettings settings,
+            CapabilityCatalogQuery catalogQuery, CliProgramService cliProgramService) {
         this.handlers = handlers;
-        this.jdbc = jdbc;
         this.mcpCatalog = mcpCatalog;
         this.cliChannels = cliChannels;
         this.usage = usage;
         this.settings = settings;
+        this.catalogQuery = catalogQuery;
+        this.cliProgramService = cliProgramService;
     }
 
     public Map<String, Object> catalog() {
@@ -135,7 +122,7 @@ public class CapabilityCatalog {
 
         var registered = handlers.names();
         var declared = new TreeSet<>(ExpertGraph.CAPABILITIES);
-        if (cliPrograms != null) cliPrograms.operations().forEach(op -> declared.add(op.capabilityId()));
+        if (catalogQuery != null) catalogQuery.operations().forEach(op -> declared.add(op.capabilityId()));
         var unregistered = new TreeSet<>(declared);
         unregistered.removeAll(registered);
         var undeclared = new TreeSet<>(registered);
@@ -189,7 +176,7 @@ public class CapabilityCatalog {
     private Map<String, Object> item(CapabilityDescriptor descriptor, CapabilityScope scope,
                                      CapabilityAvailability handlerAvailability,
                                      Map<String, CapabilitySettings.Setting> storedSettings,
-                                     Map<String, List<String>> grants, CapabilityUsage.Usage snapshot) {
+                                     Map<String, List<String>> grants, CapabilityUsageQuery.Usage snapshot) {
         var name = descriptor.name();
         var setting = storedSettings.getOrDefault(name, new CapabilitySettings.Setting(name, true, "", ""));
         var enabled = setting.enabled();
@@ -221,8 +208,8 @@ public class CapabilityCatalog {
         // The channel is what a CLI capability's management page edits: which binary is in effect, where
         // it resolved to, and whether that value is the shipped default or an operator override.
         if (descriptor.hasBinary()) {
-            var operation = cliPrograms == null ? Optional.<CliOperation>empty()
-                    : cliPrograms.operations().stream().filter(op -> op.capabilityId().equals(name)).findFirst();
+            var operation = catalogQuery == null ? Optional.<CliOperation>empty()
+                    : catalogQuery.operations().stream().filter(op -> op.capabilityId().equals(name)).findFirst();
             var programId = operation.map(CliOperation::programId).orElse(CliChannels.programId(name));
             entry.put("programId", programId);
             entry.put("builtin", operation.map(CliOperation::builtin).orElse(true));
@@ -259,7 +246,7 @@ public class CapabilityCatalog {
      */
     private Map<String, Object> declaredMcpItem(String capability, String serverId, Map<String, Object> server,
                                                 Map<String, CapabilitySettings.Setting> storedSettings,
-                                                Map<String, List<String>> grants, CapabilityUsage.Usage snapshot) {
+                                                Map<String, List<String>> grants, CapabilityUsageQuery.Usage snapshot) {
         var setting = storedSettings.getOrDefault(capability, new CapabilitySettings.Setting(capability, true, "", ""));
         var enabled = setting.enabled();
         var entry = new LinkedHashMap<String, Object>();

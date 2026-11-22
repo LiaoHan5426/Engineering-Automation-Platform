@@ -1,7 +1,5 @@
 package com.lh.eap.ai;
-import com.lh.eap.delivery.JdbcCodeGenerationStore;
 import com.lh.eap.delivery.CodeChangeService;
-import com.lh.eap.delivery.JdbcCodeProposalStore;
 import com.lh.eap.delivery.CodeGenerationStore;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,7 +17,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
     UUID chatId;
     final String project = "prebound-test-" + UUID.randomUUID();
     @Test void modelConsumesCommittedTaskSnapshotAndRealFileApplyRetainsBinding() throws Exception {
-        var tasks = new BoardTaskService(jdbc);
+        var tasks = com.lh.eap.application.service.P4TestWiring.tasks(jdbc);
         var task = tasks.create(new BoardTaskService.Draft(project, "Saved task title", "", "ready", "Saved goal", "Saved criteria", UUID.randomUUID()));
         taskId = task.id();
         java.nio.file.Files.writeString(root.resolve("Page.vue"), "original");
@@ -48,7 +46,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
         assertEquals(applied, app.apply(id, proposal.id(), "{\"confirmed\":true}"));
     }
     CodeChangeService.Proposal boundProposal() {
-        var task = new BoardTaskService(jdbc).create(new BoardTaskService.Draft(project, "Bound task", "", "ready", "Goal", "Criteria", UUID.randomUUID()));
+        var task = com.lh.eap.application.service.P4TestWiring.tasks(jdbc).create(new BoardTaskService.Draft(project, "Bound task", "", "ready", "Goal", "Criteria", UUID.randomUUID()));
         taskId = task.id();
         var service = service(store());
         var snapshot = service.prepareGeneration(principal, conversation, "Page.vue", "", "", new com.lh.eap.api.TaskRef(project, taskId, task.revision()));
@@ -57,14 +55,15 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
     @Test void claimHoldingTaskLockMakesWaitingEditorObserveCommittedIntent() throws Exception {
         var proposal = boundProposal();
         var taskLocked = new java.util.concurrent.CountDownLatch(1); var release = new java.util.concurrent.CountDownLatch(1);
-        var tasks = new BoardTaskService(jdbc);
+        var tasks = com.lh.eap.application.service.P4TestWiring.tasks(jdbc);
         var binding = new com.lh.eap.application.service.BoardCodeTaskBinding(tasks, new com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore(jdbc)) {
             @Override public void validateLocked(CodeGenerationStore.TaskSnapshot expected) {
                 super.validateLocked(expected); taskLocked.countDown();
                 try { assertTrue(release.await(5, java.util.concurrent.TimeUnit.SECONDS)); } catch (InterruptedException e) { throw new RuntimeException(e); }
             }
         };
-        var claimant = new JdbcCodeProposalStore(jdbc, manager, new JdbcCodeGenerationStore(jdbc, manager), binding, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
+        var claimant = com.lh.eap.application.service.P4TestWiring.proposals(jdbc, manager,
+                com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc), binding);
         try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
             var claim = pool.submit(() -> claimant.claim(principal, conversation, proposal.id()));
             assertTrue(taskLocked.await(5, java.util.concurrent.TimeUnit.SECONDS));
@@ -82,7 +81,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
         assertEquals(1, tasks.list(project).getFirst().revision());
     }
     @Test void committedClaimAndUnknownBlockTaskEditingAndProjectListProjection() {
-        var proposal = boundProposal(); var tasks = new BoardTaskService(jdbc);
+        var proposal = boundProposal(); var tasks = com.lh.eap.application.service.P4TestWiring.tasks(jdbc);
         assertTrue(store().claim(principal, conversation, proposal.id()));
         for (String status : List.of("APPLYING", "UNKNOWN")) {
             assertTrue(tasks.list(project).getFirst().executionActive(), status);
@@ -97,7 +96,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
         var locked = new java.util.concurrent.CountDownLatch(1); var release = new java.util.concurrent.CountDownLatch(1);
         try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
             var editor = pool.submit(() -> new TransactionTemplate(manager).execute(tx -> {
-                var task = new BoardTaskService(jdbc).update(taskId, new BoardTaskService.Update(project, 1, null, null, null, "Changed goal", null));
+                var task = com.lh.eap.application.service.P4TestWiring.tasks(jdbc).update(taskId, new BoardTaskService.Update(project, 1, null, null, null, "Changed goal", null));
                 locked.countDown();
                 try { assertTrue(release.await(5, java.util.concurrent.TimeUnit.SECONDS)); } catch (InterruptedException e) { throw new RuntimeException(e); }
                 return task;
@@ -129,7 +128,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
         assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM eap.code_generation WHERE principal=?", Integer.class, principal));
     }
     @Test void savedPrototypeFullInputIsCapturedAndCallerCannotSilentlyOverrideIt() throws Exception {
-        var tasks = new BoardTaskService(jdbc);
+        var tasks = com.lh.eap.application.service.P4TestWiring.tasks(jdbc);
         var versions = new com.lh.eap.application.service.PrototypeVersionService(new com.lh.eap.persistence.jdbc.JdbcPrototypeVersionStore(jdbc),
                 new com.lh.eap.persistence.jdbc.JdbcPrototypeDeliveryStore(jdbc));
         var version = versions.save(java.util.UUID.randomUUID(),"builder-alpha", "Prototype title", com.lh.eap.application.service.SemanticPrototypeFixture.body( "Prototype body"), List.of("Saved acceptance"));
@@ -143,7 +142,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
             var captured = changes.prepareGeneration(principal, conversation, "Page.vue", version.id().toString(), "", ref);
             assertEquals(versions.find(version.id()), captured.taskSnapshot().prototype());
             assertEquals(version.contentHash(), captured.prototypeContentHash());
-            assertEquals(captured, new JdbcCodeGenerationStore(jdbc, manager).find(captured.id()).orElseThrow());
+            assertEquals(captured, com.lh.eap.application.service.P4TestWiring.generations(jdbc, manager).find(captured.id()).orElseThrow());
             var fixture = new AiChatApplicationTest(); fixture.root = root;
             var app = fixture.app(prompt -> {
                 assertTrue(prompt.getUserMessage().getText().contains("Prototype body"));

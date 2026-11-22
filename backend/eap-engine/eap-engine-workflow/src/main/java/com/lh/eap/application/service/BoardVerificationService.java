@@ -1,6 +1,6 @@
 package com.lh.eap.application.service;
 import com.lh.eap.common.SensitiveData;
-import com.lh.eap.persistence.jdbc.StateBindings;
+import com.lh.eap.core.BoardVerificationStore;
 import com.lh.eap.error.BoardErrors;
 import com.lh.eap.error.BoardVerificationErrors;
 import com.lh.eap.error.ToolErrors;
@@ -17,7 +17,6 @@ import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -49,7 +48,7 @@ public class BoardVerificationService {
     }
     public record Page(Record record, boolean prepareAllowed, String reason) {}
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private final JdbcTemplate jdbc;
+    private final BoardVerificationStore store;
     private final BoardTaskService tasks;
     private final MissionExecutionStore executions;
     private final MissionGitExecutionService git;
@@ -61,17 +60,17 @@ public class BoardVerificationService {
     private final Executor dispatcher;
     private ExecutorService ownedDispatcher;
     @Autowired
-    public BoardVerificationService(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git,
+    public BoardVerificationService(BoardVerificationStore store, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git,
                                     CapabilityRegistry registry, CapabilitySettings settings, BoardVerificationPlanSupport plans,
                                     @Qualifier("boardVerificationProcessExecutor") ProcessExecutor process, PlatformTransactionManager manager) {
-        this(jdbc, tasks, executions, git, registry, settings, plans, process, manager,
+        this(store, tasks, executions, git, registry, settings, plans, process, manager,
             new ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(16), Thread.ofPlatform().daemon().name("board-verify-", 0).factory(), new ThreadPoolExecutor.AbortPolicy()));
         ownedDispatcher = (ExecutorService) dispatcher;
     }
-    BoardVerificationService(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git,
+    BoardVerificationService(BoardVerificationStore store, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git,
                              CapabilityRegistry registry, CapabilitySettings settings, BoardVerificationPlanSupport plans,
                              ProcessExecutor process, PlatformTransactionManager manager, Executor dispatcher) {
-        this.jdbc=jdbc; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.settings=settings;
+        this.store=store; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.settings=settings;
         this.plans=plans; this.process=process; this.transaction=new TransactionTemplate(manager); this.transaction.setTimeout(90); this.dispatcher=dispatcher;
         // An enclosing failed HTTP request must not roll back an unconfirmed process identity.
         this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -114,7 +113,7 @@ public class BoardVerificationService {
             var plan = plans.prepare(Path.of(request.workspacePath()), capability());
             if (!plan.planHash().equals(request.planHash())) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_PLAN_STALE.code());
             var queued = new Record(UUID.randomUUID(), BoardVerificationStatus.QUEUED.wire(), "", plan, List.of(), null, Instant.now(), null);
-            if (jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=?::jsonb WHERE task_id=? AND execution_id=? AND verification_snapshot IS NULL", JSON.writeValueAsString(queued), taskId, executionId) != 1) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_REQUEST_CONFLICT.code());
+            if (!store.saveIfAbsent(JSON.writeValueAsString(queued), taskId, executionId)) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_REQUEST_CONFLICT.code());
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override public void afterCommit() { dispatch(taskId, executionId); }
             });
@@ -130,10 +129,10 @@ public class BoardVerificationService {
                 if (!BoardVerificationErrors.BOARD_VERIFICATION_PROCESS_UNKNOWN.code().equals(failure.getReason())) throw failure;
                 // Keep the task/workspace locks until this identity commits. No plan was obtained.
                 var unknown = new Record(UUID.randomUUID(), BoardVerificationStatus.UNKNOWN.wire(), failure.getReason(), null, List.of(), null, started, null, workspace);
-                if (jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=?::jsonb WHERE task_id=? AND execution_id=? AND verification_snapshot IS NULL", JSON.writeValueAsString(unknown), taskId, executionId) != 1) {
+                if (!store.saveIfAbsent(JSON.writeValueAsString(unknown), taskId, executionId)) {
                     // Delivery reuses a completed verification's identity/interlock, retaining all
                     // original plan/check evidence. A new unconfirmed read invalidates eligibility.
-                    if (jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=jsonb_set(jsonb_set(jsonb_set(verification_snapshot,'{status}','\"UNKNOWN\"'::jsonb),'{reason}','\"BOARD_DELIVERY_PROCESS_UNKNOWN\"'::jsonb),'{finishedAt}','null'::jsonb) WHERE task_id=? AND execution_id=? AND verification_snapshot->>'status'='PASSED'", taskId, executionId) != 1) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_REQUEST_CONFLICT.code());
+                    if (!store.markPassedUnknown(taskId, executionId, "BOARD_DELIVERY_PROCESS_UNKNOWN")) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_REQUEST_CONFLICT.code());
                 }
                 return new Observation<T>(null, failure);
             }
@@ -203,26 +202,22 @@ public class BoardVerificationService {
     }
     private boolean save(UUID taskId, UUID executionId, Record record, String expected) {
         if (!Set.of(BoardVerificationStatus.QUEUED.wire(), BoardVerificationStatus.RUNNING.wire()).contains(expected)) throw new IllegalArgumentException("Invalid verification transition");
-        return jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=?::jsonb WHERE task_id=? AND execution_id=? AND verification_snapshot->>'status'=?", JSON.writeValueAsString(record), taskId, executionId, expected) == 1;
+        return store.saveIfStatus(JSON.writeValueAsString(record), taskId, executionId, expected);
     }
     private static Record finish(Record current, String status, String reason, BoardVerificationSource.Source after) {
         return new Record(current.id(), status, reason, current.plan(), current.checks(), after, current.startedAt(), status.equals(BoardVerificationStatus.UNKNOWN.wire()) ? null : Instant.now());
     }
     private static String clip(String value) { return value.length() <= 16384 ? value : value.substring(0, 16384); }
     private void markUnknown(UUID taskId, UUID executionId, String reason) {
-        jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=jsonb_set(jsonb_set(verification_snapshot,'{status}',to_jsonb(?::text)),'{reason}',to_jsonb(?::text)) WHERE task_id=? AND execution_id=? AND verification_snapshot->>'status' = ANY(?::text[])",
-                BoardVerificationStatus.UNKNOWN.wire(), reason, taskId, executionId, StateBindings.VERIFICATION_ACTIVE);
+        store.markUnknown(taskId, executionId, reason);
     }
     public void markRestartUnknown() {
-        jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=jsonb_set(jsonb_set(verification_snapshot,'{status}',to_jsonb(?::text)),'{reason}',to_jsonb(?::text)) WHERE verification_snapshot->>'status' = ANY(?::text[])",
-                BoardVerificationStatus.UNKNOWN.wire(), BoardVerificationErrors.BOARD_VERIFICATION_RESTART_UNKNOWN.code(), StateBindings.VERIFICATION_ACTIVE);
+        store.markRestartUnknown(BoardVerificationErrors.BOARD_VERIFICATION_RESTART_UNKNOWN.code());
     }
     private Record read(UUID taskId, UUID executionId) {
-        var rows = jdbc.query("SELECT verification_snapshot FROM eap.board_task_run WHERE task_id=? AND execution_id=?", (rs, row) -> {
-            var text = rs.getString(1); return text == null ? Optional.<Record>empty() : Optional.of(JSON.readValue(text, Record.class));
-        }, taskId, executionId);
-        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, BoardErrors.BOARD_RUN_NOT_FOUND.code());
-        return rows.getFirst().orElse(null);
+        var row = store.findSnapshot(taskId, executionId);
+        if (row.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, BoardErrors.BOARD_RUN_NOT_FOUND.code());
+        return row.get().json() == null ? null : JSON.readValue(row.get().json(), Record.class);
     }
     private void requireWorkspace(UUID id, String workspace) { if (!workspace.equals(executions.find(id).orElseThrow().workspacePath())) throw denied(BoardErrors.BOARD_WORKSPACE_CHANGED.code()); }
     private void requireAllowed(UUID id) { var reason = denial(id); if (!reason.isEmpty()) throw denied(reason); }

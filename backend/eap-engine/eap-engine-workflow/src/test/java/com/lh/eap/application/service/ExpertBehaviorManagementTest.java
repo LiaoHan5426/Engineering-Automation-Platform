@@ -3,11 +3,9 @@ package com.lh.eap.application.service;
 import com.lh.eap.application.dto.ExpertDefinitionRequest;
 import com.lh.eap.core.*;
 import com.lh.eap.domain.model.*;
-import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
 import com.lh.eap.rules.RulePackQuery;
 import java.util.*;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,11 +18,11 @@ class ExpertBehaviorManagementTest {
     private final ExpertBehaviorCatalog policies = new ExpertBehaviorCatalog(List.of(
             new ExpertBehaviorCatalog.Registration(v1, "SQL", mock(ExpertAnalysisPolicy.class)),
             new ExpertBehaviorCatalog.Registration(v2, "Local", mock(ExpertAnalysisPolicy.class))));
-    private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
-    private final ExpertDefinitionMapper mapper = mock(ExpertDefinitionMapper.class);
+    private final ExpertDefinitionStore store = mock(ExpertDefinitionStore.class);
+    private final ExpertDefinitionManagementStore mapper = mock(ExpertDefinitionManagementStore.class);
     private final RulePackQuery rules = mock(RulePackQuery.class);
     private final CapabilityCatalog capabilities = mock(CapabilityCatalog.class);
-    private final ExpertDefinitionService definitions = new ExpertDefinitionService(jdbc, rules,
+    private final ExpertDefinitionService definitions = new ExpertDefinitionService(store, rules,
             () -> Set.of(), mock(CapabilitySettings.class), policies);
     private final ExpertManagementService service = new ExpertManagementService(mapper, definitions, rules, capabilities);
 
@@ -45,13 +43,15 @@ class ExpertBehaviorManagementTest {
             var request = request(binding);
             assertEquals(false, service.validate(request).get("valid"));
             assertEquals(400, assertThrows(ResponseStatusException.class, () -> service.save(request)).getStatusCode().value());
-            when(jdbc.queryForList(anyString(), eq("fixture"))).thenReturn(List.of(Map.of("manifest", request.manifest(), "builtin", false)));
+            when(store.lock("fixture")).thenReturn(Optional.of(new ExpertDefinitionStore.Definition(request.manifest(), false, false)));
             assertThrows(ResponseStatusException.class, () -> definitions.activate("fixture", true));
         }
         verify(mapper, never()).saveDraft(anyString(), anyString(), anyString());
-        assertTrue(mockingDetails(jdbc).getInvocations().stream().noneMatch(call -> call.getMethod().getName().equals("update")));
+        verify(store, never()).replaceGrants(anyString(), anyList(), anyList(), anyList());
+        verify(store, never()).setEnabled(anyString(), anyBoolean());
         definitions.activate("fixture", false);
-        verify(jdbc).update("DELETE FROM eap.expert_mcp_grant WHERE expert_id=?", "fixture");
+        verify(store).replaceGrants("fixture", List.of(), List.of(), List.of());
+        verify(store).setEnabled("fixture", false);
     }
 
     @Test void explicitNullDoesNotResetBehaviorAndMalformedStoredBehaviorCanStillBeDisabled() {
@@ -59,9 +59,10 @@ class ExpertBehaviorManagementTest {
         var request = new ExpertDefinitionRequest("fixture", "Fixture", raw);
         assertEquals(false, service.validate(request).get("valid"));
         assertThrows(ResponseStatusException.class, () -> service.save(request));
-        when(jdbc.queryForList(anyString(), eq("fixture"))).thenReturn(List.of(Map.of("manifest", raw, "builtin", false)));
+        when(store.lock("fixture")).thenReturn(Optional.of(new ExpertDefinitionStore.Definition(raw, false, false)));
         definitions.activate("fixture", false);
-        verify(jdbc).update("DELETE FROM eap.expert_knowledge_grant WHERE expert_id=?", "fixture");
+        verify(store).replaceGrants("fixture", List.of(), List.of(), List.of());
+        verify(store).setEnabled("fixture", false);
     }
 
     @Test void managementCatalogPublishesInstalledVersionedBehaviors() {

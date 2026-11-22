@@ -7,6 +7,8 @@ import com.lh.eap.api.TaskRef;
 import com.lh.eap.application.service.BoardApplicationCatalog;
 import com.lh.eap.application.service.BoardRuntimeService;
 import com.lh.eap.application.service.BoardTaskService;
+import com.lh.eap.application.service.P4TestWiring;
+import com.lh.eap.application.service.ApplicationBaselineFixture;
 import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.delivery.*;
 import java.nio.file.Files;
@@ -57,10 +59,10 @@ class SourceWriteReviewPersistenceTest {
             Files.writeString(root.resolve(PAGE), "<template><p>Before</p></template>\n");
             Files.writeString(root.resolve(CHILD), CHILD_BASE);
             var runtime = new RuntimeWorkspace(root, root.toString());
-            var store = new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
-            var changes = new CodeChangeService(runtime, null, ignored -> "", new JdbcCodeGenerationStore(jdbc, manager), store);
+            var store = P4TestWiring.proposals(jdbc, manager, ApplicationBaselineFixture.create(jdbc));
+            var changes = new CodeChangeService(runtime, null, ignored -> "", P4TestWiring.generations(jdbc, manager), store);
             var project = "source-write-review";
-            var task = new BoardTaskService(jdbc).create(new BoardTaskService.Draft(project, "Resume interrupted source write",
+            var task = com.lh.eap.application.service.P4TestWiring.tasks(jdbc).create(new BoardTaskService.Draft(project, "Resume interrupted source write",
                     "", "ready", "Recover safely", "Preserve ambiguity and file evidence", UUID.randomUUID()));
             var binding = new TaskRef(project, task.id(), task.revision());
             var conversation = UUID.randomUUID();

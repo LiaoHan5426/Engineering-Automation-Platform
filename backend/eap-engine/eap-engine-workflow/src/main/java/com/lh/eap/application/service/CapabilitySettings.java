@@ -1,11 +1,11 @@
 package com.lh.eap.application.service;
+import com.lh.eap.core.CapabilitySettingsStore;
 import com.lh.eap.core.CapabilitySwitches;
 import com.lh.eap.error.ToolErrors;
 
 import com.lh.eap.core.CapabilityUsageQuery;
 
 import java.util.*;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,11 +31,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class CapabilitySettings implements CapabilitySwitches {
     private static final int NOTES_LIMIT = 500;
 
-    private final JdbcTemplate jdbc;
+    private final CapabilitySettingsStore store;
     private final CapabilityUsageQuery usage;
 
-    public CapabilitySettings(JdbcTemplate jdbc, CapabilityUsageQuery usage) {
-        this.jdbc = jdbc;
+    public CapabilitySettings(CapabilitySettingsStore store, CapabilityUsageQuery usage) {
+        this.store = store;
         this.usage = usage;
     }
 
@@ -44,20 +44,20 @@ public class CapabilitySettings implements CapabilitySwitches {
     /** Every stored setting. Only a successful empty query means "nothing has been configured". */
     public Map<String, Setting> all() {
         var result = new LinkedHashMap<String, Setting>();
-        List<Map<String, Object>> rows;
+        List<CapabilitySettingsStore.Row> rows;
         try {
-            if (jdbc == null) throw new IllegalStateException("Settings store unavailable");
-            rows = jdbc.queryForList("SELECT capability,enabled,notes,updated_at FROM eap.capability_setting");
+            if (store == null) throw new IllegalStateException("Settings store unavailable");
+            rows = store.loadAll();
             if (rows == null) throw new IllegalStateException("Settings query returned no result");
         } catch (RuntimeException error) {
             // Stable refusal reason; never expose driver messages or connection details to callers.
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, ToolErrors.CAPABILITY_SETTINGS_UNAVAILABLE.code());
         }
         for (var row : rows) {
-            var capability = text(row.get("capability"));
+            var capability = text(row.capability());
             if (capability == null) continue;
-            result.put(capability, new Setting(capability, !Boolean.FALSE.equals(row.get("enabled")),
-                    Objects.toString(row.get("notes"), ""), Objects.toString(row.get("updated_at"), "")));
+            result.put(capability, new Setting(capability, !Boolean.FALSE.equals(row.enabled()),
+                    Objects.toString(row.notes(), ""), Objects.toString(row.updatedAt(), "")));
         }
         return result;
     }
@@ -92,9 +92,7 @@ public class CapabilitySettings implements CapabilitySwitches {
                 throw new IllegalStateException(ToolErrors.CAPABILITY_IN_USE.code());
             }
         }
-        jdbc.update("INSERT INTO eap.capability_setting (capability,enabled,notes,updated_at) VALUES (?,?,?,now()) "
-                        + "ON CONFLICT (capability) DO UPDATE SET enabled=EXCLUDED.enabled, notes=EXCLUDED.notes, updated_at=now()",
-                capability, enabled, note);
+        store.save(capability, enabled, note);
     }
 
     private static String text(Object value) {

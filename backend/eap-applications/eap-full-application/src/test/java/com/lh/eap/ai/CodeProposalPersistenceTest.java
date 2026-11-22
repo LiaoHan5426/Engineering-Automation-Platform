@@ -1,6 +1,5 @@
 package com.lh.eap.ai;
 import com.lh.eap.delivery.CodeProposalStore;
-import com.lh.eap.delivery.JdbcCodeGenerationStore;
 import com.lh.eap.delivery.CodeChangeService;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -68,7 +67,7 @@ class CodeProposalPersistenceTest extends CodeProposalPersistenceFixture {
         assertEquals(result, store().find(principal, conversation, saved.id()).orElseThrow().result());
         Files.writeString(root.resolve("Page.vue"), "later edit");
         var ungranted = new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, ""), null, null,
-                new JdbcCodeGenerationStore(jdbc, manager), store());
+                com.lh.eap.application.service.P4TestWiring.generations(jdbc, manager), store());
         assertEquals(result, ungranted.apply(principal, conversation, saved.id(), true));
         assertEquals("later edit", Files.readString(root.resolve("Page.vue")));
         assertThrows(org.springframework.dao.DataAccessException.class,

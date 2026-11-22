@@ -1,12 +1,12 @@
-package com.lh.eap.application.service;
+package com.lh.eap.persistence.jdbc;
 
+import com.lh.eap.application.service.CliChannels;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
 
 class JdbcCliChannelStoreTest {
     @Test void successfulEmptyReadAllowsShippedDefaults() {

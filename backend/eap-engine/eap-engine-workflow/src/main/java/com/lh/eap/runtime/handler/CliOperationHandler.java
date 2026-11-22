@@ -6,9 +6,9 @@ import com.lh.eap.api.CliExecution;
 import com.lh.eap.application.service.CliExecutionService;
 import com.lh.eap.application.service.CliChannels;
 import com.lh.eap.common.SensitiveData;
+import com.lh.eap.core.CliProgramStore;
 import com.lh.eap.core.LocalBinaries;
 import com.lh.eap.domain.model.*;
-import com.lh.eap.persistence.jdbc.CliProgramMapper;
 import java.util.*;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +16,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class CliOperationHandler implements CapabilityHandler {
     @Override public boolean dynamicCapabilities() { return true; }
-    private final CliProgramMapper mapper;
+    private final CliProgramStore mapper;
     private final CliChannels channels;
     private final ProcessExecutor executor;
-    public CliOperationHandler(CliProgramMapper mapper, CliChannels channels, ProcessExecutor executor) {
+    public CliOperationHandler(CliProgramStore mapper, CliChannels channels, ProcessExecutor executor) {
         this.mapper = mapper; this.channels = channels; this.executor = executor;
     }
     @Override public Set<String> capabilities() {

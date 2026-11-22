@@ -12,7 +12,7 @@ class BoardCodeWorkspaceInterlockTest {
     @Test void sharedBoardLockRejectsDurableCodeIntentForRunVerificationReviewAndDelivery() {
         var jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(contains("eap.code_proposal"), eq(Boolean.class), eq("workspace"), eq(com.lh.eap.persistence.jdbc.StateBindings.CODE_BLOCKING))).thenReturn(true);
-        var tasks = new BoardTaskService(jdbc);
+        var tasks = com.lh.eap.application.service.P4TestWiring.tasks(jdbc);
         TransactionSynchronizationManager.setActualTransactionActive(true);
         try {
             assertEquals("CODE_WORKSPACE_BUSY", assertThrows(ResponseStatusException.class,

@@ -9,8 +9,8 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import com.lh.eap.core.BoardCodeProposalStore;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,25 +23,17 @@ public final class BoardCodeProposalService {
                        List<Item> items, boolean truncated) {}
     public record Action(String projectId, long revision, boolean confirmed) {}
     private final BoardTaskService tasks;
-    private final JdbcTemplate jdbc;
+    private final BoardCodeProposalStore store;
     private final RuntimeWorkspace runtime;
     private final CodeChangeService changes;
-    private static final String SELECT = """
-        SELECT p.id,p.conversation_id,p.generation_id,g.task_revision,g.target_path,p.status,
-               (p.proposal->>'writeAllowed')::boolean AS write_allowed,p.created_at,jsonb_array_length(p.proposal->'files') AS file_count
-        FROM eap.code_proposal p JOIN eap.code_generation g ON g.id=p.generation_id
-        WHERE g.task_id=? AND g.task_project_id=? AND g.workspace=? AND p.workspace=g.workspace
-          AND g.principal=? AND p.principal=g.principal AND p.conversation_id=g.conversation_id
-        """;
-    public BoardCodeProposalService(BoardTaskService tasks, JdbcTemplate jdbc, RuntimeWorkspace runtime, CodeChangeService changes) {
-        this.tasks=tasks;this.jdbc=jdbc;this.runtime=runtime;this.changes=changes;
+    public BoardCodeProposalService(BoardTaskService tasks, BoardCodeProposalStore store, RuntimeWorkspace runtime, CodeChangeService changes) {
+        this.tasks=tasks;this.store=store;this.runtime=runtime;this.changes=changes;
     }
     public Page list(UUID taskId, String projectId) {
         var task=tasks.find(taskId, projectId, false);var workspace=workspace();
-        var rows=jdbc.query(SELECT+" ORDER BY p.created_at DESC,p.id DESC LIMIT 21",(rs,n)->new Item(
-            rs.getObject("id",UUID.class),rs.getObject("conversation_id",UUID.class),rs.getObject("generation_id",UUID.class),
-            rs.getLong("task_revision"),rs.getString("target_path"),rs.getString("status"),rs.getBoolean("write_allowed"),rs.getTimestamp("created_at").toInstant(),rs.getInt("file_count")),
-            task.id(),task.projectId(),workspace,RuntimeWorkspace.OPERATOR_LABEL);
+        var rows=store.list(task.id(), task.projectId(), workspace, RuntimeWorkspace.OPERATOR_LABEL).stream()
+            .map(row -> new Item(row.id(),row.conversationId(),row.generationId(),row.taskRevision(),
+                row.targetPath(),row.status(),row.writeAllowed(),row.createdAt(),row.fileCount())).toList();
         return new Page(task.id(),task.projectId(),task.revision(),workspace,List.copyOf(rows.subList(0,Math.min(20,rows.size()))),rows.size()>20);
     }
     public CodeChangeService.ProposalStatus get(UUID taskId, UUID proposalId, String projectId) {
@@ -74,9 +66,8 @@ public final class BoardCodeProposalService {
         return state;
     }
     private UUID conversation(UUID taskId,UUID proposalId,String projectId) {
-        var rows=jdbc.query(SELECT+" AND p.id=?",(rs,n)->rs.getObject("conversation_id",UUID.class),
-            taskId,projectId,workspace(),RuntimeWorkspace.OPERATOR_LABEL,proposalId);
-        if(rows.size()!=1)throw denied(HttpStatus.NOT_FOUND,BoardErrors.BOARD_CODE_PROPOSAL_NOT_FOUND.code());return rows.getFirst();
+        var conversation=store.findConversationId(taskId,projectId,workspace(),RuntimeWorkspace.OPERATOR_LABEL,proposalId);
+        if(conversation==null)throw denied(HttpStatus.NOT_FOUND,BoardErrors.BOARD_CODE_PROPOSAL_NOT_FOUND.code());return conversation;
     }
     private String workspace() {
         try {return runtime.workspace().toRealPath().toString();}

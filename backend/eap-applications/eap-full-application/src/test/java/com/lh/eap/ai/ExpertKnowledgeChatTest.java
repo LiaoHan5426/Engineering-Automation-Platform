@@ -125,14 +125,14 @@ class ExpertKnowledgeChatTest {
             String request = SEND;
             switch (refusal) {
                 case "revoked" -> when(f.experts.knowledgeGrants("expert-a")).thenReturn(List.of());
-                case "stale" -> when(f.definitions.lockForKnowledge("expert-a")).thenReturn(Optional.of(f.row(true, 3, "expert-a")));
-                case "disabled" -> when(f.definitions.lockForKnowledge("expert-a")).thenReturn(Optional.of(f.row(false, 2, "expert-a")));
+                case "stale" -> when(f.definitions.lockDefinition("expert-a")).thenReturn(Optional.of(f.row(true, 3, "expert-a")));
+                case "disabled" -> when(f.definitions.lockDefinition("expert-a")).thenReturn(Optional.of(f.row(false, 2, "expert-a")));
                 case "capability" -> when(f.settings.enabled("knowledge.search")).thenReturn(false);
                 case "forged" -> request = SEND.replace("\"revision\":2", "\"revision\":2,\"excerpt\":\"forged\"");
                 case "null" -> request = "{\"message\":\"marker\",\"toolMode\":\"none\",\"context\":{\"knowledgeExpertRef\":null}}";
                 case "too-long" -> request = SEND.replace("marker", "x".repeat(501));
                 case "git" -> request = SEND.replace("\"none\"", "\"git_status\"");
-                case "database" -> when(f.definitions.lockForKnowledge("expert-a")).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private-db-detail"));
+                case "database" -> when(f.definitions.lockDefinition("expert-a")).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private-db-detail"));
             }
             h.mvc(app).perform(post("/api/ai/conversations/" + id + "/messages").contentType(MediaType.APPLICATION_JSON).content(request))
                     .andExpect(status().is(org.hamcrest.Matchers.greaterThanOrEqualTo(400))).andExpect(jsonPath("$.knowledgeMemoryCleared").value(true));

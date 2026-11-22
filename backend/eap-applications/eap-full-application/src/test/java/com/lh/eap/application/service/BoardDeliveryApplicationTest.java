@@ -35,7 +35,7 @@ class BoardDeliveryApplicationTest {
     private BoardTaskService.Task task;
     private String saved, requestHash, decisionHash;
     private BoardVerificationService.Record record;
-    private BoardDeliveryService service() { return new BoardDeliveryService(jdbc,new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc),tasks,executions,git,registry,verification,capture,applications); }
+    private BoardDeliveryService service() { return new BoardDeliveryService(com.lh.eap.application.service.P4TestWiring.deliveryStore(jdbc),new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc),tasks,executions,git,registry,verification,capture,applications); }
     private BoardDeliveryService.Request request(boolean linked) { return new BoardDeliveryService.Request("p",1,"repo",ref.proposalId(),List.of("frontend/source.ts"),"test",linked ? ref : null); }
     @BeforeEach @SuppressWarnings("unchecked") void setup() throws Exception {
         task=new BoardTaskService.Task(taskId,"p","title","ready","","",1,List.of(),"normal","goal","criteria",false,null);

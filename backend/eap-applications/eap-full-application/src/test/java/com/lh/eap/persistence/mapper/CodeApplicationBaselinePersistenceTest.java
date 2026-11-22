@@ -28,8 +28,8 @@ class CodeApplicationBaselinePersistenceTest {
             var actual=ApplicationBaselineFixture.create(jdbc);var baseline=mock(BoardApplicationBaseline.class);
             var count=new AtomicInteger();
             doAnswer(call->{count.incrementAndGet();return actual.capture(call.getArgument(0));}).when(baseline).capture(any());
-            var store=new JdbcCodeProposalStore(jdbc,manager,baseline);
-            var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",new JdbcCodeGenerationStore(jdbc,manager),store);
+            var store=P4TestWiring.proposals(jdbc,manager,baseline);
+            var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",P4TestWiring.generations(jdbc,manager),store);
             var chat=UUID.randomUUID();String principal=RuntimeWorkspace.OPERATOR_LABEL;
             var generation=changes.prepareGeneration(principal,chat,"frontend/Page.vue","","");
             var proposal=changes.proposePrepared(principal,chat,generation.id(),"{\"files\":[{\"path\":\"frontend/Page.vue\",\"content\":\"after\"}]}",true);

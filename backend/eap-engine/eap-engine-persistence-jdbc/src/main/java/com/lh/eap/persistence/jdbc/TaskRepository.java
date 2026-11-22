@@ -1,6 +1,7 @@
 package com.lh.eap.persistence.jdbc;
 
 
+import com.lh.eap.core.TaskStore;
 import com.lh.eap.domain.model.TaskStatistics;
 import com.lh.eap.common.SensitiveData;
 
@@ -12,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 @Repository
-public class TaskRepository {
+public class TaskRepository implements TaskStore {
     private final JdbcTemplate jdbc;
     private static final JsonMapper JSON=JsonMapper.builder().build();
     public TaskRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }

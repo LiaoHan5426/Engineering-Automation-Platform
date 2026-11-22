@@ -6,7 +6,7 @@ import com.lh.eap.error.MissionErrors;
 
 import com.lh.eap.api.*;
 import com.lh.eap.core.CapabilityRegistry;
-import com.lh.eap.persistence.jdbc.TaskRepository;
+import com.lh.eap.core.TaskStore;
 import com.lh.eap.common.SensitiveData;
 import com.lh.eap.application.dto.TaskRequest;
 import java.nio.file.Path;
@@ -22,9 +22,9 @@ public class TaskService {
     private final CapabilityRegistry registry;
     private final ProcessExecutor executor;
     private final Path workspace;
-    private final TaskRepository taskRepository;
+    private final TaskStore taskRepository;
     private final CapabilitySettings settings;
-    public TaskService(CapabilityRegistry registry,ProcessExecutor executor,Path workspace,TaskRepository taskRepository,CapabilitySettings settings) {
+    public TaskService(CapabilityRegistry registry,ProcessExecutor executor,Path workspace,TaskStore taskRepository,CapabilitySettings settings) {
         this.registry=registry;this.executor=executor;this.workspace=workspace;this.taskRepository=taskRepository;this.settings=settings;
     }
     public Map<String,Object> list() { return Map.of("items",taskRepository.findAll()); }

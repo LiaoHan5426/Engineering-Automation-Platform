@@ -128,18 +128,19 @@ class MissionGitAcceptanceTest {
     @Test
     @Order(1)
     void denialsDoNotInsertAndARealGitStatusMatchesTheProjection() throws Exception {
-        assertDenied(service(bound(repo), new CapabilitySettings(jdbc, null) {
+        assertDenied(service(bound(repo), new CapabilitySettings(new com.lh.eap.persistence.jdbc.JdbcCapabilitySettingsStore(jdbc),
+                new com.lh.eap.persistence.jdbc.CapabilityUsage(jdbc)) {
             @Override public boolean enabled(String capability) { return !"git-status".equals(capability); }
         }, CliChannels.defaults(), new DefaultProcessExecutor()), "CAPABILITY_DISABLED");
-        assertDenied(service(bound(Files.createTempDirectory("eap-root-outside")), new CapabilitySettings(jdbc, null),
+        assertDenied(service(bound(Files.createTempDirectory("eap-root-outside")), com.lh.eap.application.service.P4TestWiring.settings(jdbc, null),
                 CliChannels.defaults(), new DefaultProcessExecutor()), "WORKSPACE_ESCAPES_ROOT");
-        assertDenied(service(bound(repo), new CapabilitySettings(jdbc, null), new CliChannels(null, null) {
+        assertDenied(service(bound(repo), com.lh.eap.application.service.P4TestWiring.settings(jdbc, null), new CliChannels(null, null) {
             @Override public String binaryFor(String capability, String shippedDefault) { return "Z:/missing/not-git.exe"; }
         }, new DefaultProcessExecutor()), "BINARY_MISSING");
         assertEquals(0, executionCount());
 
         var gate = new GateExecutor();
-        var service = service(bound(repo), new CapabilitySettings(jdbc, null), CliChannels.defaults(), gate);
+        var service = service(bound(repo), com.lh.eap.application.service.P4TestWiring.settings(jdbc, null), CliChannels.defaults(), gate);
         var first = new AtomicReference<MissionExecution>();
         var worker = new Thread(() -> first.set(service.start(missionId)));
         worker.start();
@@ -158,7 +159,7 @@ class MissionGitAcceptanceTest {
         assertFalse(first.get().stdout().contains("验证通过"));
         assertMission("succeeded");
 
-        var again = service(bound(repo), new CapabilitySettings(jdbc, null), CliChannels.defaults(), new DefaultProcessExecutor()).start(missionId);
+        var again = service(bound(repo), com.lh.eap.application.service.P4TestWiring.settings(jdbc, null), CliChannels.defaults(), new DefaultProcessExecutor()).start(missionId);
         assertNotEquals(first.get().id(), again.id());
         assertEquals("SUCCEEDED", again.status());
         assertEquals(2, executionCount());
@@ -173,12 +174,12 @@ class MissionGitAcceptanceTest {
         var sleeper = startSleeper();
         try {
             var before = executionCount();
-            service(bound(repo), new CapabilitySettings(jdbc, null), CliChannels.defaults(), sleeper.executor, onlyThisMission()).markRestartUnknown();
+            service(bound(repo), com.lh.eap.application.service.P4TestWiring.settings(jdbc, null), CliChannels.defaults(), sleeper.executor, onlyThisMission()).markRestartUnknown();
             var row = executions.find(sleeper.executionId).orElseThrow();
             assertEquals("CREATED", row.status());
             assertEquals(MissionGitExecutionService.RESTART_UNKNOWN, row.unconfirmedReason());
             assertTrue(ProcessHandle.of(sleeper.pid).orElseThrow().isAlive());
-            var again = service(bound(repo), new CapabilitySettings(jdbc, null), CliChannels.defaults(), new DefaultProcessExecutor()).start(missionId);
+            var again = service(bound(repo), com.lh.eap.application.service.P4TestWiring.settings(jdbc, null), CliChannels.defaults(), new DefaultProcessExecutor()).start(missionId);
             assertEquals(sleeper.executionId, again.id());
             assertEquals(before, executionCount());
             assertTrue(ProcessHandle.of(sleeper.pid).orElseThrow().isAlive());
@@ -214,7 +215,7 @@ class MissionGitAcceptanceTest {
         };
         var registry = new CapabilityRegistry().register(new GitCapability("status"));
         var handlers = new CapabilityHandlerRegistry(List.of(new GitInspectionHandler(registry, new DefaultProcessExecutor())));
-        var service = new MissionGitExecutionService(missions, failing, handlers, new CapabilitySettings(jdbc, null), registry,
+        var service = new MissionGitExecutionService(missions, failing, handlers, com.lh.eap.application.service.P4TestWiring.settings(jdbc, null), registry,
                 new DefaultProcessExecutor(), bound(repo));
         var failed = service.start(missionId);
         assertEquals("FAILED", failed.status());

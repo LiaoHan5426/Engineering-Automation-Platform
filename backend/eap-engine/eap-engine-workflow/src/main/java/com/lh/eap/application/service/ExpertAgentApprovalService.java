@@ -1,6 +1,7 @@
 package com.lh.eap.application.service;
 import java.security.NoSuchAlgorithmException;
 import com.lh.eap.core.ExpertAgentState;
+import com.lh.eap.core.ExpertApprovalStore;
 import com.lh.eap.domain.model.CodeProposalStatus;
 import com.lh.eap.error.AgentErrors;
 
@@ -11,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -26,15 +26,15 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
     private final CodeChangeService changes;
     private final ExpertAgentJournal journal;
     private final ExpertAgentAccess access;
-    private final JdbcTemplate jdbc;
+    private final ExpertApprovalStore store;
     private final TransactionTemplate tx;
     private volatile Boolean resolutionColumns;
     private static final int NOTE_MIN = 10;
     private static final int NOTE_MAX = 2000;
 
     public ExpertAgentApprovalService(CodeChangeService changes, ExpertAgentJournal journal, ExpertAgentAccess access,
-                                      JdbcTemplate jdbc, PlatformTransactionManager manager) {
-        this.changes = changes; this.journal = journal; this.access = access; this.jdbc = jdbc;
+                                      ExpertApprovalStore store, PlatformTransactionManager manager) {
+        this.changes = changes; this.journal = journal; this.access = access; this.store = store;
         this.tx = new TransactionTemplate(manager); this.tx.setTimeout(10);
     }
     @Override public UUID prepare(ExpertAgentJournal.Entry lease, String target) {
@@ -54,12 +54,7 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
         String digest = digest(JSON.writeValueAsString(candidate) + ":" + lease.snapshot().revision());
         tx.executeWithoutResult(status -> {
             access.check(lease.snapshot());
-            int changed = jdbc.update("""
-                    UPDATE eap.expert_agent_run SET proposal_id=?,approval_digest=?,approval_expires_at=now()+interval '15 minutes',
-                        checkpoint=checkpoint || jsonb_build_object('proposal',?::text,'terminal','awaiting-approval',
-                        'summary','SQL candidate awaits human approval'),updated_at=now()
-                    WHERE task_id=? AND owner=? AND state='running' AND lease_until>now() AND proposal_id IS NULL
-                    """, candidate.id(), digest, candidate.id().toString(), lease.id(), lease.owner());
+            int changed = store.bindCandidate(lease.id(), lease.owner(), candidate.id(), digest);
             if (changed != 1) throw conflict(AgentErrors.AGENT_CANDIDATE_ALREADY_BOUND_OR_LEASE_LOST.code());
         });
         return candidate.id();
@@ -69,7 +64,7 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
     public Map<String,Object> inspect(String expert, UUID id) {
         journal.recoverExpired();
         var run = journal.get(expert, id);
-        var approval = jdbc.queryForMap("SELECT proposal_id,approval_digest,approval_expires_at,decision,decided_by,decided_at FROM eap.expert_agent_run WHERE task_id=?", id);
+        var approval = store.approval(id);
         var result = new LinkedHashMap<String,Object>();
         result.put("run", run); result.put("approval", approval);
         if (approval.get("proposal_id") instanceof UUID proposal) {
@@ -81,7 +76,7 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
                 else {
                     // A still-live approval may be writing; leave it fenced. On restart CodeChangeService marks APPLYING unknown.
                     if (candidate.status().equals(CodeProposalStatus.UNKNOWN.wire())) project(id, ExpertAgentState.UNKNOWN.wire(), ExpertAgentState.APPLYING.wire());
-                    else if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT decided_at < now()-interval '60 seconds' FROM eap.expert_agent_run WHERE task_id=?", Boolean.class, id)))
+                    else if (store.decisionOlderThan60s(id))
                         project(id, ExpertAgentState.UNKNOWN.wire(), ExpertAgentState.APPLYING.wire());
                 }
                 result.put("run", journal.get(expert, id));
@@ -91,8 +86,7 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
         // Rolling deployment: V5 may not have reached this database yet. Never fail a read
         // because audit columns are absent; the resolution endpoint refuses explicitly instead.
         if (hasResolutionColumns()) {
-            result.put("resolution", jdbc.queryForMap(
-                    "SELECT resolution_note,resolution_operator,resolved_at FROM eap.expert_agent_run WHERE task_id=?", id));
+            result.put("resolution", store.resolution(id));
         }
         return result;
     }
@@ -109,15 +103,10 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
             throw badRequest(AgentErrors.AGENT_INPUT_INVALID.code());
         if (!hasResolutionColumns()) throw conflict(AgentErrors.AGENT_UNKNOWN_NOT_RESOLVABLE.code());
         tx.executeWithoutResult(status -> {
-            int changed = jdbc.update("""
-                    UPDATE eap.expert_agent_run
-                       SET state=?,resolution_note=?,resolution_operator=?,resolved_at=now(),updated_at=now()
-                     WHERE task_id=? AND expert_id=? AND state=?
-                    """, ExpertAgentState.CLOSED_UNCONFIRMED.wire(), trimmed, PRINCIPAL,
-                    id, expert, ExpertAgentState.UNKNOWN.wire());
+            int changed = store.resolveUnknown(id, expert, ExpertAgentState.CLOSED_UNCONFIRMED.wire(),
+                    ExpertAgentState.UNKNOWN.wire(), trimmed, PRINCIPAL);
             if (changed != 1) throw conflict(AgentErrors.AGENT_UNKNOWN_NOT_RESOLVABLE.code());
-            jdbc.update("UPDATE eap.task SET status=?,decision='needs-review' WHERE id=?",
-                    ExpertAgentState.CLOSED_UNCONFIRMED.wire(), id);
+            store.markTaskNeedsReview(id, ExpertAgentState.CLOSED_UNCONFIRMED.wire());
         });
         return inspect(expert, id);
     }
@@ -125,12 +114,7 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
     private boolean hasResolutionColumns() {
         Boolean cached = resolutionColumns;
         if (cached != null) return cached;
-        Boolean present = jdbc.queryForObject("""
-                SELECT count(*) = 3 FROM information_schema.columns
-                 WHERE table_schema='eap' AND table_name='expert_agent_run'
-                   AND column_name IN ('resolution_note','resolution_operator','resolved_at')
-                """, Boolean.class);
-        boolean value = Boolean.TRUE.equals(present);
+        boolean value = store.hasResolutionColumns();
         resolutionColumns = value;
         return value;
     }
@@ -139,26 +123,24 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
         Objects.requireNonNull(review);
         journal.recoverExpired();
         var before = journal.get(expert, id);
-        var scope = jdbc.queryForMap("SELECT proposal_id,approval_digest FROM eap.expert_agent_run WHERE task_id=?", id);
+        var scope = store.approval(id);
         if (review.proposalId() == null || review.digest() == null || !Objects.equals(scope.get("proposal_id"), review.proposalId())
                 || !Objects.equals(scope.get("approval_digest"), review.digest())) throw conflict(AgentErrors.AGENT_APPROVAL_SCOPE_MISMATCH.code());
         if (Set.of(ExpertAgentState.APPLIED.wire(), ExpertAgentState.DENIED.wire(), ExpertAgentState.UNKNOWN.wire(), ExpertAgentState.FAILED.wire(), ExpertAgentState.EXPIRED.wire(), ExpertAgentState.CANCELLED.wire()).contains(before.state())) return inspect(expert, id);
         var proposal = tx.execute(status -> {
-            var rows = jdbc.queryForList("SELECT * FROM eap.expert_agent_run WHERE task_id=? AND expert_id=? FOR UPDATE", id, expert);
-            if (rows.isEmpty()) throw conflict(AgentErrors.AGENT_RUN_NOT_FOUND.code());
-            var row = rows.getFirst();
+            var row = store.lockRun(id, expert);
+            if (row == null) throw conflict(AgentErrors.AGENT_RUN_NOT_FOUND.code());
             if (!ExpertAgentState.AWAITING_APPROVAL.wire().equals(row.get("state"))) throw conflict(AgentErrors.AGENT_NOT_AWAITING_APPROVAL.code());
             if (!Objects.equals(row.get("proposal_id"), review.proposalId()) || !Objects.equals(row.get("approval_digest"), review.digest()))
                 throw conflict(AgentErrors.AGENT_APPROVAL_SCOPE_MISMATCH.code());
             if (review.approve()) {
                 checkEvidence(before);
-                if (!Boolean.TRUE.equals(jdbc.queryForObject("SELECT approval_expires_at>now() AND expires_at>now() FROM eap.expert_agent_run WHERE task_id=?", Boolean.class, id)))
+                if (!store.approvalValid(id))
                     throw conflict(AgentErrors.AGENT_APPROVAL_EXPIRED.code());
             }
             String state = review.approve() ? ExpertAgentState.APPLYING.wire() : ExpertAgentState.DENIED.wire();
-            jdbc.update("UPDATE eap.expert_agent_run SET state=?,decision=?,decided_by=?,decided_at=now(),updated_at=now() WHERE task_id=?",
-                    state, review.approve() ? "approved" : ExpertAgentState.DENIED.wire(), PRINCIPAL, id);
-            jdbc.update("UPDATE eap.task SET status=?,decision=? WHERE id=?", state, review.approve() ? "needs-review" : "rejected", id);
+            store.decide(id, state, review.approve() ? "approved" : ExpertAgentState.DENIED.wire(), PRINCIPAL);
+            store.updateTask(id, state, review.approve() ? "needs-review" : "rejected");
             return (UUID) row.get("proposal_id");
         });
         if (!review.approve()) changes.refuse(PRINCIPAL, id, proposal);
@@ -177,15 +159,11 @@ public class ExpertAgentApprovalService implements ExpertAgentWrites {
     }
     /** Reconcile durable evidence; stale approval intent is UNKNOWN, never replayed. */
     public void recoverInterruptedApprovals() {
-        for (var row : jdbc.queryForList("SELECT task_id,expert_id FROM eap.expert_agent_run WHERE state='applying'")) {
-            var id = (UUID) row.get("task_id");
-            inspect((String) row.get("expert_id"), id);
-        }
+        for (var row : store.applyingRuns()) inspect(row.expertId(), row.taskId());
     }
     private void project(UUID id, String state, String expected) {
         tx.executeWithoutResult(status -> {
-            if (jdbc.update("UPDATE eap.expert_agent_run SET state=?,updated_at=now() WHERE task_id=? AND state=?", state, id, expected) == 1)
-                jdbc.update("UPDATE eap.task SET status=?,decision='needs-review' WHERE id=?", state, id);
+            if (store.project(id, state, expected) == 1) store.markTaskNeedsReview(id, state);
         });
     }
     private void checkEvidence(ExpertAgentJournal.Entry run) {

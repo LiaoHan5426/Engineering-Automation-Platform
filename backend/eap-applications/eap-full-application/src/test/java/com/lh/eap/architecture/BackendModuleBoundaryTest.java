@@ -418,6 +418,52 @@ class BackendModuleBoundaryTest {
         assertFalse(delivery.contains("new BoardApplicationCatalog(jdbc)"), "catalog must not be constructed from JdbcTemplate");
     }
 
+    @Test void p4MixedServicesNoLongerOwnJdbc() throws Exception {
+        var ports = List.of("BoardTaskStore", "BoardVerificationStore", "BoardCodeProposalStore", "BoardRunStore",
+                "BoardDeliveryStore", "CapabilitySettingsStore", "WorkspaceLockStore", "ExpertApprovalStore", "ExpertDefinitionStore");
+        var adapters = List.of("JdbcBoardTaskStore", "JdbcBoardVerificationStore", "JdbcBoardCodeProposalStore",
+                "JdbcBoardRunStore", "JdbcBoardDeliveryStore", "JdbcCapabilitySettingsStore", "JdbcWorkspaceLockStore",
+                "JdbcExpertApprovalStore", "JdbcExpertDefinitionStore", "JdbcCodeGenerationStore", "JdbcCodeProposalStore");
+        var core = backend.resolve("eap-engine/eap-engine-core/src/main/java/com/lh/eap/core");
+        var jdbc = backend.resolve("eap-engine/eap-engine-persistence-jdbc/src/main/java/com/lh/eap/persistence/jdbc");
+        for (String port : ports)
+            assertTrue(Files.exists(core.resolve(port + ".java")), "P4 core port missing: " + port);
+        for (String adapter : adapters)
+            assertTrue(Files.exists(jdbc.resolve(adapter + ".java")), "P4 jdbc adapter missing: " + adapter);
+        var oldCodeStore = backend.resolve("eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/delivery");
+        for (String adapter : List.of("JdbcCodeGenerationStore", "JdbcCodeProposalStore"))
+            assertFalse(Files.exists(oldCodeStore.resolve(adapter + ".java")), adapter + " still in workflow delivery package");
+        var workflowMain = backend.resolve("eap-engine/eap-engine-workflow/src/main/java/com/lh/eap");
+        for (String service : List.of("BoardTaskService", "BoardVerificationService", "BoardCodeProposalService",
+                "BoardRunService", "BoardDeliveryService", "CapabilityCatalog", "CapabilitySettings",
+                "WorkspaceInterlock", "ExpertAgentApprovalService", "ExpertDefinitionService")) {
+            var source = workflowMain.resolve("application/service/" + service + ".java");
+            var text = Files.readString(source);
+            assertFalse(text.contains("import org.springframework.jdbc."), source + " still owns JDBC");
+            assertFalse(text.contains("import com.lh.eap.persistence.jdbc."), source + " still imports persistence adapter");
+        }
+        for (String adapter : List.of("CodeGenerationStoreAdapter", "CodeProposalStoreAdapter")) {
+            var source = workflowMain.resolve("delivery/" + adapter + ".java");
+            assertTrue(Files.exists(source), "workflow mapping adapter missing: " + adapter);
+            assertFalse(Files.readString(source).contains("import org.springframework.jdbc."), source + " still owns JDBC");
+        }
+    }
+
+    @Test void workflowDoesNotDependOnJdbcAfterP5() throws Exception {
+        var workflow = backend.resolve("eap-engine/eap-engine-workflow");
+        var pom = Files.readString(workflow.resolve("pom.xml"));
+        assertFalse(pom.contains("<artifactId>eap-engine-persistence-jdbc</artifactId>"), "workflow depends on persistence adapter");
+        assertFalse(pom.contains("<artifactId>spring-boot-starter-jdbc</artifactId>"), "workflow owns JDBC starter");
+        assertTrue(pom.contains("<artifactId>spring-tx</artifactId>"), "workflow needs explicit transaction contract");
+        try (var sources = Files.walk(workflow.resolve("src/main/java"))) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                var text = Files.readString(source);
+                assertFalse(text.contains("import org.springframework.jdbc."), source + " still owns JDBC");
+                assertFalse(text.contains("import com.lh.eap.persistence.jdbc."), source + " still imports persistence adapter");
+            }
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");

@@ -5,14 +5,13 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.capability.GitCapability;
+import com.lh.eap.core.BoardVerificationStore;
 import com.lh.eap.core.CapabilityRegistry;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
 import tools.jackson.databind.json.JsonMapper;
@@ -22,7 +21,7 @@ import com.lh.eap.core.MissionExecutionStore;
 class BoardVerificationServiceTest {
     @Test void commitsQueuedRecordBeforeDispatchAndDuplicateDoesNotDispatchAgain() throws Exception {
         var type = assertDoesNotThrow(() -> Class.forName("com.lh.eap.application.service.BoardVerificationService"), "durable verification service is missing");
-        var jdbc = mock(JdbcTemplate.class); var tasks = mock(BoardTaskService.class);
+        var store = mock(BoardVerificationStore.class); var tasks = mock(BoardTaskService.class);
         var executions = mock(MissionExecutionStore.class); var git = mock(MissionGitExecutionService.class);
         var registry = new CapabilityRegistry().register(new GitCapability("status"));
         var settings = mock(CapabilitySettings.class); when(settings.enabled(anyString())).thenReturn(true);
@@ -38,8 +37,8 @@ class BoardVerificationServiceTest {
         when(plans.prepare(any(), any())).thenReturn(plan);
         var saved = new AtomicReference<String>(); var json = JsonMapper.builder().build();
         var recordType = Class.forName(type.getName() + "$Record");
-        when(jdbc.query(anyString(), any(RowMapper.class), eq(taskId), eq(runId))).thenAnswer(call -> List.of(saved.get() == null ? Optional.empty() : Optional.of(json.readValue(saved.get(), recordType))));
-        when(jdbc.update(contains("verification_snapshot=?::jsonb"), any(), eq(taskId), eq(runId))).thenAnswer(call -> { saved.set(call.getArgument(1)); return 1; });
+        when(store.findSnapshot(taskId, runId)).thenAnswer(call -> Optional.of(new BoardVerificationStore.SnapshotRow(saved.get())));
+        when(store.saveIfAbsent(anyString(), eq(taskId), eq(runId))).thenAnswer(call -> { saved.set(call.getArgument(0)); return true; });
         var committed = new boolean[]{false}; var queue = new ArrayList<Runnable>();
         var manager = new AbstractPlatformTransactionManager() {
             protected Object doGetTransaction() { return new Object(); }
@@ -48,9 +47,9 @@ class BoardVerificationServiceTest {
             protected void doRollback(DefaultTransactionStatus status) {}
         };
         Executor dispatcher = command -> { assertTrue(committed[0]); assertEquals("QUEUED", json.readTree(saved.get()).get("status").asText()); queue.add(command); };
-        var constructor = type.getDeclaredConstructor(JdbcTemplate.class, BoardTaskService.class, MissionExecutionStore.class, MissionGitExecutionService.class, CapabilityRegistry.class, CapabilitySettings.class, BoardVerificationPlanSupport.class, ProcessExecutor.class, PlatformTransactionManager.class, Executor.class);
+        var constructor = type.getDeclaredConstructor(BoardVerificationStore.class, BoardTaskService.class, MissionExecutionStore.class, MissionGitExecutionService.class, CapabilityRegistry.class, CapabilitySettings.class, BoardVerificationPlanSupport.class, ProcessExecutor.class, PlatformTransactionManager.class, Executor.class);
         constructor.setAccessible(true);
-        var service = constructor.newInstance(jdbc, tasks, executions, git, registry, settings, plans, process, manager, dispatcher);
+        var service = constructor.newInstance(store, tasks, executions, git, registry, settings, plans, process, manager, dispatcher);
         var requestType = Class.forName(type.getName() + "$Start");
         var request = requestType.getConstructor(String.class, String.class, String.class).newInstance("p", workspace, plan.planHash());
         var method = type.getMethod("start", UUID.class, UUID.class, requestType);

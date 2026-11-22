@@ -1,5 +1,5 @@
 package com.lh.eap.application.service;
-import com.lh.eap.persistence.jdbc.CliProgramMapper;
+import com.lh.eap.core.CliProgramStore;
 import java.util.HashMap;
 import com.lh.eap.error.CliProgramErrors;
 import com.lh.eap.error.ExecutionErrors;
@@ -37,12 +37,12 @@ public class TrustedToolCatalogService {
     private final RuntimeWorkspace runtime;
     private final TrustedToolProbeStore probeStore;
     private final ConcurrentHashMap<String, VersionProbe> probes;
-    private CliProgramMapper programs;
+    private CliProgramStore programs;
 
     @Autowired
     public TrustedToolCatalogService(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
                                      CliChannels channels, RuntimeWorkspace runtime,
-                                     CliProgramMapper programs) {
+                                     CliProgramStore programs) {
         this.handlers = handlers;
         this.settings = settings;
         this.channels = channels == null ? CliChannels.defaults() : channels;

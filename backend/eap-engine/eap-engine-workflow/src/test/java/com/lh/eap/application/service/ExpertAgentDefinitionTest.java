@@ -5,7 +5,6 @@ import com.lh.eap.domain.model.*;
 import com.lh.eap.rules.RulePackQuery;
 import java.util.*;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -16,7 +15,7 @@ class ExpertAgentDefinitionTest {
     private final ExpertAnalysisPolicy policy = mock(ExpertAnalysisPolicy.class);
     private final ExpertBehaviorCatalog policies = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(
             binding, "SQL Agent", policy, "agent", Set.of("sql.parse", "database.explain"), Set.of("sql.parse"))));
-    private final ExpertDefinitionService service = new ExpertDefinitionService(mock(JdbcTemplate.class), rules, () -> Set.of(), switches, policies);
+    private final ExpertDefinitionService service = new ExpertDefinitionService(mock(ExpertDefinitionStore.class), rules, () -> Set.of(), switches, policies);
 
     @Test void explicitV2AgentRoundTripsWithoutPretendingToolsAreADag() {
         var manifest = manifest("eap/v2", List.of("sql.parse", "database.explain"), List.of());
@@ -40,7 +39,7 @@ class ExpertAgentDefinitionTest {
     @Test void legacyWorkflowEndpointCannotExecuteAnAgentBinding() {
         var definitions = mock(ExpertDefinitionService.class);
         when(definitions.require("fixture", true)).thenReturn(manifest("eap/v2", List.of("sql.parse"), List.of()));
-        var tasks = mock(com.lh.eap.persistence.jdbc.TaskRepository.class);
+        var tasks = mock(TaskStore.class);
         var executor = new ExpertExecutionService(definitions, tasks, new com.lh.eap.runtime.handler.CapabilityHandlerRegistry(List.of()),
                 policies, java.nio.file.Path.of("."), List.of());
         var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> executor.execute("fixture",

@@ -157,7 +157,7 @@ class ExpertBehaviorPersistenceTest {
         return new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(v1, "SQL", first)));
     }
     private ExpertDefinitionService definitions(ExpertAnalysisPolicyResolver resolver) {
-        return proxy(new ExpertDefinitionService(jdbc, mock(RulePackQuery.class), () -> Set.of(),
+        return proxy(new ExpertDefinitionService(new com.lh.eap.persistence.jdbc.JdbcExpertDefinitionStore(jdbc), mock(RulePackQuery.class), () -> Set.of(),
                 mock(CapabilitySettings.class), resolver));
     }
     private ExpertManagementService management(ExpertDefinitionMapper store, ExpertDefinitionService experts) {

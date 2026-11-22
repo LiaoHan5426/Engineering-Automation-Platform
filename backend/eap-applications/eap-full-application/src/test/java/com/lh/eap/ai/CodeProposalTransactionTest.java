@@ -1,5 +1,7 @@
 package com.lh.eap.ai;
-import com.lh.eap.delivery.JdbcCodeProposalStore;
+import com.lh.eap.persistence.jdbc.JdbcCodeProposalStore;
+import com.lh.eap.persistence.jdbc.JdbcCodeGenerationStore;
+import com.lh.eap.persistence.jdbc.JdbcWorkspaceLockStore;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,9 @@ class CodeProposalTransactionTest {
     }
     @Test void filesystemBoundarySuspendsEvenAnEnclosingCallerTransaction() {
         var manager = new Transactions();
-        var store = new JdbcCodeProposalStore(org.mockito.Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class), manager, org.mockito.Mockito.mock(com.lh.eap.application.service.BoardApplicationBaseline.class));
+        var jdbc = org.mockito.Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var locks = new JdbcWorkspaceLockStore(jdbc);
+        var store = new JdbcCodeProposalStore(jdbc, manager, locks, new JdbcCodeGenerationStore(jdbc, manager, locks));
         new TransactionTemplate(manager).executeWithoutResult(tx -> {
             assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
             Boolean inTransaction = store.withoutTransaction(TransactionSynchronizationManager::isActualTransactionActive);

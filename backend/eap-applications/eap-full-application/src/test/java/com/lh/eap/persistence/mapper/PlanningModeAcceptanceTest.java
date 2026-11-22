@@ -97,7 +97,7 @@ class PlanningModeAcceptanceTest {
                 var captured = changes.prepareGeneration(AiConversationRegistry.PRINCIPAL,
                         conversation.conversationId(), "frontend/Page.vue", "", "", ref);
                 assertEquals("Reviewed task implementation plan", captured.taskSnapshot().notes());
-                var reopened = context.getBean(com.lh.eap.delivery.JdbcCodeGenerationStore.class)
+                var reopened = context.getBean(com.lh.eap.delivery.CodeGenerationStore.class)
                         .find(captured.id()).orElseThrow();
                 assertEquals(captured.taskSnapshot(), reopened.taskSnapshot());
                 context.getBean(AiChatApplication.class).send(conversation.conversationId(),

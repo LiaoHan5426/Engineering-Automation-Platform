@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.lh.eap.core.CliProgramStore;
 import com.lh.eap.domain.model.CapabilityDescriptor;
 import com.lh.eap.domain.model.CapabilityKind;
 import com.lh.eap.domain.model.CapabilityScope;
@@ -21,7 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 class TrustedToolCatalogServiceTest {
     @Test @SuppressWarnings("unchecked")
     void groupsGitOperationsAndSharesOneProgramProbe(@TempDir Path workspace) {
-        var mapper = mock(com.lh.eap.persistence.jdbc.CliProgramMapper.class);
+        var mapper = mock(CliProgramStore.class);
         var program = new com.lh.eap.domain.model.CliProgram("git", "Git", "git", true);
         when(mapper.programs()).thenReturn(List.of(program));
         when(mapper.program("git")).thenReturn(java.util.Optional.of(program));

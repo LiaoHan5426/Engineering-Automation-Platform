@@ -9,13 +9,13 @@ import com.lh.eap.error.BoardVerificationErrors;
 
 import com.lh.eap.capability.GitCapability;
 import com.lh.eap.core.BoardApplicationCatalogQuery;
+import com.lh.eap.core.BoardDeliveryStore;
 import com.lh.eap.core.CapabilityRegistry;
 import com.lh.eap.common.SensitiveData;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 import static com.lh.eap.application.service.BoardVerificationSource.denied;
@@ -46,7 +46,7 @@ public class BoardDeliveryService {
     public record Page(Delivery record, boolean prepareAllowed, String reason) {}
     private record Stored(Delivery delivery, String requestHash, String decisionHash, long revision, BoardRunService.Snapshot task, BoardVerificationService.Record verification) {}
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private final JdbcTemplate jdbc;
+    private final BoardDeliveryStore store;
     private final BoardApplicationCatalogQuery catalogQuery;
     private final BoardTaskService tasks;
     private final MissionExecutionStore executions;
@@ -55,12 +55,12 @@ public class BoardDeliveryService {
     private final BoardVerificationService verification;
     private final BoardDeliveryCapture capture;
     private final BoardApplicationEvidence applications;
-    public BoardDeliveryService(JdbcTemplate jdbc, BoardApplicationCatalogQuery catalogQuery, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture) {
-        this(jdbc, catalogQuery, tasks, executions, git, registry, verification, capture, null);
+    public BoardDeliveryService(BoardDeliveryStore store, BoardApplicationCatalogQuery catalogQuery, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture) {
+        this(store, catalogQuery, tasks, executions, git, registry, verification, capture, null);
     }
     @Autowired
-    public BoardDeliveryService(JdbcTemplate jdbc, BoardApplicationCatalogQuery catalogQuery, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture, BoardApplicationEvidence applications) {
-        this.jdbc=jdbc; this.catalogQuery=catalogQuery; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.verification=verification; this.capture=capture; this.applications=applications;
+    public BoardDeliveryService(BoardDeliveryStore store, BoardApplicationCatalogQuery catalogQuery, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture, BoardApplicationEvidence applications) {
+        this.store=store; this.catalogQuery=catalogQuery; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.verification=verification; this.capture=capture; this.applications=applications;
     }
     public BoardApplicationCatalog.Page applications(UUID taskId, UUID executionId, String projectId) {
         project(projectId);
@@ -96,7 +96,7 @@ public class BoardDeliveryService {
             var now = Instant.now();
             var evidence = request.applicationRef()==null ? null : applicationEvidence(request.applicationRef(), request.workspacePath(), stored, files, now, task);
             var delivery = new Delivery(UUID.randomUUID(), evidence==null ? BoardDeliverySource.EXTERNAL_MANUAL.wire() : "PREBOUND".equals(evidence.association()) ? BoardDeliverySource.CHAT_APPLIED_PREBOUND.wire() : BoardDeliverySource.CHAT_APPLIED_POST_HOC.wire(), request.requestId(), task.revision(), task.revision()+1, request.workspacePath(), plan.baseCommit(), record.id(), plan.source().contentHash(), task.prototypeVersionId(), task.goal(), task.acceptanceCriteria(), SensitiveData.redact(request.note()), files, now, null, evidence);
-            jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=?::jsonb,delivery_request_hash=? WHERE task_id=? AND execution_id=?", JSON.writeValueAsString(delivery), fingerprint, taskId, executionId);
+            store.saveDelivery(JSON.writeValueAsString(delivery), fingerprint, taskId, executionId);
             tasks.deliveryTransition(task, BoardTaskColumn.ACCEPTANCE.wire()); return delivery;
         });
     }
@@ -132,7 +132,7 @@ public class BoardDeliveryService {
             }
             var decision = new Decision(UUID.randomUUID(), request.requestId(), request.decision(), request.criteriaConfirmed(), request.previewConfirmed(), SensitiveData.redact(request.comment()), "local-operator", Instant.now(), request.previewUrl());
             var result = new Delivery(delivery.id(), delivery.source(), delivery.requestId(), delivery.taskRevision(), delivery.submittedRevision(), delivery.workspacePath(), delivery.baseCommit(), delivery.verificationId(), delivery.sourceHash(), delivery.prototypeVersionId(), delivery.goal(), delivery.acceptanceCriteria(), delivery.note(), delivery.files(), delivery.createdAt(), decision, delivery.applicationEvidence());
-            jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=?::jsonb,delivery_decision_hash=? WHERE task_id=? AND execution_id=?", JSON.writeValueAsString(result), fingerprint(request), taskId, executionId);
+            store.saveDecision(JSON.writeValueAsString(result), fingerprint(request), taskId, executionId);
             tasks.deliveryTransition(task, request.decision().equals(BoardDeliveryDecision.ACCEPT.wire()) ? BoardTaskColumn.DONE.wire() : BoardTaskColumn.READY.wire()); return result;
         });
     }
@@ -176,9 +176,12 @@ public class BoardDeliveryService {
     }
     private GitCapability capability() { return registry.all().stream().filter(item -> item instanceof GitCapability && item.name().equals("git-status")).map(item -> (GitCapability)item).findFirst().orElse(null); }
     private Stored read(UUID task, UUID execution) {
-        var rows = jdbc.query("SELECT delivery_snapshot,delivery_request_hash,delivery_decision_hash,task_revision,task_snapshot,verification_snapshot FROM eap.board_task_run WHERE task_id=? AND execution_id=?", (rs,n) -> new Stored(rs.getString(1)==null ? null : JSON.readValue(rs.getString(1), Delivery.class), rs.getString(2), rs.getString(3), rs.getLong(4), JSON.readValue(rs.getString(5), BoardRunService.Snapshot.class), rs.getString(6)==null ? null : JSON.readValue(rs.getString(6), BoardVerificationService.Record.class)), task, execution);
-        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,BoardErrors.BOARD_RUN_NOT_FOUND.code());
-        return rows.getFirst();
+        var row = store.find(task, execution);
+        if (row==null) throw new ResponseStatusException(HttpStatus.NOT_FOUND,BoardErrors.BOARD_RUN_NOT_FOUND.code());
+        return new Stored(row.deliverySnapshotJson()==null ? null : JSON.readValue(row.deliverySnapshotJson(), Delivery.class),
+            row.requestHash(), row.decisionHash(), row.taskRevision(),
+            JSON.readValue(row.taskSnapshotJson(), BoardRunService.Snapshot.class),
+            row.verificationSnapshotJson()==null ? null : JSON.readValue(row.verificationSnapshotJson(), BoardVerificationService.Record.class));
     }
     private static String fingerprint(Object value) { return GitReviewCapture.hash(JSON.writeValueAsString(value)); }
     static boolean validPreviewUrl(String value) {

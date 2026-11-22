@@ -32,12 +32,12 @@ class PreboundSemanticDeliveryTest {
                 "root":{"id":"root","kind":"page","props":{},"children":[{"id":"button","kind":"button","props":{"label":"Send"},"children":[]}]}}}
                 """;
             var version=versions.save(UUID.randomUUID(),"builder-alpha","Design",body,List.of("preview"));
-            var task=new BoardTaskService(jdbc).create(new BoardTaskService.Draft("prebound-semantic","Page","","ready","Show generation binding","Source and preview checked",UUID.randomUUID()));
+            var task=com.lh.eap.application.service.P4TestWiring.tasks(jdbc).create(new BoardTaskService.Draft("prebound-semantic","Page","","ready","Show generation binding","Source and preview checked",UUID.randomUUID()));
             jdbc.update("UPDATE eap.board_task SET prototype_version_id=? WHERE id=?",version.id(),task.id());
             var root=Files.createDirectory(session.resolve("workspace")).toRealPath();Files.createDirectory(root.resolve("frontend"));
             String target="frontend/Page.vue";Files.writeString(root.resolve(target),"<p>Before</p>\n");
-            var generations=new JdbcCodeGenerationStore(jdbc,manager);
-            var store=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
+            var generations=P4TestWiring.generations(jdbc,manager);
+            var store=P4TestWiring.proposals(jdbc,manager,ApplicationBaselineFixture.create(jdbc));
             var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",generations,store);
             var ref=new TaskRef(task.projectId(),task.id(),task.revision());var conversation=UUID.randomUUID();
             assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM eap.code_generation",Integer.class));

@@ -5,9 +5,9 @@ import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.api.Observation;
 import com.lh.eap.core.ExpertAgentAccess;
+import com.lh.eap.core.ExpertDefinitionManagementStore;
+import com.lh.eap.core.TaskStore;
 import com.lh.eap.domain.model.ExpertManifest;
-import com.lh.eap.persistence.jdbc.ExpertDefinitionMapper;
-import com.lh.eap.persistence.jdbc.TaskRepository;
 import java.util.*;
 import java.util.function.Function;
 import org.springframework.http.HttpStatus;
@@ -19,20 +19,20 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional(timeout = 10)
 public class WorkflowExpertAgentAccess implements ExpertAgentAccess {
-    private final ExpertDefinitionMapper mapper;
+    private final ExpertDefinitionManagementStore mapper;
     private final ExpertDefinitionService definitions;
-    private final TaskRepository tasks;
+    private final TaskStore tasks;
 
-    public WorkflowExpertAgentAccess(ExpertDefinitionMapper mapper, ExpertDefinitionService definitions, TaskRepository tasks) {
+    public WorkflowExpertAgentAccess(ExpertDefinitionManagementStore mapper, ExpertDefinitionService definitions, TaskStore tasks) {
         this.mapper = mapper; this.definitions = definitions; this.tasks = tasks;
     }
     @Override public Snapshot load(String id) {
-        var row = mapper.lockForKnowledge(id).orElseThrow(() -> rejected(AgentErrors.EXPERT_UNAVAILABLE.code()));
-        if (!Boolean.TRUE.equals(row.get("enabled"))) throw rejected(AgentErrors.EXPERT_DISABLED.code());
-        var manifest = ExpertManifest.parse((String) row.get("manifest"));
+        var row = mapper.lockDefinition(id).orElseThrow(() -> rejected(AgentErrors.EXPERT_UNAVAILABLE.code()));
+        if (!row.enabled()) throw rejected(AgentErrors.EXPERT_DISABLED.code());
+        var manifest = ExpertManifest.parse(row.manifest());
         if (!definitions.validateGraph(manifest).isEmpty() || !definitions.validateReferences(manifest).isEmpty())
             throw rejected(AgentErrors.EXPERT_DEFINITION_UNAVAILABLE.code());
-        return new Snapshot(manifest, ((Number) row.get("revision")).longValue());
+        return new Snapshot(manifest, row.revision());
     }
     @Override public void check(Snapshot snapshot) { checked(snapshot); }
     @Override public void checkEvidence(Snapshot snapshot, Set<UUID> knowledge, Set<UUID> databases) {
@@ -42,9 +42,9 @@ public class WorkflowExpertAgentAccess implements ExpertAgentAccess {
             throw rejected(AgentErrors.AGENT_EVIDENCE_GRANT_REVOKED.code());
     }
     private void checked(Snapshot snapshot) {
-        var row = mapper.lockForKnowledge(snapshot.manifest().id()).orElseThrow(() -> rejected(AgentErrors.EXPERT_REVOKED.code()));
-        if (!Boolean.TRUE.equals(row.get("enabled")) || ((Number) row.get("revision")).longValue() != snapshot.revision()
-                || !ExpertManifest.parse((String) row.get("manifest")).equals(snapshot.manifest())) throw rejected(AgentErrors.EXPERT_REVOKED.code());
+        var row = mapper.lockDefinition(snapshot.manifest().id()).orElseThrow(() -> rejected(AgentErrors.EXPERT_REVOKED.code()));
+        if (!row.enabled() || row.revision() != snapshot.revision()
+                || !ExpertManifest.parse(row.manifest()).equals(snapshot.manifest())) throw rejected(AgentErrors.EXPERT_REVOKED.code());
     }
     @Override public <T> T authorized(Snapshot snapshot, Function<List<UUID>, T> localRead) {
         checked(snapshot);

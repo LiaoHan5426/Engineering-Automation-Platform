@@ -40,11 +40,23 @@ import com.lh.eap.application.service.GitReviewCapture;
 import com.lh.eap.application.service.HandoffService;
 import com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery;
 import com.lh.eap.persistence.jdbc.JdbcBoardBaselineStore;
+import com.lh.eap.persistence.jdbc.JdbcBoardCodeProposalStore;
+import com.lh.eap.persistence.jdbc.JdbcBoardDeliveryStore;
 import com.lh.eap.persistence.jdbc.JdbcBoardPrototypeSelectionStore;
 import com.lh.eap.persistence.jdbc.JdbcBoardReviewStore;
+import com.lh.eap.persistence.jdbc.JdbcBoardRunStore;
 import com.lh.eap.persistence.jdbc.JdbcBoardRuntimeQuery;
+import com.lh.eap.persistence.jdbc.JdbcBoardTaskStore;
+import com.lh.eap.persistence.jdbc.JdbcBoardVerificationStore;
+import com.lh.eap.persistence.jdbc.JdbcCapabilityCatalogQuery;
+import com.lh.eap.persistence.jdbc.JdbcCapabilitySettingsStore;
 import com.lh.eap.persistence.jdbc.JdbcCliChannelStore;
+import com.lh.eap.persistence.jdbc.JdbcCodeGenerationStore;
+import com.lh.eap.persistence.jdbc.JdbcCodeProposalStore;
+import com.lh.eap.persistence.jdbc.JdbcExpertApprovalStore;
+import com.lh.eap.persistence.jdbc.JdbcExpertDefinitionStore;
 import com.lh.eap.persistence.jdbc.JdbcScenarioStore;
+import com.lh.eap.persistence.jdbc.JdbcWorkspaceLockStore;
 import com.lh.eap.application.service.KnowledgeManagementService;
 import com.lh.eap.application.service.McpServerService;
 import com.lh.eap.application.service.MissionExecutionRecovery;
@@ -61,16 +73,17 @@ import com.lh.eap.application.service.ToolExecutionService;
 import com.lh.eap.application.service.TrustedToolCatalogService;
 import com.lh.eap.application.service.WorkflowExpertAgentAccess;
 import com.lh.eap.application.service.WorkflowExpertKnowledgeAccess;
+import com.lh.eap.application.service.WorkspaceInterlock;
 import com.lh.eap.core.ExpertAnalysisPolicyResolver;
 import com.lh.eap.core.ExpertBehaviorCatalog;
 import com.lh.eap.decision.RuleBasedDecisionProvider;
 import com.lh.eap.delivery.CapabilityDirtyRunner;
 import com.lh.eap.delivery.CodeChangeService;
+import com.lh.eap.delivery.CodeGenerationStoreAdapter;
+import com.lh.eap.delivery.CodeProposalStoreAdapter;
 import com.lh.eap.delivery.SourceWriteReview;
 import com.lh.eap.delivery.CodeVerificationProperties;
 import com.lh.eap.delivery.CodeVerificationService;
-import com.lh.eap.delivery.JdbcCodeGenerationStore;
-import com.lh.eap.delivery.JdbcCodeProposalStore;
 import com.lh.eap.domain.model.ExpertBehaviorBinding;
 import com.lh.eap.llm.LlmGateway;
 import com.lh.eap.llm.OpenAiCompatibleProvider;
@@ -165,6 +178,17 @@ import org.springframework.context.annotation.Import;
     JdbcBoardReviewStore.class,
     JdbcBoardRuntimeQuery.class,
     JdbcScenarioStore.class,
+    JdbcBoardTaskStore.class,
+    JdbcBoardVerificationStore.class,
+    JdbcBoardCodeProposalStore.class,
+    JdbcBoardRunStore.class,
+    JdbcBoardDeliveryStore.class,
+    JdbcCapabilityCatalogQuery.class,
+    JdbcCapabilitySettingsStore.class,
+    JdbcWorkspaceLockStore.class,
+    JdbcExpertApprovalStore.class,
+    JdbcExpertDefinitionStore.class,
+    WorkspaceInterlock.class,
     ToolExecutionController.class,
     SqlExpertAnalysisPolicy.class,
     WorkflowExpertKnowledgeAccess.class,
@@ -232,6 +256,8 @@ import org.springframework.context.annotation.Import;
     CodeVerificationService.class,
     JdbcCodeGenerationStore.class,
     JdbcCodeProposalStore.class,
+    CodeGenerationStoreAdapter.class,
+    CodeProposalStoreAdapter.class,
     LlmGateway.class,
     OpenAiCompatibleProvider.class,
     PromptPreprocessor.class,

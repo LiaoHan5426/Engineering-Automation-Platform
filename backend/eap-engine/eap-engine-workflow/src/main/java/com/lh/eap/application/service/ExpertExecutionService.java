@@ -4,7 +4,7 @@ import com.lh.eap.domain.model.WorkspaceSearchInput;
 import com.lh.eap.domain.model.DatabaseEvidenceInput;
 import com.lh.eap.error.AgentErrors;
 
-import com.lh.eap.persistence.jdbc.TaskRepository;
+import com.lh.eap.core.TaskStore;
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.ExpertManifest;
 import com.lh.eap.domain.model.NodeResult;
@@ -54,7 +54,7 @@ public class ExpertExecutionService {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private static final Logger log=LoggerFactory.getLogger(ExpertExecutionService.class);
     private final ExpertDefinitionService definitions;
-    private final TaskRepository tasks;
+    private final TaskStore tasks;
     private final CapabilityHandlerRegistry handlers;
     private final ExpertAnalysisPolicyResolver policies;
     private final Path workspace;
@@ -62,7 +62,7 @@ public class ExpertExecutionService {
     private final DagExecutionTransactions transactions;
 
     /** Kept for direct construction (tests, lightweight compositions) with no managed transaction. */
-    public ExpertExecutionService(ExpertDefinitionService definitions, TaskRepository tasks,
+    public ExpertExecutionService(ExpertDefinitionService definitions, TaskStore tasks,
             CapabilityHandlerRegistry handlers, ExpertAnalysisPolicyResolver policies, Path workspace,
             List<ExecutionResource> resources) {
         this(definitions, tasks, handlers, policies, workspace, resources, null);
@@ -70,7 +70,7 @@ public class ExpertExecutionService {
 
     /** Spring injects the host transaction manager; see {@link DagExecutionTransactions}. */
     @Autowired
-    public ExpertExecutionService(ExpertDefinitionService definitions, TaskRepository tasks,
+    public ExpertExecutionService(ExpertDefinitionService definitions, TaskStore tasks,
             CapabilityHandlerRegistry handlers, ExpertAnalysisPolicyResolver policies, Path workspace,
             List<ExecutionResource> resources, PlatformTransactionManager transactionManager) {
         this.definitions = definitions;

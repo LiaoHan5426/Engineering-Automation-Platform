@@ -53,8 +53,8 @@ class ExpertKnowledgePersistenceTest {
         jdbc = new JdbcTemplate(dataSource);
         manager = new DataSourceTransactionManager(dataSource);
         tx = new TransactionTemplate(manager); tx.setTimeout(10);
-        var settings = new CapabilitySettings(jdbc, new CapabilityUsage(jdbc));
-        experts = new ExpertDefinitionService(jdbc, new RulePackService(jdbc), new McpServerRegistry(jdbc), settings, new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", org.mockito.Mockito.mock(com.lh.eap.core.ExpertAnalysisPolicy.class)))));
+        var settings = com.lh.eap.application.service.P4TestWiring.settings(jdbc, new CapabilityUsage(jdbc));
+        experts = new ExpertDefinitionService(new com.lh.eap.persistence.jdbc.JdbcExpertDefinitionStore(jdbc), new RulePackService(jdbc), new McpServerRegistry(jdbc), settings, new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", org.mockito.Mockito.mock(com.lh.eap.core.ExpertAnalysisPolicy.class)))));
         definitions = new ExpertDefinitionMapper(jdbc);
         var repository = new KnowledgeRepository(jdbc);
         var registry = new CapabilityHandlerRegistry(List.of(new KnowledgeSearchHandler(repository)), settings);

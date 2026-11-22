@@ -50,13 +50,13 @@ public final class BoardRuntimeFixture {
         @Bean JdbcTemplate jdbc(DataSource source){return new JdbcTemplate(source);}
         @Bean PlatformTransactionManager manager(DataSource source){return new DataSourceTransactionManager(source);}
         @Bean BoardRuntimeService runtime(JdbcTemplate jdbc){return new BoardRuntimeService(new com.lh.eap.persistence.jdbc.JdbcBoardRuntimeQuery(jdbc));}
-        @Bean BoardTaskService tasks(JdbcTemplate jdbc){return new BoardTaskService(jdbc);}
+        @Bean BoardTaskService tasks(JdbcTemplate jdbc){return com.lh.eap.application.service.P4TestWiring.tasks(jdbc);}
         @Bean HandoffStore handoffs(JdbcTemplate jdbc){return new JdbcHandoffStore(jdbc);}
         @Bean MissionStore missions(JdbcTemplate jdbc){return new JdbcMissionStore(jdbc);}
         @Bean MissionExecutionStore executions(JdbcTemplate jdbc){return new JdbcMissionExecutionStore(jdbc);}
         @Bean MissionService missionService(HandoffStore handoffs,MissionStore missions){return new MissionService(handoffs,missions);}
         @Bean CapabilityRegistry registry(){return new CapabilityRegistry().register(new GitCapability("status"));}
-        @Bean CapabilitySettings settings(JdbcTemplate jdbc){return new CapabilitySettings(jdbc,null);}
+        @Bean CapabilitySettings settings(JdbcTemplate jdbc){return com.lh.eap.application.service.P4TestWiring.settings(jdbc,null);}
         @Bean(destroyMethod="close") DefaultProcessExecutor executor(){return new DefaultProcessExecutor(Duration.ofMinutes(3));}
         @Bean MissionGitExecutionService git(MissionStore missions,MissionExecutionStore executions,CapabilityRegistry registry,
                 CapabilitySettings settings,DefaultProcessExecutor executor){
@@ -84,7 +84,7 @@ public final class BoardRuntimeFixture {
         @Bean BoardPrototypeService prototypes(JdbcTemplate jdbc,BoardTaskService tasks,PrototypeVersionService versions){return new BoardPrototypeService(new com.lh.eap.persistence.jdbc.JdbcBoardPrototypeSelectionStore(jdbc),tasks,versions);}
         @Bean BoardRunService runs(JdbcTemplate jdbc,BoardTaskService tasks,HandoffStore handoffs,MissionService missions,
                 MissionExecutionStore executions,MissionGitExecutionService git,PlatformTransactionManager manager,BoardPrototypeService prototypes){
-            return new BoardRunService(jdbc,tasks,handoffs,missions,executions,git,manager,prototypes);
+            return new BoardRunService(com.lh.eap.application.service.P4TestWiring.runStore(jdbc),tasks,handoffs,missions,executions,git,manager,prototypes);
         }
     }
 }

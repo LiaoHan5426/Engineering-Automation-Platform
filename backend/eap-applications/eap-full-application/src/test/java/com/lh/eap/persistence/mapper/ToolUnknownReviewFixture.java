@@ -64,7 +64,7 @@ public final class ToolUnknownReviewFixture {
         @Bean DataSource dataSource() { return scopedDataSource(schema); }
         @Bean PlatformTransactionManager transactionManager(DataSource source) { return new DataSourceTransactionManager(source); }
         @Bean JdbcToolExecutionStore store(DataSource source) { return new JdbcToolExecutionStore(new JdbcTemplate(source)); }
-        @Bean CapabilitySettings settings(DataSource source) { return new CapabilitySettings(new JdbcTemplate(source), null); }
+        @Bean CapabilitySettings settings(DataSource source) { return com.lh.eap.application.service.P4TestWiring.settings(new JdbcTemplate(source), null); }
         @Bean CapabilityRegistry registry() {
             return new CapabilityRegistry().register(new GitCapability("status", ToolUnknownReviewFixture::registeredBinary))
                     .register(new GitCapability("diff", ToolUnknownReviewFixture::registeredBinary));

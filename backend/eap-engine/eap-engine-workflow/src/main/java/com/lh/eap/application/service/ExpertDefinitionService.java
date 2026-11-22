@@ -1,7 +1,8 @@
 package com.lh.eap.application.service;
+import com.lh.eap.core.CapabilityCatalogQuery;
 import com.lh.eap.core.DatabaseGrantQuery;
 import com.lh.eap.core.ExpertBehaviorCatalog;
-import com.lh.eap.persistence.jdbc.CliProgramMapper;
+import com.lh.eap.core.ExpertDefinitionStore;
 import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.core.ExpertScopedCapabilityQuery;
@@ -13,7 +14,6 @@ import com.lh.eap.rules.RulePackQuery;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,20 +28,20 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Service
 public class ExpertDefinitionService implements DatabaseGrantQuery {
-    private final JdbcTemplate jdbc;
+    private final ExpertDefinitionStore store;
     private final RulePackQuery rulePacks;
     private final ExpertScopedCapabilityQuery scopedCapabilities;
     private final CapabilitySettings settings;
     private final ExpertAnalysisPolicyResolver policies;
-    private CliProgramMapper cliPrograms;
+    private CapabilityCatalogQuery cliPrograms = CapabilityCatalogQuery.empty();
 
-    @Autowired
-    public void setCliPrograms(CliProgramMapper cliPrograms) { this.cliPrograms = cliPrograms; }
+    @Autowired(required = false)
+    public void setCliPrograms(CapabilityCatalogQuery cliPrograms) { this.cliPrograms = cliPrograms; }
 
     /** All authoritative configuration comes from the host, including its capability switches. */
-    public ExpertDefinitionService(JdbcTemplate jdbc, RulePackQuery rulePacks, ExpertScopedCapabilityQuery scopedCapabilities,
+    public ExpertDefinitionService(ExpertDefinitionStore store, RulePackQuery rulePacks, ExpertScopedCapabilityQuery scopedCapabilities,
                                    CapabilitySettings settings, ExpertAnalysisPolicyResolver policies) {
-        this.jdbc = jdbc;
+        this.store = store;
         this.rulePacks = Objects.requireNonNull(rulePacks);
         this.scopedCapabilities = Objects.requireNonNull(scopedCapabilities);
         this.settings = Objects.requireNonNull(settings);
@@ -57,29 +57,18 @@ public class ExpertDefinitionService implements DatabaseGrantQuery {
     }
 
     public ExpertManifest require(String id, boolean active) {
-        var records = jdbc.queryForList("SELECT manifest::text AS manifest,enabled FROM eap.expert_definition WHERE id=?", id);
-        if (records.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,AgentErrors.EXPERT_NOT_FOUND.code());
-        if (active && !Boolean.TRUE.equals(records.getFirst().get("enabled"))) {
+        var row = store.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,AgentErrors.EXPERT_NOT_FOUND.code()));
+        if (active && !row.enabled()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,AgentErrors.EXPERT_NOT_ENABLED.code());
         }
-        return ExpertManifest.parse((String) records.getFirst().get("manifest"));
+        return ExpertManifest.parse(row.manifest());
     }
 
-    public boolean isBuiltin(String id) {
-        return Boolean.TRUE.equals(jdbc.queryForObject(
-                "SELECT COALESCE((SELECT builtin FROM eap.expert_definition WHERE id=?),false)", Boolean.class, id));
-    }
+    public boolean isBuiltin(String id) { return store.isBuiltin(id); }
 
-    public List<UUID> knowledgeGrants(String id) {
-        return jdbc.query("SELECT knowledge_base_id FROM eap.expert_knowledge_grant WHERE expert_id=?",
-                (rs,row)->rs.getObject(1, UUID.class), id);
-    }
+    public List<UUID> knowledgeGrants(String id) { return store.knowledgeGrants(id); }
 
-    public boolean databaseGranted(String id, UUID profile) {
-        return Boolean.TRUE.equals(jdbc.queryForObject(
-                "SELECT EXISTS(SELECT 1 FROM eap.expert_database_grant WHERE expert_id=? AND database_profile_id=?)",
-                Boolean.class, id, profile));
-    }
+    @Override public boolean databaseGranted(String id, UUID profile) { return store.databaseGranted(id, profile); }
 
     public List<String> validateReferences(ExpertManifest manifest) {
         var errors = new ArrayList<String>();
@@ -164,32 +153,36 @@ public class ExpertDefinitionService implements DatabaseGrantQuery {
         if(ids.size()>100){errors.add(label+"引用最多100项");return;}
         for (var id : ids) {
             try {
-                var exists = jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM "+table+" WHERE id=?)", Boolean.class, UUID.fromString(id));
-                if (!Boolean.TRUE.equals(exists)) errors.add(label+"不存在："+id);
+                if (!store.referenceExists(table, UUID.fromString(id))) errors.add(label+"不存在："+id);
             } catch (IllegalArgumentException error) {errors.add(label+"必须使用目录中的 UUID 标识："+id);}
         }
     }
 
     @Transactional
     public void activate(String id, boolean enabled) {
-        var rows=jdbc.queryForList("SELECT manifest::text AS manifest,builtin FROM eap.expert_definition WHERE id=? FOR UPDATE", id);
-        if(rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,AgentErrors.EXPERT_NOT_FOUND.code());
-        if(Boolean.TRUE.equals(rows.getFirst().get("builtin"))) throw new ResponseStatusException(HttpStatus.CONFLICT,AgentErrors.EXPERT_BUILTIN.code());
-        var manifest=enabled ? ExpertManifest.parse((String)rows.getFirst().get("manifest")) : null;
+        var row=store.lock(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,AgentErrors.EXPERT_NOT_FOUND.code()));
+        if(row.builtin()) throw new ResponseStatusException(HttpStatus.CONFLICT,AgentErrors.EXPERT_BUILTIN.code());
+        var manifest=enabled ? ExpertManifest.parse(row.manifest()) : null;
         if (enabled) {
             var errors=new ArrayList<>(validateGraph(manifest));errors.addAll(validateReferences(manifest));
             if(!errors.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,String.join("；",errors));
         }
-        jdbc.update("DELETE FROM eap.expert_knowledge_grant WHERE expert_id=?",id);
-        jdbc.update("DELETE FROM eap.expert_database_grant WHERE expert_id=?",id);
-        jdbc.update("DELETE FROM eap.expert_mcp_grant WHERE expert_id=?",id);
+        List<UUID> knowledge=List.of(), databases=List.of(); List<String> capabilities=List.of();
         if(enabled) {
-            for(var key:manifest.knowledgeBases()==null?List.<String>of():manifest.knowledgeBases()) jdbc.update("INSERT INTO eap.expert_knowledge_grant VALUES (?,?) ON CONFLICT DO NOTHING",id,UUID.fromString(key));
-            for(var key:manifest.databaseProfiles()==null?List.<String>of():manifest.databaseProfiles()) jdbc.update("INSERT INTO eap.expert_database_grant VALUES (?,?) ON CONFLICT DO NOTHING",id,UUID.fromString(key));
+            knowledge=parseIds(manifest.knowledgeBases());
+            databases=parseIds(manifest.databaseProfiles());
             // Expert-scoped capabilities are granted per expert, never registered globally. The grant is
             // what the run-time registry checks, and disabling the expert revokes it with the others.
-            for(var capability:manifest.expertScopedCapabilities()) jdbc.update("INSERT INTO eap.expert_mcp_grant(expert_id,capability) VALUES (?,?) ON CONFLICT DO NOTHING",id,capability);
+            capabilities=manifest.expertScopedCapabilities();
         }
-        jdbc.update("UPDATE eap.expert_definition SET enabled=?,revision=revision+1,updated_at=now() WHERE id=?",enabled,id);
+        store.replaceGrants(id, knowledge, databases, capabilities);
+        store.setEnabled(id, enabled);
+    }
+
+    private static List<UUID> parseIds(List<String> ids) {
+        if (ids == null) return List.of();
+        var result = new ArrayList<UUID>(ids.size());
+        for (var id : ids) result.add(UUID.fromString(id));
+        return result;
     }
 }

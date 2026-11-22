@@ -32,7 +32,7 @@ class BoardTaskPersistenceTest {
         jdbc = new JdbcTemplate(dataSource);
         transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         transaction.setTimeout(10);
-        service = new BoardTaskService(jdbc);
+        service = com.lh.eap.application.service.P4TestWiring.tasks(jdbc);
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM information_schema.columns WHERE table_schema='eap' AND table_name='board_task' AND column_name='request_fingerprint'", Integer.class), "Apply the committed incremental migrations before running this test");
     }
     @AfterEach void removeOwnedRows() {
@@ -50,7 +50,7 @@ class BoardTaskPersistenceTest {
     @Test void savesReopensAndRetriesOriginalCreationAfterEdits() {
         var request = draft(); var task = create(request);
         var saved = update(task, "independently checked");
-        var reopened = new BoardTaskService(jdbc).list(project).getFirst();
+        var reopened = com.lh.eap.application.service.P4TestWiring.tasks(jdbc).list(project).getFirst();
         assertEquals(saved, reopened); assertEquals(request.goal(), reopened.goal());
         assertEquals(request.acceptanceCriteria(), reopened.acceptanceCriteria());
         assertEquals("ready", reopened.column()); assertEquals(2, reopened.revision());

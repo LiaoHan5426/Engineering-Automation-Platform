@@ -1,5 +1,6 @@
 package com.lh.eap.persistence.jdbc;
 
+import com.lh.eap.core.CliProgramStore;
 import com.lh.eap.domain.model.CliOperation;
 import com.lh.eap.domain.model.CliProgram;
 import java.util.List;
@@ -10,7 +11,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** SQL access only; validation and reference protection live in the service. */
 @Repository
-public class CliProgramMapper {
+public class CliProgramMapper implements CliProgramStore {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private final JdbcTemplate jdbc;
 

@@ -147,14 +147,14 @@ class SingleContractAcceptanceTest {
         @Bean CliChannels channels(JdbcCliChannelStore bindings){return new CliChannels(bindings);}
         @Bean CliProgramMapper programs(JdbcTemplate jdbc){return new CliProgramMapper(jdbc);}
         @Bean CapabilityUsage usage(JdbcTemplate jdbc){return new CapabilityUsage(jdbc);}
-        @Bean CapabilitySettings settings(JdbcTemplate jdbc,CapabilityUsage usage){return new CapabilitySettings(jdbc,usage);}
+        @Bean CapabilitySettings settings(JdbcTemplate jdbc,CapabilityUsage usage){return com.lh.eap.application.service.P4TestWiring.settings(jdbc,usage);}
         @Bean CliProgramService cli(CliProgramMapper mapper,CliChannels channels,CapabilityUsage usage){return new CliProgramService(mapper,channels,usage);}
         @Bean(destroyMethod="close") DefaultProcessExecutor executor(){return new DefaultProcessExecutor(Duration.ofSeconds(10));}
         @Bean CapabilityRegistry registry(CliChannels channels){return new CapabilityRegistry().register(new GitCapability("status",()->channels.binaryFor("git-status","git"))).register(new GitCapability("diff",()->channels.binaryFor("git-diff","git")));}
         @Bean CapabilityHandlerRegistry handlers(CapabilityRegistry registry,DefaultProcessExecutor executor,CliChannels channels,CapabilitySettings settings){return new CapabilityHandlerRegistry(List.of(new GitInspectionHandler(registry,executor,channels)),settings);}
         @Bean McpServerRegistry mcp(JdbcTemplate jdbc){return new McpServerRegistry(jdbc);}
         @Bean com.lh.eap.core.McpCatalogQuery mcpCatalog(McpServerRegistry mcp,JdbcTemplate jdbc,CapabilityUsage usage){return new com.lh.eap.application.service.McpCatalogQueryAdapter(mcp,new com.lh.eap.application.service.McpServerService(jdbc,mcp,usage));}
-        @Bean CapabilityCatalog catalog(CapabilityHandlerRegistry handlers,JdbcTemplate jdbc,com.lh.eap.core.McpCatalogQuery mcp,CliChannels channels,CapabilityUsage usage){return new CapabilityCatalog(handlers,jdbc,mcp,channels,usage);}
+        @Bean CapabilityCatalog catalog(CapabilityHandlerRegistry handlers,JdbcTemplate jdbc,com.lh.eap.core.McpCatalogQuery mcp,CliChannels channels,CapabilityUsage usage,CapabilitySettings settings,CliProgramService cli){return new CapabilityCatalog(handlers,mcp,channels,usage,settings,new com.lh.eap.persistence.jdbc.JdbcCapabilityCatalogQuery(jdbc),cli);}
         @Bean TrustedToolCatalogService tools(CapabilityHandlerRegistry handlers,CapabilitySettings settings,CliChannels channels,RuntimeWorkspace runtime,CliProgramMapper programs){return new TrustedToolCatalogService(handlers,settings,channels,runtime,programs);}
         @Bean RuntimeDataLayoutService layout(RuntimeWorkspace runtime){return new RuntimeDataLayoutService(runtime,workspace,".eap-ai-artifacts",".eap/model-connections.json");}
         @Bean ToolExecutionService executions(JdbcTemplate jdbc,RuntimeWorkspace runtime,CapabilitySettings settings,CapabilityHandlerRegistry handlers,CapabilityRegistry registry,DefaultProcessExecutor executor){return new ToolExecutionService(new JdbcToolExecutionStore(jdbc),runtime,settings,handlers,registry,executor);}
@@ -170,7 +170,7 @@ class SingleContractAcceptanceTest {
             return new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(new ExpertBehaviorBinding("local-review",1),"Local 1",policy),new ExpertBehaviorCatalog.Registration(new ExpertBehaviorBinding("local-review",2),"Local 2",policy)));
         }
         @Bean ExpertDefinitionMapper mapper(JdbcTemplate jdbc){return new ExpertDefinitionMapper(jdbc);}
-        @Bean ExpertDefinitionService definitions(JdbcTemplate jdbc,RulePackService rules,McpServerRegistry mcp,CapabilitySettings settings,ExpertBehaviorCatalog policies){return new ExpertDefinitionService(jdbc,rules,mcp,settings,policies);}
+        @Bean ExpertDefinitionService definitions(JdbcTemplate jdbc,RulePackService rules,McpServerRegistry mcp,CapabilitySettings settings,ExpertBehaviorCatalog policies){return new ExpertDefinitionService(new com.lh.eap.persistence.jdbc.JdbcExpertDefinitionStore(jdbc),rules,mcp,settings,policies);}
         @Bean ExpertManagementService management(ExpertDefinitionMapper mapper,ExpertDefinitionService definitions,RulePackService rules,CapabilityCatalog catalog){return new ExpertManagementService(mapper,definitions,rules,catalog);}
         @Bean TaskRepository tasks(JdbcTemplate jdbc){return new TaskRepository(jdbc);}
         @Bean ExpertExecutionService experts(ExpertDefinitionService definitions,TaskRepository tasks,CapabilityHandlerRegistry handlers,ExpertBehaviorCatalog policies){return new ExpertExecutionService(definitions,tasks,handlers,policies,workspace,List.of());}

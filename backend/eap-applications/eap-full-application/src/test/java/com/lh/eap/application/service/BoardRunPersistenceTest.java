@@ -1,7 +1,5 @@
 package com.lh.eap.application.service;
-import com.lh.eap.delivery.JdbcCodeGenerationStore;
 import com.lh.eap.delivery.CodeChangeService;
-import com.lh.eap.delivery.JdbcCodeProposalStore;
 
 import static org.junit.jupiter.api.Assertions.*;
 import java.nio.file.*;
@@ -69,10 +67,10 @@ class BoardRunPersistenceTest {
     private MissionGitExecutionService git(RuntimeWorkspace workspace, MissionExecutionStore store) {
         var registry = new CapabilityRegistry().register(new GitCapability("status"));
         var handlers = new CapabilityHandlerRegistry(List.of(new GitInspectionHandler(registry, executor)));
-        return new MissionGitExecutionService(context.getBean(MissionStore.class), store, handlers, new CapabilitySettings(jdbc, null), registry, executor, workspace);
+        return new MissionGitExecutionService(context.getBean(MissionStore.class), store, handlers, com.lh.eap.application.service.P4TestWiring.settings(jdbc, null), registry, executor, workspace);
     }
     private BoardRunService service(MissionGitExecutionService service, java.util.concurrent.Executor dispatcher) {
-        return new BoardRunService(jdbc, tasks, context.getBean(HandoffStore.class), context.getBean(MissionService.class), executions, service, context.getBean(PlatformTransactionManager.class), context.getBean(BoardPrototypeService.class), dispatcher, false);
+        return new BoardRunService(com.lh.eap.application.service.P4TestWiring.runStore(jdbc), tasks, context.getBean(HandoffStore.class), context.getBean(MissionService.class), executions, service, context.getBean(PlatformTransactionManager.class), context.getBean(BoardPrototypeService.class), dispatcher, false);
     }
     private BoardTaskService.Task task() { return tasks.create(new BoardTaskService.Draft(project, "Inspect bounded repository", "", "ready", "Collect Git state", "Review evidence.txt in output", UUID.randomUUID())); }
     private BoardRunService.Start request(BoardTaskService.Task task) throws Exception { return new BoardRunService.Start(project, task.revision(), UUID.randomUUID(), repo.toRealPath().toString()); }
@@ -163,7 +161,7 @@ class BoardRunPersistenceTest {
         var prototypes = context.getBean(BoardPrototypeService.class);
         var linked = prototypes.select(task.id(), new BoardPrototypeService.Selection(project, 1, first.id()));
         assertEquals(first.id(), linked.prototypeVersionId()); assertEquals(2, linked.revision());
-        assertEquals(first.id(), new BoardTaskService(jdbc).list(project).getFirst().prototypeVersionId());
+        assertEquals(first.id(), com.lh.eap.application.service.P4TestWiring.tasks(jdbc).list(project).getFirst().prototypeVersionId());
         assertEquals(2, prototypes.select(task.id(), new BoardPrototypeService.Selection(project, 2, first.id())).revision());
         var request = request(linked); var run = runs.start(task.id(), request);
         assertEquals(first.id(), run.task().prototype().id()); assertEquals(first.contentHash(), run.task().prototype().contentHash());
@@ -260,7 +258,7 @@ class BoardRunPersistenceTest {
         var channels = org.mockito.Mockito.mock(CliChannels.class);
         var binary = LocalBinaries.resolve("git").orElseThrow().toString();
         org.mockito.Mockito.when(channels.channel("vp", "vp")).thenReturn(new CliChannels.Channel("vp", binary, "operator", binary, com.lh.eap.domain.model.CapabilityAvailability.AVAILABLE));
-        return new BoardVerificationService(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), context.getBean(CapabilitySettings.class),
+        return new BoardVerificationService(com.lh.eap.application.service.P4TestWiring.verificationStore(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), context.getBean(CapabilitySettings.class),
             new BoardVerificationPlanSupport(executor, channels, new BoardVerificationSource()), process, context.getBean(PlatformTransactionManager.class), dispatcher);
     }
     private void verificationFixture() throws Exception {
@@ -321,7 +319,7 @@ class BoardRunPersistenceTest {
                 call.getArgument(1), call.getArgument(2), call.getArgument(3), task.id())).when(scoped).update(
                 org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
-        new BoardVerificationService(scoped, tasks, executions, git, context.getBean(CapabilityRegistry.class), context.getBean(CapabilitySettings.class), org.mockito.Mockito.mock(BoardVerificationPlanSupport.class), process, context.getBean(PlatformTransactionManager.class), queue::add).markRestartUnknown();
+        new BoardVerificationService(new com.lh.eap.persistence.jdbc.JdbcBoardVerificationStore(scoped), tasks, executions, git, context.getBean(CapabilityRegistry.class), context.getBean(CapabilitySettings.class), org.mockito.Mockito.mock(BoardVerificationPlanSupport.class), process, context.getBean(PlatformTransactionManager.class), queue::add).markRestartUnknown();
         queue.remove().run();
         assertEquals("UNKNOWN", service.get(task.id(), run.execution().id(), project).record().status());
         assertTrue(tasks.list(project).getFirst().executionActive());
@@ -352,7 +350,7 @@ class BoardRunPersistenceTest {
         var process = passingVerificationProcess();
         var settings = org.mockito.Mockito.mock(CapabilitySettings.class);
         org.mockito.Mockito.when(settings.enabled(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
-        var service = new BoardVerificationService(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), settings,
+        var service = new BoardVerificationService(com.lh.eap.application.service.P4TestWiring.verificationStore(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), settings,
             plans, process, context.getBean(PlatformTransactionManager.class), queue::add);
         var workspace = repo.toRealPath().toString();
         var outer = new org.springframework.transaction.support.TransactionTemplate(context.getBean(PlatformTransactionManager.class));
@@ -382,7 +380,7 @@ class BoardRunPersistenceTest {
         verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash())); queue.remove().run();
         assertEquals("PASSED", verification.get(task.id(), run.execution().id(), project).record().status(), verification.get(task.id(), run.execution().id(), project).record().reason());
         var type = assertDoesNotThrow(() -> Class.forName("com.lh.eap.application.service.BoardDeliveryService"), "delivery service missing");
-        var service = type.getConstructor(JdbcTemplate.class, com.lh.eap.core.BoardApplicationCatalogQuery.class, BoardTaskService.class, MissionExecutionStore.class, MissionGitExecutionService.class, CapabilityRegistry.class, BoardVerificationService.class, BoardDeliveryCapture.class).newInstance(jdbc, new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(executor, new BoardVerificationSource()));
+        var service = type.getConstructor(com.lh.eap.core.BoardDeliveryStore.class, com.lh.eap.core.BoardApplicationCatalogQuery.class, BoardTaskService.class, MissionExecutionStore.class, MissionGitExecutionService.class, CapabilityRegistry.class, BoardVerificationService.class, BoardDeliveryCapture.class).newInstance(com.lh.eap.application.service.P4TestWiring.deliveryStore(jdbc), new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(executor, new BoardVerificationSource()));
         var requestType = Class.forName(type.getName()+"$Request");
         var request = requestType.getConstructor(String.class, long.class, String.class, UUID.class, List.class, String.class).newInstance(project, 1L, plan.workspacePath(), UUID.randomUUID(), List.of("frontend/source.ts"), "manual edit");
         var delivery = type.getMethod("submit", UUID.class, UUID.class, requestType).invoke(service, task.id(), run.execution().id(), request);
@@ -417,7 +415,7 @@ class BoardRunPersistenceTest {
                 var plan = verification.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
                 verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash())); queue.remove().run();
                 assertEquals("PASSED", verification.get(task.id(), run.execution().id(), project).record().status());
-        return new DeliveryFixture(task, run.execution().id(), new BoardDeliveryService(jdbc, new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(captureExecutor, new BoardVerificationSource())), new BoardDeliveryService.Request(project, 1, plan.workspacePath(), UUID.randomUUID(), List.of("frontend/source.ts"), "manual change"), verification);
+        return new DeliveryFixture(task, run.execution().id(), new BoardDeliveryService(com.lh.eap.application.service.P4TestWiring.deliveryStore(jdbc), new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(captureExecutor, new BoardVerificationSource())), new BoardDeliveryService.Request(project, 1, plan.workspacePath(), UUID.randomUUID(), List.of("frontend/source.ts"), "manual change"), verification);
     }
     @Test void deliveryUnknownPersistsAfterOuterRollbackAndBlocksTheWorkspace() throws Exception {
         var process = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
@@ -461,7 +459,7 @@ class BoardRunPersistenceTest {
     @Test void deliveryReadsAndIdempotentRetriesNeverRunProcessesAndAreScoped() throws Exception {
         var f = deliveryFixture(executor); var delivery = f.service().submit(f.task().id(), f.execution(), f.request());
         var process = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
-        var service = new BoardDeliveryService(jdbc, new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), f.verification(), new BoardDeliveryCapture(process,new BoardVerificationSource()));
+        var service = new BoardDeliveryService(com.lh.eap.application.service.P4TestWiring.deliveryStore(jdbc), new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), f.verification(), new BoardDeliveryCapture(process,new BoardVerificationSource()));
         assertEquals(delivery, service.get(f.task().id(), f.execution(), project).record());
         assertEquals(delivery, service.submit(f.task().id(), f.execution(), f.request()));
         assertEquals(404, rejects(() -> service.get(f.task().id(), f.execution(), project+"-foreign")).getStatusCode().value());
@@ -482,7 +480,7 @@ class BoardRunPersistenceTest {
         var f = deliveryFixture(executor); var delivery = f.service().submit(f.task().id(),f.execution(),f.request());
         var process = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
         org.mockito.Mockito.when(process.runIsolated(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyList(),org.mockito.ArgumentMatchers.anyMap())).thenThrow(new IllegalStateException("unconfirmed"));
-        var service = new BoardDeliveryService(jdbc,new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc),tasks,executions,git,context.getBean(CapabilityRegistry.class),f.verification(),new BoardDeliveryCapture(process,new BoardVerificationSource()));
+        var service = new BoardDeliveryService(com.lh.eap.application.service.P4TestWiring.deliveryStore(jdbc),new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc),tasks,executions,git,context.getBean(CapabilityRegistry.class),f.verification(),new BoardDeliveryCapture(process,new BoardVerificationSource()));
         var accept = new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"checked", "http://127.0.0.1:5193/");
         assertEquals("BOARD_VERIFICATION_PROCESS_UNKNOWN",rejects(() -> service.decide(f.task().id(),f.execution(),accept)).getReason());
         assertEquals(delivery,service.get(f.task().id(),f.execution(),project).record());
@@ -497,12 +495,12 @@ class BoardRunPersistenceTest {
         assertEquals("BOARD_DELIVERY_PATH_DENIED", rejects(()->f.service().decide(f.task().id(),f.execution(),accept)).getReason());
         assertEquals("acceptance",tasks.find(f.task().id(),project,false).column());
     }
-    private com.lh.eap.delivery.JdbcCodeProposalStore codeStore() {
-        return new com.lh.eap.delivery.JdbcCodeProposalStore(jdbc, context.getBean(PlatformTransactionManager.class),context.getBean(BoardApplicationBaseline.class));
+    private com.lh.eap.delivery.CodeProposalStoreAdapter codeStore() {
+        return P4TestWiring.proposals(jdbc, context.getBean(PlatformTransactionManager.class),context.getBean(BoardApplicationBaseline.class));
     }
     private com.lh.eap.delivery.CodeChangeService codeChanges() {
         return new com.lh.eap.delivery.CodeChangeService(new RuntimeWorkspace(repo, repo.toString()), null, null,
-                new com.lh.eap.delivery.JdbcCodeGenerationStore(jdbc, context.getBean(PlatformTransactionManager.class)), codeStore());
+                P4TestWiring.generations(jdbc, context.getBean(PlatformTransactionManager.class)), codeStore());
     }
     private com.lh.eap.delivery.CodeChangeService.Proposal codeProposal(UUID conversation) {
         var changes = codeChanges(); var generation = changes.prepareGeneration(project, conversation, "Page.vue", "", "");
@@ -657,7 +655,7 @@ class BoardRunPersistenceTest {
         assertNull(service.get(f.task().id(),f.execution(),project).record()); assertEquals(1,tasks.find(f.task().id(),project,false).revision());
         var failingTasks=org.mockito.Mockito.mock(BoardTaskService.class,org.mockito.AdditionalAnswers.delegatesTo(tasks));
         org.mockito.Mockito.doThrow(new IllegalStateException("test transition failure")).when(failingTasks).deliveryTransition(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.eq("acceptance"));
-        var failed=new BoardDeliveryService(jdbc,new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc),failingTasks,executions,git,context.getBean(CapabilityRegistry.class),f.verification(),new BoardDeliveryCapture(executor,new BoardVerificationSource()),new BoardApplicationEvidence(codeStore(),new com.lh.eap.delivery.JdbcCodeGenerationStore(jdbc,context.getBean(PlatformTransactionManager.class)),context.getBean(BoardApplicationBaseline.class)));
+        var failed=new BoardDeliveryService(com.lh.eap.application.service.P4TestWiring.deliveryStore(jdbc),new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc),failingTasks,executions,git,context.getBean(CapabilityRegistry.class),f.verification(),new BoardDeliveryCapture(executor,new BoardVerificationSource()),new BoardApplicationEvidence(codeStore(),P4TestWiring.generations(jdbc,context.getBean(PlatformTransactionManager.class)),context.getBean(BoardApplicationBaseline.class)));
         assertThrows(IllegalStateException.class,() -> failed.submit(f.task().id(),f.execution(),request));
         assertNull(service.get(f.task().id(),f.execution(),project).record()); assertEquals("ready",tasks.find(f.task().id(),project,false).column());
         assertEquals("CHAT_APPLIED_POST_HOC",service.submit(f.task().id(),f.execution(),request).source());
@@ -691,10 +689,10 @@ class BoardRunPersistenceTest {
         assertEquals("EXTERNAL_MANUAL",service.get(f.task().id(),f.execution(),project).record().source());
     }
     private BoardDeliveryService applicationDeliveryService(DeliveryFixture f, com.lh.eap.api.ProcessExecutor process) throws Exception {
-        return BoardDeliveryService.class.getConstructor(JdbcTemplate.class, com.lh.eap.core.BoardApplicationCatalogQuery.class, BoardTaskService.class, MissionExecutionStore.class,
+        return BoardDeliveryService.class.getConstructor(com.lh.eap.core.BoardDeliveryStore.class, com.lh.eap.core.BoardApplicationCatalogQuery.class, BoardTaskService.class, MissionExecutionStore.class,
             MissionGitExecutionService.class, CapabilityRegistry.class, BoardVerificationService.class, BoardDeliveryCapture.class, BoardApplicationEvidence.class)
-            .newInstance(jdbc, new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), f.verification(), new BoardDeliveryCapture(process, new BoardVerificationSource()),
-                new BoardApplicationEvidence(codeStore(), new com.lh.eap.delivery.JdbcCodeGenerationStore(jdbc, context.getBean(PlatformTransactionManager.class)),context.getBean(BoardApplicationBaseline.class)));
+            .newInstance(com.lh.eap.application.service.P4TestWiring.deliveryStore(jdbc), new com.lh.eap.persistence.jdbc.JdbcBoardApplicationCatalogQuery(jdbc), tasks, executions, git, context.getBean(CapabilityRegistry.class), f.verification(), new BoardDeliveryCapture(process, new BoardVerificationSource()),
+                new BoardApplicationEvidence(codeStore(), P4TestWiring.generations(jdbc, context.getBean(PlatformTransactionManager.class)),context.getBean(BoardApplicationBaseline.class)));
     }
     @AfterEach void cleanup() {
         executor.close();
@@ -719,7 +717,7 @@ class BoardRunPersistenceTest {
         @Bean BoardApplicationBaseline baselines(JdbcTemplate jdbc, DefaultProcessExecutor executor, CapabilityRegistry registry) { return new BoardApplicationBaseline(new com.lh.eap.persistence.jdbc.JdbcBoardBaselineStore(jdbc),executor,registry,new BoardVerificationSource()); }
         @Bean CapabilityRegistry registry() { return new CapabilityRegistry().register(new GitCapability("status")).register(new GitCapability("diff")); }
         @Bean CapabilityHandlerRegistry handlers(CapabilityRegistry registry, DefaultProcessExecutor executor) { return new CapabilityHandlerRegistry(List.of(new GitInspectionHandler(registry, executor))); }
-        @Bean CapabilitySettings settings(JdbcTemplate jdbc) { return new CapabilitySettings(jdbc, null); }
+        @Bean CapabilitySettings settings(JdbcTemplate jdbc) { return com.lh.eap.application.service.P4TestWiring.settings(jdbc, null); }
         @Bean MissionGitExecutionService git(MissionStore missions, MissionExecutionStore executions, CapabilityHandlerRegistry handlers, CapabilitySettings settings, CapabilityRegistry registry, DefaultProcessExecutor executor, RuntimeWorkspace workspace) { return new MissionGitExecutionService(missions, executions, handlers, settings, registry, executor, workspace); }
         @Bean GitReviewCapture capture(DefaultProcessExecutor executor) { return new GitReviewCapture(executor); }
         @Bean BoardReviewService reviews(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, CapabilityHandlerRegistry handlers, CapabilitySettings settings, GitReviewCapture capture) { return new BoardReviewService(new com.lh.eap.persistence.jdbc.JdbcBoardReviewStore(jdbc), tasks, executions, git, registry, handlers, settings, capture); }
@@ -727,7 +725,7 @@ class BoardRunPersistenceTest {
         @Bean PlatformTransactionManager manager(DataSource source) { return new DataSourceTransactionManager(source); }
         @Bean PrototypeVersionService versions(JdbcTemplate jdbc) { return new PrototypeVersionService(new JdbcPrototypeVersionStore(jdbc), new JdbcPrototypeDeliveryStore(jdbc)); }
         @Bean BoardPrototypeService prototypes(JdbcTemplate jdbc, BoardTaskService tasks, PrototypeVersionService versions) { return new BoardPrototypeService(new com.lh.eap.persistence.jdbc.JdbcBoardPrototypeSelectionStore(jdbc), tasks, versions); }
-        @Bean BoardTaskService tasks(JdbcTemplate jdbc) { return new BoardTaskService(jdbc); }
+        @Bean BoardTaskService tasks(JdbcTemplate jdbc) { return com.lh.eap.application.service.P4TestWiring.tasks(jdbc); }
         @Bean HandoffStore handoffs(JdbcTemplate jdbc) { return new JdbcHandoffStore(jdbc); }
         @Bean MissionStore missions(JdbcTemplate jdbc) { return new JdbcMissionStore(jdbc); }
         @Bean MissionService missionService(HandoffStore handoffs, MissionStore missions) { return new MissionService(handoffs, missions); }

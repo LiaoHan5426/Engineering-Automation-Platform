@@ -37,9 +37,9 @@ public final class SourceWriteReview {
     private static final int MAX_BYTES = 640000;
     private final RuntimeWorkspace runtime;
     private final CodeChangeService changes;
-    private final JdbcCodeProposalStore proposals;
+    private final CodeProposalStoreAdapter proposals;
 
-    public SourceWriteReview(RuntimeWorkspace runtime, CodeChangeService changes, JdbcCodeProposalStore proposals) {
+    public SourceWriteReview(RuntimeWorkspace runtime, CodeChangeService changes, CodeProposalStoreAdapter proposals) {
         this.runtime = runtime;
         this.changes = changes;
         this.proposals = proposals;
@@ -82,16 +82,16 @@ public final class SourceWriteReview {
         });
     }
 
-    private JdbcCodeProposalStore.ReviewRow row(String workspace, UUID id) {
+    private CodeProposalStoreAdapter.ReviewRow row(String workspace, UUID id) {
         return proposals.reviewRow(RuntimeWorkspace.OPERATOR_LABEL, workspace, id).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, CodeErrors.UNKNOWN_CODE_PROPOSAL.code()));
     }
 
-    private static Detail closed(JdbcCodeProposalStore.ReviewRow row, String workspace) {
+    private static Detail closed(CodeProposalStoreAdapter.ReviewRow row, String workspace) {
         return new Detail(row.item(), workspace, row.resolution().observation(), row.resolution());
     }
 
-    private static void requireUnknown(JdbcCodeProposalStore.ReviewRow row) {
+    private static void requireUnknown(CodeProposalStoreAdapter.ReviewRow row) {
         if (!CodeProposalStatus.UNKNOWN.wire().equals(row.item().status())) throw conflict(CodeErrors.CODE_REVIEW_NOT_UNKNOWN);
     }
 

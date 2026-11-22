@@ -24,7 +24,7 @@ class BoardVerificationInterlockTest {
             protected void doCommit(DefaultTransactionStatus status) {}
             protected void doRollback(DefaultTransactionStatus status) {}
         };
-        var service = new BoardRunService(jdbc, tasks, mock(HandoffStore.class), mock(MissionService.class), mock(MissionExecutionStore.class), mock(MissionGitExecutionService.class), manager, mock(BoardPrototypeService.class), Runnable::run, false);
+        var service = new BoardRunService(com.lh.eap.application.service.P4TestWiring.runStore(jdbc), tasks, mock(HandoffStore.class), mock(MissionService.class), mock(MissionExecutionStore.class), mock(MissionGitExecutionService.class), manager, mock(BoardPrototypeService.class), Runnable::run, false);
         assertEquals("BOARD_VERIFICATION_WORKSPACE_BUSY", assertThrows(ResponseStatusException.class, () -> service.start(id, new BoardRunService.Start("p", 1, UUID.randomUUID(), "workspace"))).getReason());
         verify(tasks).lockWorkspace("workspace");
     }

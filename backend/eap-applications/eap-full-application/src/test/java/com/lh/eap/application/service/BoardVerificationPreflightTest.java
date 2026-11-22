@@ -7,14 +7,13 @@ import static org.mockito.Mockito.*;
 import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.api.Observation;
 import com.lh.eap.capability.GitCapability;
+import com.lh.eap.core.BoardVerificationStore;
 import com.lh.eap.core.CapabilityRegistry;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Executor;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -51,7 +50,7 @@ class BoardVerificationPreflightTest {
     @ParameterizedTest @ValueSource(booleans = {false, true})
     @SuppressWarnings("unchecked")
     void unknownPreflightSurvivesRequestRollbackAndBlocksReuse(boolean start) {
-        var jdbc = mock(JdbcTemplate.class); var tasks = mock(BoardTaskService.class);
+        var store = mock(BoardVerificationStore.class); var tasks = mock(BoardTaskService.class);
         var executions = mock(MissionExecutionStore.class); var git = mock(MissionGitExecutionService.class);
         var settings = mock(CapabilitySettings.class);
         var channels = mock(CliChannels.class); var preflightProcess = mock(ProcessExecutor.class);
@@ -69,10 +68,10 @@ class BoardVerificationPreflightTest {
         when(executions.find(any())).thenReturn(Optional.of(execution));
         when(git.availability()).thenReturn(new MissionGitExecutionService.Availability(true, workspace, "ws", ""));
         when(settings.enabled("vp")).thenReturn(true);
-        when(jdbc.query(anyString(), any(RowMapper.class), eq(taskId), eq(runId))).thenAnswer(call -> List.of(manager.read() == null ? Optional.empty() : Optional.of(json.readValue(manager.read(), BoardVerificationService.Record.class))));
-        when(jdbc.update(contains("verification_snapshot=?::jsonb"), any(), eq(taskId), eq(runId))).thenAnswer(call -> { manager.write(call.getArgument(1)); return 1; });
+        when(store.findSnapshot(taskId, runId)).thenAnswer(call -> Optional.of(new BoardVerificationStore.SnapshotRow(manager.read())));
+        when(store.saveIfAbsent(anyString(), eq(taskId), eq(runId))).thenAnswer(call -> { manager.write(call.getArgument(0)); return true; });
         when(tasks.hasActiveWorkspace(workspace)).thenAnswer(call -> manager.read() != null);
-        var service = new BoardVerificationService(jdbc, tasks, executions, git, new CapabilityRegistry().register(new GitCapability("status")), settings, plans, process, manager, dispatcher);
+        var service = new BoardVerificationService(store, tasks, executions, git, new CapabilityRegistry().register(new GitCapability("status")), settings, plans, process, manager, dispatcher);
         var outer = new TransactionTemplate(manager);
         outer.executeWithoutResult(status -> {
             var failure = assertThrows(ResponseStatusException.class, () -> {
@@ -93,7 +92,7 @@ class BoardVerificationPreflightTest {
         assertEquals("BOARD_VERIFICATION_ALREADY_RECORDED", assertThrows(ResponseStatusException.class, () -> service.plan(taskId, runId, new BoardVerificationService.Request("p", workspace))).getReason());
         assertThrows(ResponseStatusException.class, () -> service.start(taskId, runId, new BoardVerificationService.Start("p", workspace, "a".repeat(64))));
         var otherTask = UUID.randomUUID(); var otherRun = UUID.randomUUID();
-        when(jdbc.query(anyString(), any(RowMapper.class), eq(otherTask), eq(otherRun))).thenReturn(List.of(Optional.empty()));
+        when(store.findSnapshot(otherTask, otherRun)).thenReturn(Optional.of(new BoardVerificationStore.SnapshotRow(null)));
         assertFalse(service.get(otherTask, otherRun, "p").prepareAllowed());
         assertEquals("BOARD_VERIFICATION_WORKSPACE_BUSY", assertThrows(ResponseStatusException.class, () -> service.plan(otherTask, otherRun, new BoardVerificationService.Request("p", workspace))).getReason());
         verify(plans, times(1)).prepare(any(), any());

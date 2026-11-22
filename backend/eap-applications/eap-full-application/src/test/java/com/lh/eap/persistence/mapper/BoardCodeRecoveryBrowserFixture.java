@@ -15,8 +15,8 @@ public class BoardCodeRecoveryBrowserFixture {
   var json=JsonMapper.builder().build();var out=Path.of("backend/target/board-code-live");Files.createDirectories(out);var file=out.resolve("fixture.json");
   if(Files.exists(file)){System.out.println("Existing owned fixture preserved; no duplicate candidate or source write");return;}
   var source=ToolUnknownReviewFixture.originalDataSource();var jdbc=new JdbcTemplate(source);var manager=new DataSourceTransactionManager(source);
-  var tasks=new BoardTaskService(jdbc);var root=Path.of("backend/target/prebound-page-workspace").toRealPath();
-  var runtime=new RuntimeWorkspace(root,root.toString());var generations=new JdbcCodeGenerationStore(jdbc,manager);var proposals=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
+  var tasks=com.lh.eap.application.service.P4TestWiring.tasks(jdbc);var root=Path.of("backend/target/prebound-page-workspace").toRealPath();
+  var runtime=new RuntimeWorkspace(root,root.toString());var generations=P4TestWiring.generations(jdbc,manager);var proposals=P4TestWiring.proposals(jdbc,manager,ApplicationBaselineFixture.create(jdbc));
   var changes=new CodeChangeService(runtime,null,ignored->"",generations,proposals);
   String project="board-candidate-recovery-"+UUID.randomUUID().toString().substring(0,8);var result=new LinkedHashMap<String,Object>();
   result.put("projectId",project);result.put("workspace",root.toString());result.put("fixtureKind","Explicit deterministic candidates in a real production workspace/database; no model call");
