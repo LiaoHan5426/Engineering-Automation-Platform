@@ -1,6 +1,6 @@
 # JDBC 端口化方案设计（编排层持久化实现归位）
 
-> 状态：P0–P2 已实施（2026-11-22），P3–P5 待实施
+> 状态：P0–P3 已实施（2026-11-22），P4–P5 待实施
 > 日期：2026-11-22
 > 范围：`eap-engine-workflow` 编排层混入的持久化实现（30 个直用 `JdbcTemplate` 的类）
 
@@ -116,7 +116,7 @@ eap-api ──→ eap-engine-core ──→ eap-engine-workflow ──→ eap-we
 | **P0 骨架** ✅已实施 | 新建 `eap-engine-persistence-jdbc`；reactor/full-app 注册依赖；守卫先立 | 新 pom 依赖 `eap-api`/`eap-engine-core`/`spring-boot-starter-jdbc`/`spring-web`（2 个适配器用 `ResponseStatusException`）；`BackendModuleBoundaryTest` 增加模块存在性与依赖方向断言 | reactor `test-compile` EXIT=0 |
 | **P1 已有端口迁移** ✅已实施（8 个） | 4.1 节中 8 个无反向依赖的实现类；2 个 Code Store 留 P4 | `git mv` 到新模块，包名改 `com.lh.eap.persistence.jdbc`；更新 `@Import`、测试 import；core 端口不动 | 全量 `test-compile` EXIT=0 |
 | **P2 Mapper/辅助迁移** ✅已实施 | `TaskRepository`、`CliProgramMapper`、`ExpertDefinitionMapper`、`CapabilityUsage`、`StateBindings` | 随 P1 同批迁移；`StateBindings` 去掉无用 `application.service.*` 通配 import；`CapabilityUsage` 去掉对 `CapabilitySettings` 的 Javadoc 链接；`TaskStore`/`CliProgramStore`/`ExpertDefinitionQuery` 端口抽取推迟到 P3（当前仅物理迁移，无行为变更） | 全量 `test-compile` EXIT=0 |
-| **P3 查询型服务** | 6 个只读/轻写服务（Baseline/Catalog/Prototype/Review/Runtime/Scenario） | 抽 `XxxQuery`/`XxxStore`，适配器落新模块；服务保留输入校验 | 对应持久化测试；契约脚本 |
+| **P3 查询型服务** ✅已实施 | 6 个只读/轻写服务（Baseline/Catalog/Prototype/Review/Runtime/Scenario） | 抽 `BoardBaselineStore`/`BoardApplicationCatalogQuery`/`BoardPrototypeSelectionStore`/`BoardReviewStore`/`BoardRuntimeQuery`/`ScenarioStore` 到 core，6 个 `Jdbc*` 适配器落新模块；服务只保留输入校验、JSON 领域映射与编排；`BoardDeliveryService` 不再用 JdbcTemplate 现造 Catalog | 对应持久化测试；契约脚本 |
 | **P4 混合型服务拆分** | 11 个重服务（BoardTask/Verification/Run/Delivery/CapabilitySettings/ExpertApproval/ExpertDefinition 等） | SQL + RowMapper 抽到适配器；消除 `new JdbcXxxStore(jdbc)`；服务保留规则/事务 | 全量 wire/验收/持久化测试（这一期改动最大，必须与 P3 分开验证） |
 | **P5 收口** | workflow 移除 `spring-boot-starter-jdbc`（显式保留 `spring-tx` 给 `@Transactional`/`TransactionTemplate`）；守卫加终态断言 | 守卫断言 workflow main 源码无 `org.springframework.jdbc`、pom 无 starter-jdbc；所有 `Jdbc*` 类必须在新模块且实现 core 端口 | **全量 `mvn -o test`** + 契约脚本 + `git diff --check` |
 
@@ -126,6 +126,14 @@ eap-api ──→ eap-engine-core ──→ eap-engine-workflow ──→ eap-we
 - 新增守卫 `jdbcAdaptersLiveInDedicatedModuleAfterP0P2`：13 个定义位置 + 旧文件清理 + 旧包 import 清零（只匹配真实 import 行）+ 模块依赖方向
 - **过渡依赖（须在 P5 前消除）**：workflow pom 临时依赖 `eap-engine-persistence-jdbc`，因为 2 个 Code Store 与业务服务仍引用已迁走的 `StateBindings`/`TaskRepository`/`JdbcPrototypeVersionStore`；P4 完成端口抽取后移除该依赖并合入 P5 收口
 - 新模块 pom 需 `spring-web`：`JdbcCliChannelStore` 与 `JdbcExpertAgentJournal` 使用 `ResponseStatusException`/`HttpStatus`（编译实测暴露后补齐）
+
+**本轮（P3）实际落地记录**：
+
+- 6 个 core 端口落地：`BoardBaselineStore`、`BoardApplicationCatalogQuery`、`BoardPrototypeSelectionStore`、`BoardReviewStore`、`BoardRuntimeQuery`、`ScenarioStore`；其中 `BoardRuntimeQuery.Activity` 保留 wire 状态构造校验，适配器只做 ResultSet → 领域 record 映射。
+- 6 个 JDBC 适配器落新模块：`JdbcBoardBaselineStore`、`JdbcBoardApplicationCatalogQuery`、`JdbcBoardPrototypeSelectionStore`、`JdbcBoardReviewStore`、`JdbcBoardRuntimeQuery`、`JdbcScenarioStore`；原生 SQL、CTE、RowMapper 和 JSON 列读写全部迁出 workflow。
+- 6 个服务不再注入 `JdbcTemplate`；对外 record（如 `BoardRuntimeService.Snapshot`、`BoardApplicationCatalog.Page`、`BoardReviewService.Page`）保持原名，由服务层做端口 record → 对外 record 映射，web 契约不变。
+- `BoardDeliveryService.applications` 改为消费注入的 `BoardApplicationCatalogQuery`，删除 `new BoardApplicationCatalog(jdbc)` 反模式；其自身剩余 SQL 留待 P4。
+- 测试构造全部改为显式注入适配器；组合根 `@Import` 增加 6 个新适配器；守卫 `p3QueryServicesUseDedicatedPorts` 断言端口/适配器存在且六个服务零 JDBC import。
 
 每期结束一个本地提交（文档/实现/台账分笔），不跨期混提；P1–P4 任一期望逐期回滚时，只需回退该期提交。
 
