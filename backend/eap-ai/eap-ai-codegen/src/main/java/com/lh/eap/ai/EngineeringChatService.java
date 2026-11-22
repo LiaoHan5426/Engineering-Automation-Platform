@@ -34,6 +34,7 @@ import java.util.*;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.tool.annotation.Tool;
+import com.lh.eap.domain.model.TaskMode;
 
 /** Application service. Callers supply authenticated, server-owned scope; not an HTTP request DTO. */
 public final class EngineeringChatService {

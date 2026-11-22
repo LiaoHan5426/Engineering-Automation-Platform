@@ -1,5 +1,5 @@
 package com.lh.eap.ai.dto;
-import com.lh.eap.ai.ChatExecutionStatus;
+import com.lh.eap.domain.model.ChatExecutionStatus;
 
 import java.util.List;
 import java.util.UUID;

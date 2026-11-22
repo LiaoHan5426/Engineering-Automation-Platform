@@ -13,6 +13,7 @@ import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import com.lh.eap.domain.model.SkillDependencyStatus;
 
 @Service
 public class SkillService {

@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.domain.model.ChatExecutionStatus;
 
 /**
  * Chat execution event journal. The hot path stays process-local; when a

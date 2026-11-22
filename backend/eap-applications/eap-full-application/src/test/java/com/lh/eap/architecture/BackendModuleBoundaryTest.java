@@ -313,6 +313,56 @@ class BackendModuleBoundaryTest {
         }
     }
 
+    @Test void crossModulePureContractsLiveInCore() throws Exception {
+        // Wire vocab, machine error codes and CLI domain models are pure contracts shared across
+        // modules; all owners depend on core (core depends only on eap-api), so they belong there.
+        String coreModel = "eap-engine/eap-engine-core/src/main/java/com/lh/eap/domain/model/";
+        String coreError = "eap-engine/eap-engine-core/src/main/java/com/lh/eap/error/";
+        // A: AI wire enums (package changed from com.lh.eap.ai / com.lh.eap.skill).
+        var wireEnums = List.of("AiToolMode", "ChatExecutionStatus", "TaskMode",
+                "ModelConnectionState", "ChatGptLoginStatus", "SkillDependencyStatus");
+        for (String name : wireEnums)
+            assertTrue(Files.isRegularFile(backend.resolve(coreModel + name + ".java")), "core must own wire enum " + name);
+        // B: implementation-module error codes (package com.lh.eap.error unchanged).
+        for (String code : List.of("SkillErrors", "KnowledgeErrors", "McpErrors", "DatabaseErrors", "RuleErrors"))
+            assertTrue(Files.isRegularFile(backend.resolve(coreError + code + ".java")), "core must own error code " + code);
+        // C: CLI domain models (package com.lh.eap.domain.model unchanged).
+        for (String model : List.of("CliOperation", "CliProgram", "TaskStatistics"))
+            assertTrue(Files.isRegularFile(backend.resolve(coreModel + model + ".java")), "core must own domain model " + model);
+        // Old definition files must be gone from their source modules.
+        var stale = List.of(
+                "eap-ai/eap-ai-chat/src/main/java/com/lh/eap/ai/AiToolMode.java",
+                "eap-ai/eap-ai-chat/src/main/java/com/lh/eap/ai/ChatExecutionStatus.java",
+                "eap-ai/eap-ai-chat/src/main/java/com/lh/eap/ai/TaskMode.java",
+                "eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/ModelConnectionState.java",
+                "eap-ai/eap-ai-model-openai/src/main/java/com/lh/eap/ai/ChatGptLoginStatus.java",
+                "eap-ai/eap-ai-skill/src/main/java/com/lh/eap/skill/SkillDependencyStatus.java",
+                "eap-ai/eap-ai-skill/src/main/java/com/lh/eap/error/SkillErrors.java",
+                "eap-engine/eap-engine-knowledge/src/main/java/com/lh/eap/error/KnowledgeErrors.java",
+                "eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/error/McpErrors.java",
+                "eap-engine/eap-engine-sql/src/main/java/com/lh/eap/error/DatabaseErrors.java",
+                "eap-engine/eap-engine-sql/src/main/java/com/lh/eap/error/RuleErrors.java",
+                "eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/domain/model/CliOperation.java",
+                "eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/domain/model/CliProgram.java",
+                "eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/domain/model/TaskStatistics.java");
+        for (String old : stale)
+            assertFalse(Files.exists(backend.resolve(old)), "source module must not duplicate relocated contract: " + old);
+        // A-group old imports must not remain (line-by-line exact match).
+        var oldImports = List.of(
+                "import com.lh.eap.ai.AiToolMode;", "import com.lh.eap.ai.ChatExecutionStatus;",
+                "import com.lh.eap.ai.TaskMode;", "import com.lh.eap.ai.ModelConnectionState;",
+                "import com.lh.eap.ai.ChatGptLoginStatus;", "import com.lh.eap.skill.SkillDependencyStatus;");
+        try (var sources = Files.walk(backend)) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java") && !p.toString().contains("target")).toList()) {
+                for (String line : Files.readAllLines(source)) {
+                    String trimmed = line.trim();
+                    for (String oldImport : oldImports)
+                        assertFalse(trimmed.equals(oldImport), source + " still imports relocated contract: " + oldImport);
+                }
+            }
+        }
+    }
+
     @Test void engineDoesNotImportUpwardImplementations() throws Exception {
         Path engine = backend.resolve("eap-engine");
         assertTrue(Files.isDirectory(engine), "engine source root");

@@ -1,4 +1,4 @@
-package com.lh.eap.skill;
+package com.lh.eap.domain.model;
 
 import com.lh.eap.api.contract.WireValue;
 import java.util.Arrays;

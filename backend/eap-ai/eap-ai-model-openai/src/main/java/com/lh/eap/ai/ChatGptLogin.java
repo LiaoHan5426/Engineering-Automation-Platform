@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import com.lh.eap.domain.model.ChatGptLoginStatus;
 
 /** A single local-operator OAuth ceremony. Only a public authorization URL and controlled status reach the UI. */
 @Component

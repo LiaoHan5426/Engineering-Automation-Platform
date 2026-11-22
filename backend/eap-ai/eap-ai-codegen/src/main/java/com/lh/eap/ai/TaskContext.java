@@ -17,6 +17,7 @@ import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.TaskMode;
 
 /** User-selected context, never an authority to run tools or change policy. */
 public record TaskContext(String mode, String expert, String instructions, String reasoning,

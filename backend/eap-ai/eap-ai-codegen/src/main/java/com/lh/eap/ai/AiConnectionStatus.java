@@ -20,6 +20,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import com.lh.eap.domain.model.ModelConnectionState;
 
 /** Read-only model connection state. Reading it never calls a model. */
 @Component

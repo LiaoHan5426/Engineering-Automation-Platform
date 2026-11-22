@@ -47,6 +47,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.domain.model.AiToolMode;
+import com.lh.eap.domain.model.ChatExecutionStatus;
+import com.lh.eap.domain.model.TaskMode;
+import com.lh.eap.domain.model.ModelConnectionState;
 
 /** HTTP-facing chat boundary. Request bodies cannot choose identity, workspace or tool grants. */
 @Component
