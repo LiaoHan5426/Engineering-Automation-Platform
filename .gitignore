@@ -29,12 +29,17 @@ frontend/**/*.tsbuildinfo
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
+pytest-of-*/
 .mypy_cache/
 .ruff_cache/
 .venv/
 venv/
 env/
+
+# Local architecture probe scratch (not product source)
+.archify/
 
 # Local environment and secrets
 .env
