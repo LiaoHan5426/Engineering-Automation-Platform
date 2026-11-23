@@ -1,3 +1,4 @@
+/** FROZEN: do not extend for appearance. Risk-only opt-in; see docs/decisions/test-asset-convergence.md */
 import { loadPlaywright } from './playwright-runtime.mjs'
 // Real Chromium + the explicitly simulated mock service. No real CLI or model calls.
 import assert from 'node:assert/strict'

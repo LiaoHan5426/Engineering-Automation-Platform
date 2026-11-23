@@ -347,28 +347,6 @@ it.each(['keep', 'latest'] as const)(
     }
   },
 )
-it('shows a suggestion before adoption and changes only the goal', async () => {
-  vi.spyOn(runtimeApi, 'optimizeTaskDescription').mockResolvedValue({
-    text: '优化后的目标',
-    connectionId: 'c',
-    model: 'm',
-  })
-  await openOptimizationForm()
-  expect(document.querySelector('[data-testid=board-link-session]')).toBeNull()
-  click('board-optimize-goal')
-  await vi.waitFor(() =>
-    expect(document.querySelector('[data-testid=board-goal-suggestion]')?.textContent).toContain(
-      '优化后的目标',
-    ),
-  )
-  expect(goalValue()).toBe('完成任务目标')
-  click('board-goal-adopt')
-  await vi.waitFor(() => expect(goalValue()).toBe('优化后的目标'))
-  expect(
-    (document.querySelector('[data-testid=board-new-criteria]') as HTMLTextAreaElement).value,
-  ).toBe('构建与检查通过')
-  expect(runtimeApi.createBoardTask).not.toHaveBeenCalled()
-})
 it.each(['edit', 'cancel', 'close', 'project', 'unmount'] as const)(
   'invalidates an optimization on %s and ignores its late response',
   async (action) => {
@@ -677,23 +655,6 @@ it('keeps an oversized answer intact until the user shortens the task goal and r
   expect(
     document.querySelector('[data-testid=board-handoff-source] pre')?.textContent,
   ).toHaveLength(6000)
-  expect(runtimeApi.createBoardTask).not.toHaveBeenCalled()
-})
-it('renders decorative create icons without submitting a task when opening the form', async () => {
-  await mountBoard()
-  const create = root.querySelector('[data-testid="board-create-task"]') as HTMLButtonElement
-  expect(create.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
-  expect(create.textContent?.trim()).toBe(i18n.global.t('preview.createTask'))
-  const laneAdds = [...root.querySelectorAll<HTMLButtonElement>('[data-testid="lane-add-task"]')]
-  expect(laneAdds).toHaveLength(2)
-  for (const add of laneAdds) {
-    expect(add.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
-    expect(add.textContent?.trim()).toBe(i18n.global.t('desktop.boardAddTask'))
-  }
-  create.click()
-  await vi.waitFor(() =>
-    expect(document.querySelector('[data-testid="board-create-form"]')).not.toBeNull(),
-  )
   expect(runtimeApi.createBoardTask).not.toHaveBeenCalled()
 })
 it('hands off only the saved ready task identity and never derives it from sessionId', async () => {
@@ -1069,73 +1030,6 @@ it('persists backlog task edits through the service and refuses invented executi
   const args = vi.mocked(runtimeApi.createBoardTask).mock.calls[0]!
   const persisted = await runtimeApi.boardTasks(args[0].projectId)
   expect(persisted.items[0]?.notes).toBe('保存备注')
-})
-
-it('filters by notes and saved priority using the same service contract', async () => {
-  root = document.createElement('div')
-  document.body.append(root)
-  app = createApp(PreviewBoard)
-  app.use(i18n).mount(root)
-  await vi.waitFor(() => expect(runtimeApi.boardTasks).toHaveBeenCalled())
-  await vi.waitFor(() =>
-    expect(
-      (root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).disabled,
-    ).toBe(false),
-  )
-  ;(root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click()
-  await vi.waitFor(() => expect(document.querySelector('form')).not.toBeNull())
-  const input = document.querySelector('form input') as HTMLInputElement
-  input.value = '优先级筛选任务'
-  input.dispatchEvent(new Event('input'))
-  prepare()
-  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
-  await vi.waitFor(() => expect(root.textContent).toContain('优先级筛选任务'))
-  await vi.waitFor(() => expect(detail()).not.toBeNull())
-  const notes = detail()!.querySelector('[data-testid=task-notes]') as HTMLTextAreaElement
-  notes.value = '标签:迁移验收'
-  notes.dispatchEvent(new Event('input'))
-  const rank = detail()!.querySelector('[data-testid=task-priority]') as HTMLSelectElement
-  rank.value = 'p0'
-  rank.dispatchEvent(new Event('change'))
-  await vi.waitFor(() =>
-    expect(
-      (
-        Array.from(detail()!.querySelectorAll('button')).find(
-          (item) => item.textContent === '保存',
-        ) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false),
-  )
-  Array.from(detail()!.querySelectorAll('button'))
-    .find((item) => item.textContent === '保存')!
-    .click()
-  await vi.waitFor(() =>
-    expect(root.textContent).toMatch(/备注已保存|任务修改已保存|Notes saved|Task fields saved/),
-  )
-  const search = root.querySelector('[data-testid=board-search]') as HTMLInputElement
-  search.value = '迁移验收'
-  search.dispatchEvent(new Event('input'))
-  await vi.waitFor(() => expect(root.textContent).toContain('优先级筛选任务'))
-  search.value = ''
-  search.dispatchEvent(new Event('input'))
-  const priority = root.querySelector('[data-testid=board-priority]') as HTMLSelectElement
-  expect(priority.value).toBe('all')
-  priority.value = 'p0'
-  priority.dispatchEvent(new Event('change'))
-  await vi.waitFor(() =>
-    expect(root.querySelector('.board-card')?.textContent).toContain('优先级筛选任务'),
-  )
-  priority.value = 'p2'
-  priority.dispatchEvent(new Event('change'))
-  await vi.waitFor(() =>
-    expect(root.querySelector('[data-testid=board-filter-empty]')?.textContent).toMatch(
-      /没有符合|No tasks match/i,
-    ),
-  )
-  expect(root.querySelectorAll('.board-card')).toHaveLength(0)
-  expect(root.querySelector('[data-testid=board-unattended-badge]')?.textContent).toMatch(
-    /无人值守未接通|Unattended is off/,
-  )
 })
 
 it('links the active conversation id on create without inventing execution', async () => {

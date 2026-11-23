@@ -1,3 +1,4 @@
+/** FROZEN: do not extend for appearance. Risk-only opt-in; see docs/decisions/test-asset-convergence.md */
 import { loadPlaywright } from './playwright-runtime.mjs'
 // Real Chromium/GrapesJS with isolated expert-save fixtures and browser-local prototype drafts.
 // No provider calls, grants, production expert changes or repository delivery.

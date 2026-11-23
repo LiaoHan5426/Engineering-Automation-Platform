@@ -8,7 +8,7 @@ Root and module AGENTS files contain rules; this guide contains acceptance evide
 |---|---|---|
 | Prototype | interaction/state contract and clickable fixtures | user approves interactions; simulations clearly labeled |
 | Architecture | source-backed audit, alternatives, staged plan | explicit approval before large implementation |
-| Feature | approved contract and smallest end-to-end slice | relevant build/tests at the [§3.6](architecture-method.md#sec-3-6-verify) level plus actual business behavior |
+| Feature | approved contract and one coherent end-to-end slice (single exit gate; do not fragment for ritual) | relevant build/tests at the [§3.6](architecture-method.md#sec-3-6-verify) level plus actual business behavior |
 | Defect | reproduction and affected boundary | cause corrected, relevant regression passes |
 | Frontend UI / shared module | placement decision per [frontend-ui-shared-module-boundaries](decisions/frontend-ui-shared-module-boundaries.md): search `@eap/ui` → classify L0–L5 → implement or register staging | no parallel Button/Dialog shells; boundaries + targeted tests at the §3.6 level; 登记只在首次引入原语/共享类别时做一次 |
 

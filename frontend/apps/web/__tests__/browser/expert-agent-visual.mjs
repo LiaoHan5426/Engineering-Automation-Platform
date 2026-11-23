@@ -1,3 +1,4 @@
+/** FROZEN: do not extend for appearance. Risk-only opt-in; see docs/decisions/test-asset-convergence.md */
 import { loadPlaywright } from './playwright-runtime.mjs'
 // Real Chromium rendering with isolated API fixtures. No model calls or filesystem writes via EAP.
 // EAP_PLAYWRIGHT_MODULE and EAP_CHROMIUM point to an already installed driver/browser.

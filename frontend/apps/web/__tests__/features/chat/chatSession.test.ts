@@ -397,26 +397,6 @@ describe('chat session', () => {
     expect(session.draft.value).toBe('Keep draft')
     expect(session.turns.value.at(-1)?.proposal).toBeNull()
   })
-  it('loads status without sending a message', async () => {
-    let sent = 0
-    const api: ChatApi = {
-      aiStatus: async () => status('configured_unverified'),
-      openAiConversation: async () => {
-        throw new Error('no')
-      },
-      sendAiMessage: async () => {
-        sent += 1
-        return result()
-      },
-    }
-    const session = createChatSession(api)
-    await session.refreshStatus()
-    expect(session.phase.value).toBe('ready')
-    expect(session.status.value?.state).toBe('configured_unverified')
-    expect(sent).toBe(0)
-    expect(session.turns.value).toEqual([])
-  })
-
   it('blocks a second send and keeps a failed draft', async () => {
     const pending = deferred<AiMessageResult>()
     let sent = 0

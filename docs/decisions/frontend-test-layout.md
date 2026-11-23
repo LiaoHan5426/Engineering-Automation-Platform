@@ -31,6 +31,7 @@ frontend/
 - 生产代码不能反向导入 `__tests__`；测试导入本包源码时用相对路径，跨包仍用公开入口，不能绕过依赖边界。
 - `mock/` 中供 `dev:mock` 使用的实现及 `src/lib/skillFixture.ts` 中实际页面使用的示例不是测试专用文件，不为名称相似而搬走。测试其行为的文件仍迁入 `__tests__/mock/`。
 - 浏览器隔离夹具配置现为 `apps/web/__tests__/browser/preview.config.ts`，从 frontend 目录以 `vp dev apps/web --config apps/web/__tests__/browser/preview.config.ts` 使用；不因此自动启动另一服务。
+- Browser 脚本不进默认单测发现；资产收敛与「禁止新增 visual」见 [test-asset-convergence](test-asset-convergence.md)。
 
 ## 统一工具入口
 

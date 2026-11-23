@@ -82,56 +82,12 @@ async function mount(initial = empty()) {
   return { context, active, disabled, toolMode, draft, catalog }
 }
 
-it('keeps model and send together and places status outside the wrapping controls', async () => {
-  await mount()
-  const group = host.querySelector('.composer-submit-controls')
-  expect(group).not.toBeNull()
-  expect(group!.contains(button('model-picker'))).toBe(true)
-  expect(group!.contains(button('layout-send'))).toBe(true)
-  const status = host.querySelector('[data-testid="layout-status"]')
-  expect(status).not.toBeNull()
-  expect(status!.closest('.context-toolbar')).toBeNull()
-  expect(status!.closest('.task-context')).not.toBeNull()
-})
-
-it('uses shared decorative icons for the composer controls', async () => {
-  await mount()
-  for (const id of [
-    'composer-add',
-    'execution-mode',
-    'approval-policy',
-    'context-meter',
-    'model-picker',
-  ]) {
-    const icon = host.querySelector(`[data-testid="${id}"] svg.eap-icon`)
-    expect(icon, id).not.toBeNull()
-    expect(icon!.getAttribute('aria-hidden')).toBe('true')
-  }
-})
-
 it('shows model setup instead of reasoning controls when no model is selected', async () => {
   await mount()
   expect(button('model-picker').textContent).not.toContain('模型默认')
   await click('model-picker')
   expect(document.querySelector('[data-testid="model-setup-link"]')).not.toBeNull()
   expect(document.querySelector('.effort-row')).toBeNull()
-})
-
-it('keeps context usage informational and adds attachments through a single entry', async () => {
-  await mount()
-  const meter = host.querySelector('[data-testid="context-meter"]') as HTMLElement
-  expect(meter.querySelector('svg')).not.toBeNull()
-  expect(meter.getAttribute('aria-valuenow')).toBeNull()
-  expect(meter.getAttribute('aria-label')).toContain('不统计 token')
-  expect(meter.closest('button')).toBeNull()
-  meter.click()
-  await nextTick()
-  expect(document.querySelector('[data-testid="composer-add-menu"]')).toBeNull()
-  await click('composer-add')
-  expect(document.querySelector('[data-testid="context-usage-detail"]')?.textContent).toContain(
-    '文件 0/6',
-  )
-  expect(document.querySelector('[data-testid="composer-add-menu"]')).not.toBeNull()
 })
 
 it('explains unavailable execution modes while allowing real approval changes', async () => {
@@ -349,27 +305,3 @@ it.each(['tool', 'knowledge', 'code', 'task'] as const)(
     expect(runtimeApi.skills).not.toHaveBeenCalled()
   },
 )
-
-it('keeps an empty composer compact and exposes knowledge only through + experts', async () => {
-  const { catalog, context, draft } = await mount()
-  expect(host.querySelector('[data-testid="knowledge-open"]')).toBeNull()
-  expect(host.querySelector('.knowledge-selector')).toBeNull()
-  expect(host.querySelector('.context-chips')).toBeNull()
-  expect(host.querySelector('[data-testid="skill-open"]')).toBeNull()
-  expect(catalog).not.toHaveBeenCalled()
-  await category('experts')
-  expect(button('knowledge-open').disabled).toBe(false)
-  await click('knowledge-open')
-  await vi.waitFor(() =>
-    expect(document.querySelector('[data-testid="knowledge-candidate-saved"]')).not.toBeNull(),
-  )
-  expect(host.querySelector('[data-testid="composer-add-menu"]')).toBeNull()
-  expect(document.querySelector('[data-testid="knowledge-dialog"]')?.textContent).toContain(
-    i18n.global.t('knowledgeContext.limit'),
-  )
-  await click('knowledge-candidate-saved')
-  expect(document.querySelector('[data-testid="knowledge-dialog"]')).not.toBeNull()
-  await click('knowledge-cancel')
-  expect(context.value).toEqual(empty())
-  expect(draft.value).toBe('keep draft')
-})

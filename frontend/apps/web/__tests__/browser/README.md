@@ -1,4 +1,14 @@
-# SQL Agent 浏览器视觉回归
+# 浏览器按需回归（非默认单测）
+
+政策见 [`docs/decisions/test-asset-convergence.md`](../../../../../docs/decisions/test-asset-convergence.md) 与 [§3.6](../../../../../docs/architecture-method.md#sec-3-6-verify)。
+
+- **不进** `vp test` / 默认 CI。
+- **禁止新增** `*-visual.mjs`；纯视觉脚本已删除（含 `editor-display-visual.mjs`）。
+- 现存 `*-live.mjs` 与仍留存的交互型 `*-visual.mjs`（如 tool/expert/editor-workbench）**冻结**：不为外观扩写；仅同域 T3 风险回归时按需重跑。
+- 历史设计交付 / 批跑 live 已移出树，索引见 [`docs/records/archived-acceptance-index.md`](../../../../../docs/records/archived-acceptance-index.md)；下文保留段落仅为当时证据说明，对应脚本可能已不在本目录。
+- 新交互风险优先补 happy-dom 单测，不要平行加 browser 脚本。
+
+---
 
 ## 绑定任务的工程 Agent
 

@@ -1,11 +1,18 @@
 # Backend guidance
 
-- Retain Java 25, Spring Boot and the Maven reactor in this directory. `eap-api` holds stable contracts without Spring/model SDK dependencies; `eap-engine` aggregates core/local/sql/knowledge/mcp/delivery/workflow; `eap-ai` aggregates chat/model-openai/skill/context/codegen/sql; `eap-web` aggregates domain HTTP adapters; `eap-spring` owns conditional auto-configuration and starters; `eap-applications/eap-full-application` is the only Boot host (startup wiring/resources/migrations and cross-module acceptance tests). Libraries must not depend back on the host; engine must not depend on ai/web. See `docs/decisions/backend-module-composition.md#implementation` and the retained historical module split record.
-- 全 reactor 验证入口：`rtk proxy mvn -f backend/pom.xml test`（发布/契约级改动用）。日常单模块改动改用 `-pl :模块 -am test`，见下一条。Inspect test conditions before claiming integration coverage; environment-gated tests may skip. Never enable tests that create/drop databases against an unapproved database.
-- Build affected modules through the reactor (`-pl :目标 -am`); running the runtime POM alone needs sibling artifacts installed. **默认增量**：单模块改动只验证该模块及其直接依赖，不要求跑完整 reactor test。`clean` 只在源码移动、模块归属变化或怀疑 `target/classes` 陈旧时执行，不作为默认动作——它主要防的是「缺 owner 却因陈旧 class 通过」，日常改动没有这个风险。Reimport Maven in IDEA after module changes; keep the main class `com.lh.eap.EapApplication` in the full application module. FullApplicationConfiguration explicitly imports the product components; tests guard recursive reactor ownership, conditional composition and resources. 验证范围同样按 [总纲 §3.6](../docs/architecture-method.md#sec-3-6-verify) 的级别判定。
-- Flyway application migrations live only in `eap-applications/eap-full-application/src/main/resources/db/migration`. The user-approved development reset consolidated V1-V37 into `V1__initial_schema.sql` on 2026-11-13. Optional example data lives in `db/dev/seed_example_board_tasks.sql`, outside automatic Flyway locations; `backend/db` remains removed. Existing development databases require an explicit reset before this baseline. Subsequent changes use incremental migrations; do not rewrite applied versions or silently clean, repair or baseline a database.
-- Reuse Capability handlers/catalog/settings, Expert DAG, Rule packs, CLI program/operation registration, MCP grant/session boundaries and knowledge services. Expert DAG is static orchestration, not autonomous planning.
-- CLI execution must use argument arrays, validated repository cwd, bounded output/time, redaction and propagated cancellation. A binary existing or exiting zero does not prove repository work complete.
-- MCP registration/probing is not protocol execution. Require actual initialization, discovery, authorized calls and error/isolation verification before claiming support.
-- Knowledge acceptance includes import, retrieval, source citation, update and deletion consistency plus expert scope denial. Evaluate retrieval quality before adding semantic infrastructure.
-- Keep Skill instructions/resources separate from executable Capability and Expert workflows. Mission execution must own durable state, approval and recovery independently of request transactions or chat UI.
+短表。模块组合与历史拆分见 [`docs/decisions/backend-module-composition.md`](../docs/decisions/backend-module-composition.md)。
+
+## 硬约束
+
+- Java 25 + Spring Boot；Maven reactor 在本目录。`eap-api` 稳定契约（无 Spring/model SDK）；`eap-engine` / `eap-ai` / `eap-web` / `eap-spring` 分层；**唯一 Boot 宿主** `eap-applications/eap-full-application`。库不得反向依赖宿主；engine 不得依赖 ai/web。
+- Flyway 仅宿主 `src/main/resources/db/migration`。增量迁移；不改写已应用版本；不擅自 clean/repair/baseline 未授权库。禁止对未批准库执行建删库测试。
+- CLI：参数数组、校验 cwd、有界输出/时间、脱敏、传播取消。MCP：注册/探测 ≠ 协议执行。Skill 指令与可执行 Capability/Expert 分离。Mission 自有持久状态/审批/恢复。
+- 复用 Capability、Expert DAG、Rule、CLI、MCP、知识服务；Expert DAG 是静态编排，不是自主规划。
+
+## 验证（按 §3.6，不默认全跑）
+
+- 日常：`rtk proxy mvn -f backend/pom.xml -pl :模块 -am test`。
+- 发布/契约：`rtk proxy mvn -f backend/pom.xml test`。
+- `clean` 仅在源码移动、模块归属变化或怀疑 `target` 陈旧时使用。
+- 门控 Acceptance / 实库 / 真浏览器测试默认跳过；未开对应 `EAP_*` 环境变量不得宣称覆盖。资产政策见 [`docs/decisions/test-asset-convergence.md`](../docs/decisions/test-asset-convergence.md)。
+- 主类：`com.lh.eap.EapApplication`。模块变更后 IDEA 重新导入 Maven。

@@ -1,24 +1,28 @@
 # Frontend guidance
 
-- 跨路由页面交付必须核对宿主路由及资源加载合同。宿主不在候选修改范围时，将必要源码作为有界只读参考提供，禁止凭页面名称猜测 hash/history URL。浏览器验证覆盖候选新增的链接、路由返回和加载失败后的恢复，不能只点击宿主已有导航便宣称生成页面可用。
+短表。细则外链，避免把操作手册塞进每次必读提示。
 
-- 前端安装、开发、构建和检查统一使用 `vp`，不直接调用 `pnpm`。**测试分工**：默认 `vp test` / `vp run test:unit` 使用 Vite+ 的测试运行器（Node / happy-dom），不启用 Playwright browser provider，也不将它作为运行单元测试的前置依赖。**界面可视化与人工交互验收优先使用当前会话可用的内置浏览器**：打开本机前端，操作并观察加载、错误、重试、关闭和焦点；内置预览能打开页面不等于自动完成这些断言。当前会话没有浏览器操作能力时如实记录，使用已安装 Chromium 或已有脚本做替代验证，不宣称执行了内置浏览器操作。静态视觉/截图可直接用本机 Chromium（`EAP_CHROMIUM` 或已验证的 Playwright 缓存 `chrome.exe`）；确实需要可重复的脚本化点击/输入回归时，已有 `__tests__/browser/*.mjs` 可按需单独运行，通过 `playwright-runtime.mjs` 使用 `vp i -g @playwright/test` 的驱动，**不纳入默认单测链路、不因普通界面任务自动安装驱动**。禁止依赖其他仓库的私有 node_modules；选择其他已安装驱动时显式设置 `EAP_PLAYWRIGHT_MODULE`。
+## 硬约束
 
-- Retain Vue 3, TypeScript, Vite+, Tailwind and pnpm workspace (`packageManager` currently pnpm 12.9.0). Reuse `@eap/ui`, `@eap/style`, `@eap/runtime-client` and existing feature managers.
-- **UI / 共享模块落点（强制）**：先读并遵守 [`docs/decisions/frontend-ui-shared-module-boundaries.md`](../docs/decisions/frontend-ui-shared-module-boundaries.md)。所有基础组件先在 `@eap/ui` 定义并导出；禁止在 `features/*` 平行实现 Button/Dialog/Confirm 等壳。可复用组合件与 `hooks` / `effects` / `layout` / `toggle` / `plugin` 等按该文档分层与暂存登记落点；未满足抽包条件不得擅自新增含糊包名。**登记只在首次发生时做一次**（新增原语、新增共享类别或改落点规则），复用既有原语不再逐次勾选；交付说明写「复用 `X`」或「新增 `Y`，已登记到 §」即可。
-- **`vite-plugin-vue-mcp`（可选运行时）**：默认关闭；`EAP_VUE_MCP=true` 的 `vp dev` 才提供 `/__mcp/sse`（见上述决策 §8）。用于组件树/高亮/状态观测，**不能**替代落点规范或 `check:boundaries`。未开浏览器会话时不要把 MCP 工具失败报成实现缺陷。
-- From repository root use `rtk proxy vp -C frontend run typecheck`, `rtk proxy vp -C frontend test run`, `rtk proxy vp -C frontend build`, and `rtk proxy vp -C frontend run check:boundaries`; these scripts exist in `frontend/package.json`. **跑哪几条按 [总纲 §3.6](../docs/architecture-method.md#sec-3-6-verify) 的改动级别决定**，不默认全跑。Report execution results, not script existence, as evidence.
-- **测试目录（强制）**：每个应用/包的测试统一放在包根`__tests__/`，与`src/`同级，内部按`features/`、`lib/`、`mock/`等分组；禁止在src或mock内散放`*.test.*`、`*.spec.*`、`*.typecheck.ts`、测试专用`*.fixture.*`。夹具/快照/浏览器验收配置也归该目录。检查工具测试放`frontend/scripts/vsh/__tests__/`。生产代码不得导入测试目录；生产mock服务不是测试夹具，保留原位置。类型合同由独立type-tests项目纳入根typecheck，不能只搬走而漏检。统一规范与命令见`docs/decisions/frontend-test-layout.md`。
-- **包边界与工程检查（强制）**：检查实现集中在`frontend/scripts/vsh`（`@eap/vsh`）。跨包禁止相对/绝对路径、file URL、别名绕过与私有源码深层引用；只允许已声明依赖及其公开`exports`，不是禁止正常共享包依赖。新增检查先补本包测试，使用`check:architecture`核对包/文件运行时循环与边界，不用忽略名单掩盖实际违规；根`check`先运行该门禁，再运行既有Vite+检查。
-- Avoid adding domain state/API orchestration to `App.vue`. Extract only where the approved slice requires it; do not install all candidate UI/state libraries.
-- 基础及无领域依赖的复合 UI 统一在 `@eap/ui`。用户明确的跨仓库源码复用需求允许先完成完整基础定义，不要求第二消费者；不得建空壳。应用模板不得绕过公共组件使用原生基础控件；设计器 HTML 数据由检查器单独识别，不作 Vue 模板迁移。
-- 页面禁止 `Button variant="custom"`、用原生元素加交互 role/click 模拟控件，以及直接定义固定宿主颜色。普通操作使用公共 Button 变体；带操作区卡片用 ActionCard，命令菜单用 DropdownMenu，混合内容浮层用 anchored Popover；页面只保留业务事件、布局和内容排版。设计模型中的用户颜色是数据，保留原值。新增能力先更新公共契约，再接应用；禁止通过修改测试/检查白名单掩盖边界违规。
-- Target workbenches use trusted bundled Manifest/Registry contributions, instance configuration and explicit grants. This is a target contract, not a statement that Plugin SDK/Registry already exists. Obtain approval before that migration.
-- Preserve expert/knowledge/CLI/MCP/rule management. Mock navigation or timers must be labeled and never reported as background execution.
-- Builder uses GrapesJS for editing and versioned semantic Schema/component mappings for Vue preview and controlled delivery. HTML/CSS export is not maintainable Vue source. Preserve both editor project data and semantic data; reject unknown mappings.
-- Prototype acceptance requires manual design without AI, visible button/state changes, save/reopen, real interactive preview and documented mock boundaries. Production handoff additionally requires target repository authorization, diff, build/tests and human acceptance.
-- Keep renderer access bounded; Electron integration is a later approved phase. New product text follows existing i18n conventions.
-- 管理页面采用清晰的列表→详情、子页、Tabs 或公共 Dialog/Drawer；长规则全文、文档正文、创建/编辑表单和完整诊断不得无条件铺在列表页。新增弹窗须验证错误位于弹窗内、关闭/未保存确认、焦点及窄屏可达。不要用一层 Collapse 代替整页信息结构设计。
-- `@eap/request` 是无领域依赖的传输包（Axios、取消/超时、流握手、上传/下载及可注入 headers/interceptors），不能写入业务端点、默认授权/刷新地址或错误码。`@eap/ui` 的 FileUpload 仅消费其注入的请求函数类型；页面提供业务操作，选文件不自动上传或发布。`@eap/runtime-client` 保留 DTO、平台错误及 SSE 业务帧解析，NProgress 在应用装配。
-- Mock 源码及故障控制只在 `apps/backend-mock`；web 的 mock 模式仅切换开发代理，生产 `src` 不得导入该包或按模拟环境分支。测试需要其能力时声明 devDependency 并使用公开 export；禁止从 Mock 反向导入 web 私有源码。正式包图须排除 Mock 模块。
-- 子页面保存后自行读回数据；通知父页面更新概览时，不重复重载同一编辑器，避免清除刚打开的弹窗、当前草稿或异步操作状态。
+- 栈：Vue 3、TypeScript、Vite+、Tailwind、pnpm workspace。安装/开发/构建/检查用 `vp`，不直接 `pnpm`。
+- **UI 落点**：基础组件只进 `@eap/ui`；禁止在 `features/*` 平行造 Button/Dialog/Confirm。分层与暂存登记见 [`docs/decisions/frontend-ui-shared-module-boundaries.md`](../docs/decisions/frontend-ui-shared-module-boundaries.md)。登记仅首次引入原语/类别时做一次。
+- **测试目录**：包根 `__tests__/`（与 `src/` 同级）；禁止在 `src` 散放 `*.test.*`。规范见 [`docs/decisions/frontend-test-layout.md`](../docs/decisions/frontend-test-layout.md)；资产收敛见 [`docs/decisions/test-asset-convergence.md`](../docs/decisions/test-asset-convergence.md)。
+- **包边界**：只依赖已声明包的公开 `exports`；检查在 `frontend/scripts/vsh`。新增检查先补本包测试；不用忽略名单掩盖违规。
+- Mock 只在 `apps/backend-mock`；生产 `src` 不得导入该包或按模拟环境分支。
+- `@eap/request` 无业务端点/默认鉴权地址；业务 DTO/错误/SSE 在 `@eap/runtime-client`。页面禁止 `Button variant="custom"`、用原生元素假装控件、硬编码宿主色。
+- 跨路由交付须核对真实宿主路由与资源加载；禁止凭页面名猜 URL。
+
+## 验证（按 §3.6，不默认全跑）
+
+从仓库根：`rtk proxy vp -C frontend run typecheck`、`test run`、`build`、`run check:boundaries`。级别见 [§3.6](../docs/architecture-method.md#sec-3-6-verify)。
+
+- **默认单测**：Vite+ / happy-dom；不启用 Playwright browser provider，不因普通 UI 任务安装驱动。
+- **浏览器**：仅 T2+ 且触及关闭/未保存/焦点/授权/恢复等交互时强制真实浏览器；T1 外观用一张受影响页截图即可。`__tests__/browser/*-live.mjs` 按需跑；`*-visual.mjs` 不纳入默认链路、不新增（见收敛决策）。
+- 报告执行结果，不报告「脚本存在」。无浏览器能力时如实标 unverified。
+
+## 产品边界（摘要）
+
+- 复用 `@eap/ui` / `@eap/style` / `@eap/runtime-client` 与既有 feature managers；避免把领域编排堆进 `App.vue`。
+- 管理页：列表→详情 / 子页 / Tabs / Dialog/Drawer；长文与完整诊断不无条件铺列表。
+- Builder：GrapesJS 编辑 + 版本化语义 Schema；HTML/CSS 导出不是可维护 Vue 源。
+- 子页保存后自行读回；通知父页时勿重载编辑器清掉草稿/弹窗。
