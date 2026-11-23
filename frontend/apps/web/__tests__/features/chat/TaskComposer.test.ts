@@ -16,6 +16,7 @@ afterEach(() => {
   sessionStorage.clear()
   workbench.sessionExtras = {}
   workbench.modelMenuToken = 0
+  workbench.executionMode = 'chat'
   location.hash = ''
 })
 const empty = (): TaskContext => ({
@@ -48,6 +49,46 @@ async function mount() {
   return context
 }
 describe('engineering task composer', () => {
+  it('shows the prototype selection axes from real composer state', async () => {
+    workbench.executionMode = 'plan'
+    const context = ref<TaskContext>({
+      ...empty(),
+      approval: 'read_only',
+      reasoning: 'high',
+      files: [{ name: 'selection.ts', content: 'export const real = true' }],
+    })
+    element = document.createElement('div')
+    document.body.append(element)
+    app = createApp({
+      render: () =>
+        h(TaskComposer, {
+          context: context.value,
+          disabled: false,
+          modelLabel: 'demo-model',
+          reasoningEfforts: ['low', 'medium', 'high'],
+          onUpdate: (value: TaskContext) => {
+            context.value = value
+          },
+        }),
+    })
+    app.use(i18n).mount(element)
+    await nextTick()
+    const axes = element.querySelector('[data-testid=composer-selection-axes]')
+    expect(axes).not.toBeNull()
+    const text = axes?.textContent ?? ''
+    expect(text).toContain('引用 1 个文件')
+    expect(text).toContain('规划模式')
+    expect(text).toContain('只读')
+    expect(text).toContain('demo-model')
+    expect(text).toContain('最大')
+
+    context.value = { ...context.value, files: [] }
+    await nextTick()
+    expect(element.querySelector('[data-testid=composer-selection-axes]')?.textContent).toContain(
+      '引用 0 个文件',
+    )
+  })
+
   it('selects a code target without a prototype and sends the exact target in the shared DTO', async () => {
     const send = vi.fn(async () => ({
       executionId: 'test',

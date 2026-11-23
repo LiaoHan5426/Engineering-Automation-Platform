@@ -11,7 +11,8 @@ export type AppearancePreferences = {
   contentMaxWidth: number
 }
 export const appearanceDefaults: Readonly<AppearancePreferences> = {
-  theme: 'light',
+  // Ardot code-dark is the primary board; first paint matches the prototype.
+  theme: 'dark',
   skin: 'default',
   density: 'comfortable',
   sidebarWidth: 288,
@@ -27,7 +28,7 @@ export function normalizeAppearance(value: unknown): AppearancePreferences {
       : appearanceDefaults[key]
   }
   return {
-    theme: source.theme === 'dark' || source.theme === 'system' ? source.theme : 'light',
+    theme: source.theme === 'light' || source.theme === 'system' ? source.theme : 'dark',
     skin: source.skin === 'console' ? 'console' : 'default',
     density: source.density === 'compact' ? 'compact' : 'comfortable',
     sidebarWidth: size('sidebarWidth', 240, 380),

@@ -89,6 +89,21 @@ afterEach(() => {
   window.history.replaceState(null, '', '#experts')
 })
 
+it('renders the expert list as prototype cards with avatar, role type and enabled count', async () => {
+  await mount()
+  const cards = host.querySelectorAll('.expert-gallery-card')
+  expect(cards).toHaveLength(2)
+  // Prototype board 05: each card carries an initial avatar and a real role-type label.
+  const reviewerCard = host.querySelector('[data-testid="expert-card-reviewer"]')!
+  const workflowCard = host.querySelector('[data-testid="expert-card-workflow"]')!
+  expect(reviewerCard.textContent).toContain('自定义')
+  expect(workflowCard.textContent).toContain('内置角色')
+  expect(reviewerCard.querySelector('[data-testid="expert-card-avatar"]')?.textContent).toBe('S')
+  expect(workflowCard.querySelector('[data-testid="expert-card-avatar"]')?.textContent).toBe('F')
+  // Enabled count is derived from real activation state, not hard-coded sample data.
+  expect(host.textContent).toContain('2 个已启用')
+})
+
 it('opens a list without task/editor panels and preserves search on parent return', async () => {
   await mount()
   expect(host.querySelector('[data-testid=expert-agent-panel]')).toBeNull()

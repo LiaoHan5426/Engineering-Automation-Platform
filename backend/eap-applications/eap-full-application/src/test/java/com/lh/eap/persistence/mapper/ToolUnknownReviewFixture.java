@@ -142,7 +142,13 @@ public final class ToolUnknownReviewFixture {
         var url = env.getOrDefault("EAP_DB_URL", "jdbc:postgresql://localhost:54321/postgres?currentSchema=eap");
         if (!url.startsWith("jdbc:postgresql://localhost:") && !url.startsWith("jdbc:postgresql://127.0.0.1:"))
             throw new IllegalArgumentException("Only the approved local test datasource");
-        return new DriverManagerDataSource(url, env.getOrDefault("EAP_DB_USERNAME", "postgres"), env.get("EAP_DB_PASSWORD"));
+        var source = new DriverManagerDataSource(url, env.getOrDefault("EAP_DB_USERNAME", "postgres"), env.get("EAP_DB_PASSWORD"));
+        var timeouts = new java.util.Properties();
+        timeouts.setProperty("connectTimeout", "5");
+        timeouts.setProperty("socketTimeout", "15");
+        timeouts.setProperty("sslResponseTimeout", "5000");
+        source.setConnectionProperties(timeouts);
+        return source;
     }
     static DataSource scopedDataSource(String ownedSchema) {
         if (!ownedSchema.matches("eap_unknown_qa_[a-f0-9]{32}")) throw new IllegalArgumentException("Unowned schema");

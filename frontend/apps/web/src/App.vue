@@ -15,6 +15,9 @@ const DatabaseManager = defineAsyncComponent(
 )
 const RuleManager = defineAsyncComponent(() => import('./features/rule/RuleManager.vue'))
 const ModelSettings = defineAsyncComponent(() => import('./features/settings/ModelSettings.vue'))
+const SettingsCenter = defineAsyncComponent(
+  () => import('./features/settings/SettingsCenter.vue'),
+)
 const SkillManager = defineAsyncComponent(() => import('./features/settings/SkillManager.vue'))
 const AppearanceSettings = defineAsyncComponent(
   () => import('./features/settings/AppearanceSettings.vue'),
@@ -32,9 +35,14 @@ import {
   workbench,
 } from './features/shell/workbench'
 import ChatWorkspace from './features/chat/ChatWorkspace.vue'
+import WorkDocumentWorkspace from './features/work/WorkDocumentWorkspace.vue'
+import SceneDesigner from './features/work/SceneDesigner.vue'
+import WorkspaceInspector from './features/shell/WorkspaceInspector.vue'
+import { type InspectorSnapshot } from './features/shell/inspectorTabs'
+import type { InspectorArea } from './lib/inspectorMessages'
 import PluginSlot from './features/plugins/PluginSlot.vue'
 import { createPluginHost } from './features/plugins/host'
-import { isKnownHash } from './features/plugins/model'
+import { isKnownHash, resolveAreaView } from './features/plugins/model'
 import { i18n } from './lib/i18n'
 import {
   runtimeApi,
@@ -65,6 +73,13 @@ import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from '.
 
 /** Existing views remain available through the five-entry desktop shell. */
 const shellPages = [
+  {
+    id: 'settings',
+    name: i18n.global.t('settingsCenter.title'),
+    icon: '⚙',
+    group: '设置',
+    hint: i18n.global.t('settingsCenter.breadcrumb'),
+  },
   {
     id: 'skills',
     name: i18n.global.t('skill.title'),
@@ -126,8 +141,9 @@ const pages = computed(() => [
   ...pluginHost.entries.value,
   ...shellPages.filter((page) => page.group === '设置'),
 ])
-const hashView = typeof location !== 'undefined' ? location.hash.slice(1).split('?')[0]! : ''
-const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW)
+const rawHashView = typeof location !== 'undefined' ? location.hash.slice(1).split('?')[0]! : ''
+const hashView = resolveAreaView(rawHashView)
+const activeView = ref(isKnownHash(rawHashView) ? hashView : DEFAULT_VIEW)
 let acceptedHash = typeof location !== 'undefined' ? location.hash : ''
 const modelSettings = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
 const projectBoard = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
@@ -141,6 +157,12 @@ if (activeView.value === 'work') {
   activeView.value = 'chat'
 } else if (hashView === 'chat') workbench.workMode = 'code'
 const narrow = ref(false)
+/**
+ * Prototype boards 01–18: the 380px inspector is docked only on wide screens.
+ * Below 1100px it becomes an explicit drawer, independent of the 760px sidebar
+ * drawer (`narrow`), otherwise the main surface would be squeezed to nothing.
+ */
+const inspectorDrawer = ref(false)
 const shellTitle = computed(() => {
   if (activeView.value === 'chat') {
     const binding = chatBinding.value
@@ -168,6 +190,18 @@ const currentView = computed(
     pages.value.find((view) => view.id === activeView.value) ??
     pluginHost.describe(activeView.value),
 )
+/** Prototype top bar: a title plus a breadcrumb that says where the surface sits. */
+const shellBreadcrumb = computed(() => {
+  if (activeView.value === 'chat') return chatContextLabel.value
+  const name = currentView.value?.name ?? ''
+  if (['scenes', 'builder-alpha', 'builder-beta'].includes(activeView.value))
+    return `EAP / ${i18n.global.t('desktop.scenes')} / ${name}`
+  if (['experts', 'expert-catalog'].includes(activeView.value))
+    return `EAP / ${i18n.global.t('desktop.experts')} / ${name}`
+  if (activeView.value === 'board') return `EAP / ${i18n.global.t('desktop.board')}`
+  if (activeView.value === 'sql') return name
+  return `EAP / ${i18n.global.t('desktop.settings')} / ${name}`
+})
 
 /**
  * 检查器是「按页面取值」的：每个页面声明自己能检查什么，切换页面立刻回到该页的说明，
@@ -236,7 +270,7 @@ watch(activeView, (value, previous) => {
 })
 function hashChange() {
   const requestedHash = location.hash
-  const id = requestedHash.slice(1).split('?')[0]!
+  const id = resolveAreaView(requestedHash.slice(1).split('?')[0]!)
   if (
     id !== activeView.value &&
     !guardWorkspaceLeave(activeView.value, () => {
@@ -272,6 +306,10 @@ function hashChange() {
   }
 }
 function onShellKey(event: KeyboardEvent) {
+  if (event.key === 'Escape' && inspectorDrawer.value && workspaceInspectorOpen.value) {
+    workspaceInspectorOpen.value = false
+    return
+  }
   if (event.key === 'Escape' && narrow.value) workbench.sidebarOpen = false
   if (event.key === 'Escape' && workbench.panel)
     rememberPanel(chatBinding.value?.activeId ?? null, null)
@@ -301,6 +339,64 @@ const editorSurface = computed(
 const expertCount = ref(0)
 const capabilityManager = ref<{ refresh: () => Promise<void> } | null>(null)
 const inspectorOpen = ref(false)
+/** Prototype boards 01–06: a docked read-only inspector is part of every area. */
+const workspaceInspectorOpen = ref(true)
+const inspectorArea = computed<InspectorArea>(() => {
+  const view = activeView.value
+  if (view === 'work' || (view === 'chat' && workbench.workMode === 'work')) return 'work'
+  if (view === 'scenes' || view === 'builder-alpha' || view === 'builder-beta') return 'scenes'
+  if (view === 'experts' || view === 'expert-catalog') return 'experts'
+  if (
+    [
+      'settings',
+      'model-settings',
+      'knowledge',
+      'rules',
+      'databases',
+      'skills',
+      'capabilities',
+      'plugins',
+      'appearance',
+    ].includes(view)
+  )
+    return 'settings'
+  return 'code'
+})
+const inspectorSnapshot = computed<InspectorSnapshot>(() => {
+  const binding = chatBinding.value
+  return {
+    references: binding?.references ?? [],
+    localFiles: binding?.localFiles ?? [],
+    proposalFiles: binding?.proposalFiles ?? [],
+    appliedFiles: binding?.appliedFiles ?? [],
+    proposalDiffs: binding?.proposal?.files.map((file) => ({
+      path: file.path,
+      before: file.before,
+      content: file.content,
+      baseHash: file.baseHash,
+    })),
+    memory: binding?.memory ?? '',
+    workspaceLabel: binding?.workspaceLabel || chatContextLabel.value || '',
+    model: binding?.model ?? '',
+    connectionName: binding?.connectionName ?? '',
+    verification: binding?.verification ?? '',
+    verificationChecks: binding?.verificationChecks,
+    runtimeStatus: runtimeStatus.value,
+    title: shellTitle.value,
+    contextLabel: currentView.value.name,
+  }
+})
+const workspaceInspectorVisible = computed(
+  () =>
+    workspaceInspectorOpen.value &&
+    !editorSurface.value &&
+    activeView.value !== 'sql' &&
+    !['builder-alpha', 'builder-beta'].includes(activeView.value),
+)
+// A drawer must not cover the page on first paint; the docked desktop panel can.
+watch(inspectorDrawer, (drawer) => {
+  if (drawer) workspaceInspectorOpen.value = false
+})
 const expertManager = ref<{
   refresh: () => Promise<void>
   guardLeave: () => boolean
@@ -978,6 +1074,7 @@ function selectFinding(finding: SqlFinding) {
   inspectorMessage.value = ''
 }
 
+let detachInspectorQuery: (() => void) | undefined
 onMounted(() => {
   window.addEventListener('hashchange', hashChange)
   window.addEventListener('keydown', onShellKey)
@@ -988,11 +1085,19 @@ onMounted(() => {
   }
   apply()
   query.addEventListener('change', apply)
+  const inspectorQuery = window.matchMedia('(max-width: 1100px)')
+  const applyInspector = () => {
+    inspectorDrawer.value = inspectorQuery.matches
+  }
+  applyInspector()
+  inspectorQuery.addEventListener('change', applyInspector)
+  detachInspectorQuery = () => inspectorQuery.removeEventListener('change', applyInspector)
   void refresh()
 })
 onUnmounted(() => {
   window.removeEventListener('hashchange', hashChange)
   window.removeEventListener('keydown', onShellKey)
+  detachInspectorQuery?.()
 })
 </script>
 
@@ -1001,6 +1106,10 @@ onUnmounted(() => {
     class="app"
     :class="{
       'app--analysis': activeView === 'sql',
+      'app--inspector': workspaceInspectorVisible && !inspectorDrawer,
+      'app--workdoc': activeView === 'workdoc',
+      'app--scenedesigner': activeView === 'scenedesigner',
+      'app--settings': activeView === 'settings',
       'drawer-open': narrow && workbench.sidebarOpen,
     }"
   >
@@ -1077,10 +1186,10 @@ onUnmounted(() => {
           </p>
         </Popover>
       </div>
-      <span class="desktop-page-title"
-        >{{ shellTitle
-        }}<template v-if="chatContextLabel"> · {{ chatContextLabel }}</template></span
-      >
+      <div class="desktop-page-title">
+        <strong>{{ shellTitle }}</strong>
+        <small v-if="shellBreadcrumb">{{ shellBreadcrumb }}</small>
+      </div>
       <div class="spacer" />
       <span
         class="eap-chip"
@@ -1089,6 +1198,18 @@ onUnmounted(() => {
       >
         <i class="dot" />{{ `运行时${runtimeStatus}` }}
       </span>
+      <Button
+        variant="secondary"
+        v-if="activeView !== 'sql' && !editorSurface"
+        :aria-expanded="workspaceInspectorOpen"
+        aria-controls="workspace-inspector-panel"
+        :aria-label="workspaceInspectorOpen ? '收起检查器' : '展开检查器'"
+        @click="workspaceInspectorOpen = !workspaceInspectorOpen"
+        class="workspace-inspector-toggle"
+        data-testid="toggle-workspace-inspector"
+      >
+        检查器
+      </Button>
       <Button
         variant="secondary"
         v-if="activeView === 'sql'"
@@ -1134,8 +1255,27 @@ onUnmounted(() => {
         'body--chat': activeView === 'chat',
         'body--sql': activeView === 'sql',
         'body--editor': editorSurface,
+        'body--inspector': workspaceInspectorVisible && !inspectorDrawer,
+        'body--workdoc': activeView === 'workdoc',
+        'body--scenedesigner': activeView === 'scenedesigner',
+        'body--settings': activeView === 'settings',
       }"
     >
+      <SettingsCenter
+        v-if="activeView === 'settings'"
+        class="settings-center-surface"
+        @navigate="activeView = $event"
+      />
+      <WorkDocumentWorkspace
+        v-else-if="activeView === 'workdoc'"
+        class="workdoc-surface"
+        @navigate="activeView = $event"
+      />
+      <SceneDesigner
+        v-else-if="activeView === 'scenedesigner'"
+        class="workdoc-surface"
+        @navigate="activeView = $event"
+      />
       <DesktopNavigation
         v-show="!editorSurface"
         :can-navigate="
@@ -1167,6 +1307,7 @@ onUnmounted(() => {
               'scenes',
               'expert-catalog',
               'experts',
+              'settings',
               'model-settings',
               'appearance',
             ].includes(activeView)
@@ -1916,6 +2057,26 @@ onUnmounted(() => {
           :chat-view="ChatWorkspace"
         />
       </main>
+
+      <!-- Prototype: docked read-only inspector, one tab set per activity area. -->
+      <Button
+        variant="backdrop"
+        v-if="workspaceInspectorVisible && inspectorDrawer"
+        type="button"
+        class="workspace-inspector-backdrop"
+        data-testid="workspace-inspector-backdrop"
+        aria-label="收起检查器"
+        @click="workspaceInspectorOpen = false"
+      ></Button>
+      <WorkspaceInspector
+        v-if="workspaceInspectorVisible"
+        id="workspace-inspector-panel"
+        :area="inspectorArea"
+        :snapshot="inspectorSnapshot"
+        :narrow="inspectorDrawer"
+        open
+        @close="workspaceInspectorOpen = false"
+      />
 
       <!-- INSPECTOR -->
       <Button

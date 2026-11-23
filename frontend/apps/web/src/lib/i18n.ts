@@ -6,6 +6,9 @@ import { presentationMessages } from './presentationMessages'
 import { editorMessages } from './editorMessages'
 import { toolExecutionMessages } from './toolExecutionMessages'
 import { expertWorkspaceMessages } from './expertWorkspaceMessages'
+import { workDocumentMessages } from './workDocumentMessages'
+import { sceneDesignerMessages } from './sceneDesignerMessages'
+import { settingsCenterMessages } from './settingsCenterMessages'
 import { knowledgeContextMessages } from './knowledgeContextMessages'
 import { contextBudgetMessages } from './contextBudgetMessages'
 import { workingMemoryMessages } from './workingMemoryMessages'
@@ -21,6 +24,7 @@ import { boardVerificationMessages } from './boardVerificationMessages'
 import { boardRunMessages } from './boardRunMessages'
 import { appearanceMessages } from './appearanceMessages'
 import { expertAgentMessages } from './expertAgentMessages'
+import { inspectorMessages } from './inspectorMessages'
 import { createI18n } from 'vue-i18n'
 import { previewMessages } from './previewMessages'
 import { desktopMessages, modelMessages, authMessages } from './desktopMessages'
@@ -39,6 +43,9 @@ export const i18n = createI18n({
       expertAgent: expertAgentMessages['zh-CN'],
       editor: editorMessages['zh-CN'],
       expertWorkspace: expertWorkspaceMessages['zh-CN'],
+      workDocument: workDocumentMessages['zh-CN'],
+      sceneDesigner: sceneDesignerMessages['zh-CN'],
+      settingsCenter: settingsCenterMessages['zh-CN'],
       knowledgeContext: knowledgeContextMessages['zh-CN'],
       contextBudget: contextBudgetMessages['zh-CN'],
       workingMemory: workingMemoryMessages['zh-CN'],
@@ -54,6 +61,7 @@ export const i18n = createI18n({
       boardRun: boardRunMessages['zh-CN'],
       appearance: appearanceMessages['zh-CN'],
       preview: previewMessages['zh-CN'],
+      inspector: inspectorMessages['zh-CN'],
       desktop: desktopMessages['zh-CN'],
       modelUi: modelMessages['zh-CN'],
       authUi: authMessages['zh-CN'],
@@ -80,6 +88,10 @@ export const i18n = createI18n({
           '服务端当前运行在不同工作区，已拒绝重新连接。请切回原工作区后重试；本地历史、草稿和项目关联保持不变。',
         probeFailed: '暂时无法检查服务端会话，尚未确认会话失效。草稿仍可编辑。',
         recheck: '重新检查会话',
+        graphFailed:
+          '消息加载失败，已显示的内容和未发送草稿仍保留。可重新加载消息，已发送的请求不会重发。',
+        graphLoading: '正在加载消息，未发送草稿仍可编辑。',
+        retryGraph: '重新加载消息',
         contextReset: '已重新连接。服务端模型上下文已重置，本地历史未重放。',
         contextKept: '已重新连接现有服务端会话，本次重连未重置模型上下文。',
         archiveNotice: '已归档，仅供查看。恢复后可以继续有效会话。',
@@ -119,6 +131,12 @@ export const i18n = createI18n({
         manageExperts: '管理专家',
         localReference: '本地上传与仓库内文件不是同一个来源。请从工作区选择需要引用的文件。',
         noReferences: '还没有引用文件或原型。',
+        axisReferences: '引用 {count} 个文件',
+        axisChat: '自由对话',
+        axisPlan: '规划模式',
+        axisAgent: '受控执行',
+        axisApprove: '需审批',
+        axisReadOnly: '只读',
       },
       workUi: {
         overview: '工作区概览',
@@ -277,6 +295,10 @@ export const i18n = createI18n({
         copiedCode: '已复制',
         editQuestion: '编辑提问',
         regenerate: '重新生成',
+        previousVersion: '上一个版本',
+        nextVersion: '下一个版本',
+        readingBranch: '正在浏览历史分支，可切换版本查看后续消息。继续发送请返回最新消息。',
+        latestBranch: '返回最新消息',
         editingHint: '编辑提问将从此节点创建新分支',
         cancelEdit: '取消编辑',
         streamingAnswer: '生成中',
@@ -379,6 +401,9 @@ export const i18n = createI18n({
       expertAgent: expertAgentMessages['en-US'],
       editor: editorMessages['en-US'],
       expertWorkspace: expertWorkspaceMessages['en-US'],
+      workDocument: workDocumentMessages['en-US'],
+      sceneDesigner: sceneDesignerMessages['en-US'],
+      settingsCenter: settingsCenterMessages['en-US'],
       knowledgeContext: knowledgeContextMessages['en-US'],
       contextBudget: contextBudgetMessages['en-US'],
       workingMemory: workingMemoryMessages['en-US'],
@@ -394,6 +419,7 @@ export const i18n = createI18n({
       boardRun: boardRunMessages['en-US'],
       appearance: appearanceMessages['en-US'],
       preview: previewMessages['en-US'],
+      inspector: inspectorMessages['en-US'],
       desktop: desktopMessages['en-US'],
       modelUi: modelMessages['en-US'],
       authUi: authMessages['en-US'],
@@ -424,6 +450,10 @@ export const i18n = createI18n({
         probeFailed:
           'Could not check the server session. Expiry is not confirmed. You can still edit the draft.',
         recheck: 'Recheck session',
+        graphFailed:
+          'Messages could not be loaded. Displayed content and your unsent draft are retained. Reload messages to recover; sent requests will not be repeated.',
+        graphLoading: 'Loading messages. You can still edit your unsent draft.',
+        retryGraph: 'Reload messages',
         contextReset:
           'Reconnected. Server model context was reset; local history was not replayed.',
         contextKept: 'Reconnected to the existing server session without resetting model context.',
@@ -467,6 +497,12 @@ export const i18n = createI18n({
         localReference:
           'Local uploads and repository files are different sources. Only the selected name is kept; the repository is not read.',
         noReferences: 'No file or prototype is referenced yet.',
+        axisReferences: '{count} referenced files',
+        axisChat: 'Free chat',
+        axisPlan: 'Plan mode',
+        axisAgent: 'Controlled execution',
+        axisApprove: 'Approval required',
+        axisReadOnly: 'Read only',
       },
       workUi: {
         overview: 'Workspace overview',
@@ -641,6 +677,11 @@ export const i18n = createI18n({
         copiedCode: 'Copied',
         editQuestion: 'Edit question',
         regenerate: 'Regenerate',
+        previousVersion: 'Previous version',
+        nextVersion: 'Next version',
+        readingBranch:
+          'Reading a previous branch. Switch versions to view its continuation. Return to the latest messages before sending.',
+        latestBranch: 'Return to latest messages',
         editingHint: 'Editing creates a new branch from this node',
         cancelEdit: 'Cancel edit',
         streamingAnswer: 'Streaming',

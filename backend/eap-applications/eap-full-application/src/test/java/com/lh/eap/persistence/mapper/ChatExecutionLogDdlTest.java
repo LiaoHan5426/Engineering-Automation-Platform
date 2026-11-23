@@ -28,6 +28,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_BOARD_PERSISTENCE", matches = "true")
 class ChatExecutionLogDdlTest {
+    @org.junit.jupiter.api.extension.RegisterExtension
+    final OwnedTestSchemas ownedSchemas = new OwnedTestSchemas();
     @TempDir Path session;
 
     private JdbcTemplate migrated(String schema) throws Exception {
@@ -36,10 +38,12 @@ class ChatExecutionLogDdlTest {
         for (String name : List.of("V1__initial_schema.sql", "V2__chat_message_graph.sql", "V3__chat_execution_log.sql")) {
             String sql = new ClassPathResource("db/migration/" + name)
                     .getContentAsString(StandardCharsets.UTF_8)
-                    .replace("eap.", schema + ".");
+                    .replace("eap.", schema + ".")
+                    .replace("CREATE SCHEMA IF NOT EXISTS eap;", "CREATE SCHEMA IF NOT EXISTS " + schema + ";");
             Files.writeString(dir.resolve(name), sql);
         }
         var source = ToolUnknownReviewFixture.originalDataSource();
+        ownedSchemas.register(source, schema);
         try (var conn = source.getConnection(); var stmt = conn.createStatement()) {
             stmt.execute("CREATE SCHEMA IF NOT EXISTS " + schema);
         }

@@ -72,7 +72,14 @@ export function detachSessionsFromProject(projectId: string) {
 }
 
 export type ChatBinding = {
-  history: Array<{ id: string; title: string; archived: boolean; updatedAt?: string }>
+  history: Array<{
+    id: string
+    title: string
+    archived: boolean
+    updatedAt?: string
+    draft?: string
+    expired?: boolean
+  }>
   activeId: string | null
   busyIds?: string[]
   rename?: (id: string) => void

@@ -19,11 +19,13 @@ import {
   createLocalProject,
   detachSessionsFromProject,
   localProjects,
+  projectLabel,
   removeLocalProject,
   renameLocalProject,
   sessionProjectId,
   workbench,
 } from './shell/workbench'
+import { resolveSessionStatus, type SessionStatus } from './shell/sessionStatus'
 
 const props = withDefaults(
   defineProps<{
@@ -75,11 +77,23 @@ const settingsGroups = [
   {
     id: 'workspace',
     labelKey: 'desktop.settingsGroupWorkspace',
-    ids: ['model-settings', 'knowledge', 'rules', 'databases', 'skills', 'capabilities', 'plugins'],
+    ids: [
+      'settings',
+      'model-settings',
+      'knowledge',
+      'rules',
+      'databases',
+      'skills',
+      'capabilities',
+      'plugins',
+    ],
   },
   { id: 'preference', labelKey: 'desktop.settingsGroupPreference', ids: ['appearance'] },
 ] as const
-const settingsIds = settingsGroups.flatMap((group) => group.ids as readonly string[])
+const settingsIds = [
+  'settings',
+  ...settingsGroups.flatMap((group) => group.ids as readonly string[]),
+]
 const expertIds = ['expert-catalog', 'experts']
 function isProjectExpanded(id: string) {
   if (expandedProjects.value[id] != null) return expandedProjects.value[id]!
@@ -331,6 +345,83 @@ function sessionStamp(value?: string) {
     minute: '2-digit',
   })
 }
+/** Ardot board 01: a status chip only for sessions with real local/live evidence. */
+function sessionStatus(item: {
+  id: string
+  draft?: string
+  expired?: boolean
+}): SessionStatus | null {
+  const binding = chatBinding.value
+  return resolveSessionStatus(
+    item,
+    binding
+      ? {
+          activeId: binding.activeId,
+          sending: binding.sending,
+          busyIds: binding.busyIds,
+          proposalFiles: binding.proposalFiles,
+          appliedFiles: binding.appliedFiles,
+          verificationChecks: binding.verificationChecks,
+        }
+      : null,
+  )
+}
+function statusLabel(status: SessionStatus) {
+  return t('desktop.sessionStatus.' + status)
+}
+const storageGroupCount = computed(() => localProjects.projects.length)
+const storageSessionCount = computed(() => conversations.value.length)
+const storageCountLabel = computed(() =>
+  t('desktop.storageCount', {
+    groups: storageGroupCount.value,
+    sessions: storageSessionCount.value,
+  }),
+)
+
+/**
+ * Ardot boards 01/04/05: the 56px sidebar header is a workspace switcher, not
+ * a passive area label. It can only select local group labels that already
+ * exist; it never invents a group, grants a repository or starts a chat.
+ * Settings keeps its own title as on board 10.
+ */
+const workspaceSwitcherOpen = ref(false)
+const hasWorkspaceSwitcher = computed(() => area.value !== 'settings')
+const workspaceLabel = computed(() => {
+  if (area.value === 'settings') return t('desktop.settings')
+  const id = workbench.selectedProjectId
+  return id ? projectLabel(id) || t('desktop.freeChat') : t('desktop.freeChat')
+})
+const workspaceActions = computed<MenuAction[]>(() => {
+  if (!hasWorkspaceSwitcher.value) return []
+  const selectedId = workbench.selectedProjectId
+  const mark = (label: string, current: boolean) =>
+    current ? `${t('desktop.currentWorkspace')} · ${label}` : label
+  return [
+    ...localProjects.projects.map((project) => ({
+      id: `project:${project.id}`,
+      label: mark(project.label, selectedId === project.id),
+      description: selectedId === project.id ? t('desktop.currentWorkspace') : undefined,
+      testId: `workspace-project-${project.id}`,
+    })),
+    {
+      id: 'free',
+      label: mark(t('desktop.freeChat'), selectedId === null),
+      description: selectedId === null ? t('desktop.currentWorkspace') : undefined,
+      testId: 'workspace-free',
+    },
+  ]
+})
+function switchWorkspace(id: string) {
+  workspaceSwitcherOpen.value = false
+  if (id === 'free') {
+    workbench.selectedProjectId = null
+    return
+  }
+  const projectId = id.startsWith('project:') ? id.slice('project:'.length) : ''
+  if (!projectId || !localProjects.projects.some((project) => project.id === projectId)) return
+  workbench.selectedProjectId = projectId
+  expandedProjects.value = { ...expandedProjects.value, [projectId]: true }
+}
 function openExpertTasks() {
   if (!props.canNavigate || props.canNavigate()) window.location.hash = 'experts?view=tasks'
 }
@@ -360,7 +451,7 @@ function select(next: Area) {
     open(previous && expertIds.includes(previous) ? previous : 'experts')
     return
   }
-  open(previous && settingsIds.includes(previous) ? previous : 'model-settings')
+  open(previous && settingsIds.includes(previous) ? previous : 'settings')
 }
 function chooseConversation(id: string) {
   openMenuId.value = null
@@ -437,13 +528,60 @@ onUnmounted(() => {
         v-for="(icon, key) in areaIcons"
         :key="key"
         type="button"
+        class="activity-entry"
         :active="area === key"
         :aria-current="area === key ? 'page' : undefined"
+        :aria-label="t('desktop.' + key)"
+        :title="t('desktop.' + key)"
         @click="select(key)"
-        ><component :is="icon" :size="22" />{{ t('desktop.' + key) }}</Button
+        ><component :is="icon" :size="22" /><span class="activity-label">{{
+          t('desktop.' + key)
+        }}</span></Button
       >
     </nav>
     <aside class="desktop-sidebar eap-scrollbar">
+      <!-- Ardot boards 01/05/10/12: the sidebar owns the left 288px of the
+           56px header band, so the workbench top bar starts at 360px. -->
+      <div class="sidebar-head" data-testid="sidebar-head">
+        <span class="sidebar-head__dot" aria-hidden="true"></span>
+        <strong v-if="!hasWorkspaceSwitcher" class="sidebar-head__name">{{
+          workspaceLabel
+        }}</strong>
+        <DropdownMenu
+          v-else
+          v-model:open="workspaceSwitcherOpen"
+          :items="workspaceActions"
+          :label="t('desktop.workspaceSwitcher')"
+          align="start"
+          class="workspace-menu"
+          data-testid="workspace-menu"
+          @select="switchWorkspace"
+        >
+          <Button
+            variant="navigation"
+            type="button"
+            class="sidebar-head__workspace"
+            data-testid="workspace-switcher"
+            :aria-label="t('desktop.workspaceSwitcher')"
+            ><span class="sidebar-head__name" data-testid="workspace-switcher-name">{{
+              workspaceLabel
+            }}</span>
+            <span class="sidebar-head__caret" aria-hidden="true">⌄</span></Button
+          >
+        </DropdownMenu>
+        <Button
+          v-if="area === 'code' || area === 'work' || area === 'scenes'"
+          size="sm"
+          variant="icon"
+          type="button"
+          class="sidebar-head__new"
+          data-testid="sidebar-head-new"
+          :aria-label="t('desktop.newProject')"
+          :title="t('desktop.newProject')"
+          @click="startNewProject"
+          ><IconPlus
+        /></Button>
+      </div>
       <Button
         v-if="area === 'experts' || area === 'settings'"
         variant="navigation"
@@ -452,6 +590,28 @@ onUnmounted(() => {
         data-testid="back-to-source-session"
         @click="returnToSourceSession"
         ><IconArrowLeft />{{ t('desktop.backToSourceSession') }}</Button
+      >
+      <Button
+        v-if="area === 'work'"
+        variant="navigation"
+        type="button"
+        class="nav"
+        data-testid="open-workdoc"
+        :active="activeView === 'workdoc'"
+        :aria-current="activeView === 'workdoc' ? 'page' : undefined"
+        @click="open('workdoc')"
+        ><IconBriefcase />{{ t('workDocument.area') }}</Button
+      >
+      <Button
+        v-if="area === 'scenes'"
+        variant="navigation"
+        type="button"
+        class="nav"
+        data-testid="open-scenedesigner"
+        :active="activeView === 'scenedesigner'"
+        :aria-current="activeView === 'scenedesigner' ? 'page' : undefined"
+        @click="open('scenedesigner')"
+        ><IconLayers />{{ t('sceneDesigner.stepDesign') }}</Button
       >
       <nav v-if="area === 'experts'" :aria-label="t('desktop.experts')">
         <Button
@@ -681,9 +841,19 @@ onUnmounted(() => {
                   :active="activeView === 'chat' && chatBinding?.activeId === item.id"
                   @click="chooseConversation(item.id)"
                   ><span>{{ item.title || t('desktop.freeChat') }}</span
-                  ><small v-if="sessionStamp(item.updatedAt)">{{
-                    sessionStamp(item.updatedAt)
-                  }}</small></Button
+                  ><small
+                    v-if="sessionStatus(item) || sessionStamp(item.updatedAt)"
+                    class="session-row__meta"
+                    ><span
+                      v-if="sessionStatus(item)"
+                      class="session-status"
+                      :data-status="sessionStatus(item) ?? undefined"
+                      data-testid="session-status"
+                      >{{ statusLabel(sessionStatus(item)!) }}</span
+                    ><span v-if="sessionStamp(item.updatedAt)" class="session-row__time">{{
+                      sessionStamp(item.updatedAt)
+                    }}</span></small
+                  ></Button
                 >
                 <DropdownMenu
                   :open="openMenuId === item.id"
@@ -737,9 +907,19 @@ onUnmounted(() => {
               :active="activeView === 'chat' && chatBinding?.activeId === item.id"
               @click="chooseConversation(item.id)"
               ><span>{{ item.title || t('desktop.freeChat') }}</span
-              ><small v-if="sessionStamp(item.updatedAt)">{{
-                sessionStamp(item.updatedAt)
-              }}</small></Button
+              ><small
+                v-if="sessionStatus(item) || sessionStamp(item.updatedAt)"
+                class="session-row__meta"
+                ><span
+                  v-if="sessionStatus(item)"
+                  class="session-status"
+                  :data-status="sessionStatus(item) ?? undefined"
+                  data-testid="session-status"
+                  >{{ statusLabel(sessionStatus(item)!) }}</span
+                ><span v-if="sessionStamp(item.updatedAt)" class="session-row__time">{{
+                  sessionStamp(item.updatedAt)
+                }}</span></small
+              ></Button
             >
             <DropdownMenu
               :open="openMenuId === item.id"
@@ -791,6 +971,20 @@ onUnmounted(() => {
             >{{ analysis.name }}</Button
           >
         </section>
+        <!-- Ardot board 01: sidebar footer shows the on-device workspace with
+             real group/session counts. No invented byte or MB figures. -->
+        <div
+          class="sidebar-storage"
+          data-testid="sidebar-storage-card"
+          :data-groups="storageGroupCount"
+          :data-sessions="storageSessionCount"
+        >
+          <span class="sidebar-storage__icon" aria-hidden="true">▤</span>
+          <span class="sidebar-storage__text">
+            <strong>{{ t('desktop.storageCard') }}</strong>
+            <span class="sidebar-storage__count">{{ storageCountLabel }}</span>
+          </span>
+        </div>
       </template>
       <template v-else-if="area === 'settings'">
         <h2>{{ t('desktop.settings') }}</h2>
@@ -823,201 +1017,351 @@ onUnmounted(() => {
 <style scoped>
 .desktop-navigation {
   display: flex;
-  min-height: 0;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   color: var(--text);
 }
+
+/* Board 01: a 72px icon rail. Brand mark and operator avatar are CSS
+   pseudo-elements, so the five real entries stay nth-child 1..5 for the
+   navigation contracts while the visible rail carries no text. */
 .activity-bar {
-  width: 64px;
-  flex: 0 0 64px;
   display: flex;
+  flex: 0 0 var(--eap-layout-activity-width);
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 6px;
+  gap: 6px;
+  align-items: center;
+  width: var(--eap-layout-activity-width);
+  padding: 10px 0 14px;
   background: var(--bg);
+  border-right: 1px solid var(--border);
 }
-.activity-bar button {
+
+.activity-bar::before {
   display: grid;
-  gap: 5px;
-  justify-items: center;
-  min-width: 0;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--eap-color-on-primary);
+  letter-spacing: -0.04em;
+  content: 'E';
+  background: var(--eap-color-primary, var(--accent));
+  border-radius: 10px;
 }
-.activity-bar button:last-child {
+
+.activity-bar::after {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   margin-top: auto;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text-soft);
+  content: 'YL';
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 50%;
 }
-.desktop-sidebar {
-  flex: 1;
+
+.activity-bar .activity-entry {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0;
+  place-items: center;
+  width: 48px;
   min-width: 0;
+  height: 48px;
+  padding: 0;
+  border-radius: 12px;
+}
+
+.activity-bar .activity-entry[data-active='true'] {
+  box-shadow: inset 2px 0 0 var(--eap-color-primary, var(--accent));
+}
+
+.activity-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.desktop-sidebar {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 8px;
-  overflow: auto;
+  min-width: 0;
   padding: 16px 12px;
+  overflow: auto;
   background: var(--surface-2);
   border-right: 1px solid var(--border);
 }
+
+.sidebar-head {
+  position: sticky;
+  top: -16px;
+  z-index: 1;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  margin: -16px -12px 0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-head__dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  background: var(--eap-color-primary, var(--accent));
+  border-radius: 50%;
+}
+
+.sidebar-head__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.sidebar-head__workspace {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  align-items: center;
+  width: auto;
+  min-width: 0;
+  height: 40px;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.sidebar-head__workspace:hover .sidebar-head__name {
+  color: var(--eap-color-primary);
+}
+
+.sidebar-head__caret {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.sidebar-head__new {
+  flex: 0 0 auto;
+}
+
 .desktop-sidebar h2 {
   margin: 8px 8px 0;
-  color: var(--text-soft);
   font-size: 12px;
   font-weight: 650;
+  color: var(--text-soft);
 }
+
 .sidebar-filter {
   display: block;
   width: 100%;
   margin: 0 0 8px;
 }
+
 .desktop-sidebar > * {
   flex-shrink: 0;
 }
+
 .sidebar-section-head {
   display: flex;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
   min-height: 32px;
 }
+
 .sidebar-section-head h2 {
   margin: 0 8px;
 }
+
 .sidebar-section-head > button {
   flex: 0 0 28px;
   width: 28px;
-  height: 28px;
   min-width: 28px;
+  height: 28px;
 }
+
 .sidebar-tools {
   display: grid;
   gap: 2px;
-  margin-top: auto;
   padding-top: 10px;
+  margin-top: auto;
   border-top: 1px solid var(--border);
 }
+
 .hint {
   padding: 0 8px;
   font-size: 12px;
-  color: var(--text-soft);
   line-height: 1.55;
+  color: var(--text-soft);
 }
+
 .tree-node {
-  margin: 4px 0;
   padding: 2px 0;
+  margin: 4px 0;
   border-radius: 10px;
 }
+
 .tree-node[data-expanded='true'] {
   background: transparent;
 }
+
 .tree-node-head {
   display: flex;
-  align-items: center;
   gap: 2px;
+  align-items: center;
   min-width: 0;
   min-height: 36px;
 }
+
 .tree-toggle {
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
   display: grid;
+  flex: 0 0 28px;
   place-items: center;
   align-self: center;
+  width: 28px;
+  height: 28px;
 }
+
 .tree-caret {
   transition: transform 0.15s;
 }
+
 .tree-caret[data-open='true'] {
   transform: rotate(90deg);
 }
+
 .tree-project-label {
   display: flex !important;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
   min-width: 0;
   padding: 6px 8px;
 }
+
 .tree-project-label > span {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .tree-project-label small {
-  color: var(--text-mute);
   font-size: 10px;
   font-weight: 400;
   line-height: 1.2;
+  color: var(--text-mute);
 }
+
 .tree-more {
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
   display: grid;
+  flex: 0 0 28px;
   place-items: center;
   align-self: center;
+  width: 28px;
+  height: 28px;
 }
+
 .project-edit {
   display: grid;
   gap: 6px;
-  margin: 4px 0 8px;
   padding: 8px;
+  margin: 4px 0 8px;
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: var(--surface-2);
 }
+
 .project-edit.tree-rename {
   flex: 1;
   min-width: 0;
   margin: 0;
 }
+
 .project-edit :deep(.eap-input) {
   width: 100%;
 }
+
 .project-edit-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
+
 .tree-children {
-  margin: 4px 2px 8px 14px;
-  padding: 0 0 0 12px;
-  border-left: 1px solid var(--border);
   display: grid;
   gap: 4px;
+  padding: 0 0 0 12px;
+  margin: 4px 2px 8px 14px;
+  border-left: 1px solid var(--border);
 }
+
 .tree-branch-label {
-  margin: 6px 0 2px;
   padding: 0 8px;
+  margin: 6px 0 2px;
   font-size: 10px;
   font-weight: 650;
   color: var(--text-mute);
   letter-spacing: 0.02em;
 }
+
 .tree-empty {
-  margin: 4px 0;
   padding: 0 8px;
+  margin: 4px 0;
   font-size: 11px;
   overflow-wrap: anywhere;
 }
+
 .tree-child {
   padding-left: 10px !important;
 }
+
 .status-compact {
   margin: 2px 10px 6px;
   font-size: 11px;
   color: var(--text-soft);
 }
+
 .desktop-sidebar .nav {
   width: 100%;
 }
+
 .desktop-sidebar .nav.child {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 2px;
+  align-items: flex-start;
 }
+
 .desktop-sidebar .nav.child span {
   display: block;
   max-width: 100%;
@@ -1025,61 +1369,162 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .desktop-sidebar .nav.child small {
-  color: var(--text-mute);
   font-size: 10px;
   font-weight: 400;
   line-height: 1.2;
+  color: var(--text-mute);
 }
+
 .session-row {
   display: flex;
-  align-items: center;
   gap: 2px;
+  align-items: center;
   min-width: 0;
 }
+
 .session-row > .nav {
   flex: 1;
   min-width: 0;
 }
+
+.session-row__meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.session-row__time {
+  display: inline-flex;
+  margin-left: auto;
+}
+
+.session-status {
+  display: inline-flex;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--eap-text-color-secondary);
+  white-space: nowrap;
+  background: var(--eap-fill-color-light);
+  border: 1px solid var(--eap-border-color);
+  border-radius: 4px;
+}
+
+.session-status[data-status='draft'] {
+  color: var(--eap-text-color-secondary);
+}
+
+.session-status[data-status='running'] {
+  color: var(--eap-color-primary);
+  background: var(--eap-color-primary-soft);
+}
+
+.session-status[data-status='pending'] {
+  color: var(--eap-color-warning);
+}
+
+.session-status[data-status='verified'] {
+  color: var(--eap-color-success);
+}
+
+.session-status[data-status='expired'] {
+  color: var(--eap-text-color-placeholder);
+}
+
+.sidebar-storage {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 64px;
+  padding: 10px;
+  margin-top: auto;
+  background: var(--eap-fill-color-light);
+  border: 1px solid var(--eap-border-color);
+  border-radius: 8px;
+}
+
+.sidebar-storage__icon {
+  display: inline-flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+  color: var(--eap-color-primary);
+  background: var(--eap-fill-color-blank);
+  border-radius: 6px;
+}
+
+.sidebar-storage__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sidebar-storage__text strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--eap-text-color-primary);
+}
+
+.sidebar-storage__count {
+  font-size: 11px;
+  color: var(--eap-text-color-secondary);
+}
+
 .settings-search {
   width: 100%;
 }
+
 .settings-group {
   display: grid;
   gap: 2px;
   margin-top: 10px;
 }
+
 .settings-group__label {
-  margin: 0 0 2px;
   padding: 0 10px;
+  margin: 0 0 2px;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.04em;
   color: var(--text-mute);
+  letter-spacing: 0.04em;
 }
+
 .preview-tree-project {
   display: grid;
   gap: 3px;
   margin-bottom: 10px;
 }
+
 .desktop-sidebar .project-name {
   font-weight: 650;
 }
+
 .project-name small {
   display: block;
   margin: 5px 0 0 16px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 10px;
+  white-space: nowrap;
 }
+
 .desktop-sidebar .tree-child {
   padding-left: 28px;
-  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 12px;
   white-space: nowrap;
 }
+
 .demo-tree-label {
   margin: 12px 0 4px;
 }

@@ -26,6 +26,8 @@ import com.lh.eap.persistence.jdbc.StateBindings;
  */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_BOARD_PERSISTENCE", matches = "true")
 class MissionUnknownResolutionDdlTest {
+    @org.junit.jupiter.api.extension.RegisterExtension
+    final OwnedTestSchemas ownedSchemas = new OwnedTestSchemas();
     @TempDir Path session;
 
     private JdbcTemplate migrated(String schema) throws Exception {
@@ -35,10 +37,12 @@ class MissionUnknownResolutionDdlTest {
                 "V3__chat_execution_log.sql", "V4__mission_unknown_resolution.sql")) {
             String sql = new ClassPathResource("db/migration/" + name)
                     .getContentAsString(StandardCharsets.UTF_8)
-                    .replace("eap.", schema + ".");
+                    .replace("eap.", schema + ".")
+                    .replace("CREATE SCHEMA IF NOT EXISTS eap;", "CREATE SCHEMA IF NOT EXISTS " + schema + ";");
             Files.writeString(dir.resolve(name), sql);
         }
         var source = ToolUnknownReviewFixture.originalDataSource();
+        ownedSchemas.register(source, schema);
         try (var conn = source.getConnection(); var stmt = conn.createStatement()) {
             stmt.execute("CREATE SCHEMA IF NOT EXISTS " + schema);
         }

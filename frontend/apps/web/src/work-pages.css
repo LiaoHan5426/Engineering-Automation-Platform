@@ -3,13 +3,13 @@
 .app {
   height: 100dvh;
   min-height: 0;
-  grid-template-rows: 48px minmax(0, 1fr);
+  grid-template-rows: var(--eap-layout-topbar-height) minmax(0, 1fr);
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
 }
 .app--analysis {
-  grid-template-rows: 48px minmax(0, 1fr) 26px;
+  grid-template-rows: var(--eap-layout-topbar-height) minmax(0, 1fr) 26px;
 }
 .body {
   min-height: 0;
@@ -60,18 +60,36 @@
   padding: 4px 9px;
 }
 .desktop-page-title {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
   min-width: 0;
+  overflow: hidden;
+}
+
+.desktop-page-title strong,
+.desktop-page-title small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.desktop-page-title strong {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 650;
+}
+
+.desktop-page-title small {
+  font-size: 10px;
+  color: var(--text-mute);
 }
 .shell-message {
   position: absolute;
   z-index: 40;
-  top: 48px;
-  left: 64px;
+  top: var(--eap-layout-topbar-height);
+  left: var(--eap-layout-activity-width);
   right: 12px;
 }
 .send-in-flight {
@@ -780,7 +798,7 @@
 
 @media (max-width: 680px) {
   .app {
-    grid-template-rows: 56px minmax(0, 1fr) 30px;
+    grid-template-rows: var(--eap-layout-topbar-height) minmax(0, 1fr) 30px;
   }
   .body,
   .body--focused {
@@ -1261,7 +1279,7 @@
   .chat-top-actions {
     left: 12px;
     right: auto;
-    top: 48px;
+    top: var(--eap-layout-topbar-height);
   }
   .chat-workspace .records-toggle {
     right: 12px;
@@ -1487,12 +1505,12 @@
 
 /* Desktop shell: fixed activity rail and contextual navigation. */
 .body {
-  grid-template-columns: var(--eap-layout-sidebar-width) minmax(0, 1fr);
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   padding: 0 8px 8px 0;
 }
 .body--sql {
-  grid-template-columns: var(--eap-layout-sidebar-width) minmax(0, 1fr) var(--eap-layout-rail-width);
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr) var(--eap-layout-rail-width);
 }
 .body > .workbench {
   padding: 26px 30px;
@@ -1545,7 +1563,10 @@
 }
 @media (max-width: 1100px) {
   .body {
-    grid-template-columns: min(var(--eap-layout-sidebar-width), 254px) minmax(0, 1fr);
+    grid-template-columns: calc(
+        var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px)
+      )
+      minmax(0, 1fr);
   }
   .body > .inspector {
     display: none;
@@ -1553,7 +1574,7 @@
 }
 
 .body--chat {
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr);
 }
 @media (max-width: 680px) {
   .body > .workbench {
@@ -1643,10 +1664,10 @@
 }
 
 .body.body--chat {
-  grid-template-columns: var(--eap-layout-sidebar-width) minmax(0, 1fr);
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr);
 }
 .body.body--sql {
-  grid-template-columns: var(--eap-layout-sidebar-width) minmax(0, 1fr) var(--eap-layout-rail-width);
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr) var(--eap-layout-rail-width);
 }
 .shell-tool {
   white-space: nowrap;
@@ -1668,15 +1689,18 @@
 @media (max-width: 1100px) {
   .body.body--chat,
   .body.body--sql {
-    grid-template-columns: min(var(--eap-layout-sidebar-width), 254px) minmax(0, 1fr);
+    grid-template-columns: calc(
+        var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px)
+      )
+      minmax(0, 1fr);
   }
 }
 .sidebar-backdrop {
   display: none;
   position: fixed;
   z-index: 35;
-  top: 56px;
-  left: 64px;
+  top: var(--eap-layout-topbar-height);
+  left: var(--eap-layout-activity-width);
   right: 0;
   bottom: 0;
   margin: 0;
@@ -1685,7 +1709,7 @@
   .body,
   .body.body--chat,
   .body.body--sql {
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: var(--eap-layout-activity-width) minmax(0, 1fr);
   }
   .app .desktop-navigation .desktop-sidebar {
     display: none;
@@ -1700,16 +1724,16 @@
   .app.drawer-open .body,
   .app.drawer-open .body.body--chat,
   .app.drawer-open .body.body--sql {
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: var(--eap-layout-activity-width) minmax(0, 1fr);
   }
   .app.drawer-open .desktop-navigation .desktop-sidebar {
     display: flex;
     position: fixed;
     z-index: 40;
-    top: 56px;
-    left: 64px;
+    top: var(--eap-layout-topbar-height);
+    left: var(--eap-layout-activity-width);
     bottom: 0;
-    width: min(280px, calc(100vw - 72px));
+    width: min(280px, calc(100vw - var(--eap-layout-activity-width)));
     box-shadow: 12px 0 32px color-mix(in srgb, var(--text) 18%, transparent);
   }
   .app.drawer-open .sidebar-backdrop {
@@ -1789,3 +1813,124 @@
 .app .body.body--editor { grid-template-columns: minmax(0, 1fr); }
 .body.body--editor > .workbench { padding: 0; overflow: hidden; border-radius: 0; }
 .body.body--editor > .inspector { display: none; }
+
+/* Ardot boards 01–18: on wide screens the read-only inspector is a docked
+   380px region. The 72px rail and 288px sidebar are one navigation column in
+   the DOM, so the body needs three tracks, not four. */
+.body.body--inspector {
+  grid-template-columns:
+    var(--eap-layout-navigation-width) minmax(0, 1fr)
+    var(--eap-layout-inspector-width);
+}
+
+.body.body--inspector > .workspace-inspector {
+  width: var(--eap-layout-inspector-width);
+  min-width: 0;
+}
+
+/* The legacy `.inspector-toggle` rule hides the SQL-only details button;
+  the prototype inspector toggle belongs to the top bar on every area. */
+.topbar .workspace-inspector-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+/* The backdrop is rendered only when App.vue switches the inspector to a
+   drawer; it sits below the drawer (z-index 40) and never covers the rail. */
+.workspace-inspector-backdrop {
+  position: fixed;
+  inset: var(--eap-layout-topbar-height) 0 0 var(--eap-layout-activity-width);
+  z-index: 39;
+  display: block;
+  margin: 0;
+}
+
+/* App.vue only adds the docked class above this width. The guard keeps the
+   SSR-to-hydration frame from squeezing the main surface on narrow screens. */
+@media (width <= 1100px) {
+  .body.body--inspector,
+  .body.body--inspector.body--chat,
+  .body.body--inspector.body--sql {
+    grid-template-columns: calc(
+        var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px)
+      )
+      minmax(0, 1fr);
+  }
+
+  .body.body--inspector > .workspace-inspector {
+    width: auto;
+  }
+}
+
+/* Ardot boards 01/05/10/12: one continuous 56px header band across the shell.
+   The left 360px belongs to the navigation column (sidebar head), the right
+   380px to the inspector tabs, and only the middle to the workbench top bar.
+   Pulling the navigation column and inspector up by one header height gives
+   them ownership of their header segment without changing the DOM order. */
+@media (width > 1100px) {
+  .app.app--inspector > .topbar {
+    margin-right: var(--eap-layout-inspector-width);
+    margin-left: var(--eap-layout-navigation-width);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .app.app--inspector > .body {
+    padding-right: 0;
+    overflow: visible;
+  }
+
+  .app.app--inspector > .body > .workbench {
+    margin-right: 8px;
+  }
+
+  /* Both columns declare height:100% inside the body grid. Pulling them up by
+     one header height must also extend their height, or they stop 56px short of
+     the shell bottom and expose an empty strip under the inspector. */
+  .app.app--inspector > .body > .desktop-navigation,
+  .app.app--inspector > .body > .workspace-inspector {
+    height: calc(100% + var(--eap-layout-topbar-height));
+    margin-top: calc(-1 * var(--eap-layout-topbar-height));
+  }
+
+  .app.app--inspector .desktop-sidebar {
+    padding-top: 0;
+  }
+
+  .app.app--inspector .sidebar-head {
+    top: 0;
+    min-height: var(--eap-layout-topbar-height, 56px);
+    margin-top: 0;
+  }
+}
+
+/* Work document workspace (Ardot board 03): a self-contained three-column
+   surface that replaces the standard navigation/workbench/inspector grid. */
+.app--workdoc,
+.app--scenedesigner,
+.app--settings {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.app--workdoc > .topbar,
+.app--scenedesigner > .topbar,
+.app--settings > .topbar {
+  display: none;
+}
+
+.body--workdoc,
+.body--scenedesigner,
+.body--settings {
+  display: block;
+  overflow: hidden;
+}
+
+.body--workdoc > :not(.workdoc-surface),
+.body--scenedesigner > :not(.workdoc-surface),
+.body--settings > :not(.settings-center-surface) {
+  display: none !important;
+}
+
+.workdoc-surface,
+.settings-center-surface {
+  height: 100%;
+}

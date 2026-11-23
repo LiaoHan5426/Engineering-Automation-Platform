@@ -264,6 +264,9 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const memoryNote = ref('')
   const workingMemory = ref<TaskWorkingMemorySnapshot | null>(null)
   const transcripts = ref<Record<string, ChatTurn[]>>({})
+  const messageGraphs = ref<Record<string, ChatGraph>>({})
+  const readingLeaves = new Map<string, string>()
+  const branchLeaves = new Map<string, string>()
   const draft = ref('')
   const expired = ref(false)
   const reconnectingIds = ref<Record<string, boolean>>({})
@@ -277,6 +280,18 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const sessionUnavailable = ref(false)
   const checkingConversation = ref(false)
   let selectionVersion = 0
+  const graphStates = ref<
+    Record<string, { ticket: number; version: number; loading: boolean; error: boolean }>
+  >({})
+  let graphTicket = 0
+  const graphLoading = computed(() => {
+    const state = graphStates.value[conversationId.value ?? '']
+    return !!state && state.version === selectionVersion && state.loading
+  })
+  const graphError = computed(() => {
+    const state = graphStates.value[conversationId.value ?? '']
+    return !!state && state.version === selectionVersion && state.error
+  })
   const toolMode = ref<AiToolMode>(AiToolMode.NONE)
   const emptyContext = (): TaskContext => ({
     mode: 'chat',
@@ -511,23 +526,111 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   }
 
   /** Load sent messages from the backend graph (the authoritative source) into the view model. */
-  async function loadGraph(id: string) {
-    if (!api.conversationGraph) return
-    try {
-      const graph = await api.conversationGraph(id)
-      transcripts.value = { ...transcripts.value, [id]: graphToTurns(graph.path) }
-    } catch {
-      // If the graph is unavailable, keep whatever turns are already in memory; do not
-      // resurrect or write a local copy (sent messages have no local authority by design).
+  async function loadGraph(
+    id: string,
+    expectedSendTicket?: number,
+    leafId = readingLeaves.get(id),
+  ) {
+    if (
+      !api.conversationGraph ||
+      (inflight.value[id] != null && inflight.value[id] !== expectedSendTicket)
+    )
+      return
+    const current = ++graphTicket
+    const version = selectionVersion
+    const sendTicket = inflight.value[id]
+    const active = () =>
+      graphStates.value[id]?.ticket === current &&
+      conversationId.value === id &&
+      selectionVersion === version &&
+      inflight.value[id] === sendTicket
+    graphStates.value = {
+      ...graphStates.value,
+      [id]: { ticket: current, version, loading: true, error: false },
     }
+    try {
+      const graph = await api.conversationGraph(id, leafId)
+      if (active()) {
+        messageGraphs.value = { ...messageGraphs.value, [id]: graph }
+        transcripts.value = { ...transcripts.value, [id]: graphToTurns(graph.path) }
+        const leaf = graph.path.at(-1)?.id
+        if (leaf) {
+          readingLeaves.set(id, leaf)
+          for (const node of graph.path) branchLeaves.set(`${id}:${node.id}`, leaf)
+        }
+      }
+    } catch {
+      if (
+        graphStates.value[id]?.ticket === current &&
+        selectionVersion === version &&
+        inflight.value[id] === sendTicket
+      )
+        graphStates.value[id]!.error = true
+    } finally {
+      if (graphStates.value[id]?.ticket === current) graphStates.value[id]!.loading = false
+    }
+  }
+
+  const browsingHistory = computed(() => {
+    const graph = messageGraphs.value[conversationId.value ?? '']
+    const latest = graph?.all.reduce<ChatMessageNode | undefined>(
+      (last, node) => (!last || node.sequence > last.sequence ? node : last),
+      undefined,
+    )
+    return !!latest && graph?.path.at(-1)?.id !== latest.id
+  })
+
+  async function showLatestMessages() {
+    const id = conversationId.value
+    if (!id || sending.value || graphLoading.value) return
+    readingLeaves.delete(id)
+    await loadGraph(id)
+  }
+
+  function messageVersions(nodeId: string) {
+    const graph = messageGraphs.value[conversationId.value ?? '']
+    const node = graph?.all.find((item) => item.id === nodeId)
+    return node
+      ? graph!.all
+          .filter((item) => item.parentId === node.parentId && item.role === node.role)
+          .sort((a, b) => a.version - b.version || a.sequence - b.sequence)
+      : []
+  }
+
+  async function selectMessageVersion(nodeId: string) {
+    const id = conversationId.value
+    if (!id || sending.value || graphLoading.value) return
+    const graph = messageGraphs.value[id]
+    if (!graph?.all.some((node) => node.id === nodeId)) return
+    let leaf = branchLeaves.get(`${id}:${nodeId}`)
+    if (!leaf) {
+      let current = nodeId
+      const seen = new Set<string>()
+      while (!seen.has(current)) {
+        seen.add(current)
+        const children = graph.all
+          .filter((node) => node.parentId === current)
+          .sort((a, b) => b.sequence - a.sequence)
+        if (!children[0]) break
+        current = children[0].id
+      }
+      leaf = current
+    }
+    readingLeaves.set(id, leaf)
+    await loadGraph(id, undefined, leaf)
+  }
+
+  async function retryGraph() {
+    const id = conversationId.value
+    if (!id || graphLoading.value || sending.value) return
+    await loadGraph(id)
   }
 
   async function selectConversation(id: string) {
     if (conversationId.value === id) return recheckConversation()
-    await loadGraph(id)
-    if (!transcripts.value[id]) return
     rememberScratch()
     selectionVersion++
+    const graphRequest = loadGraph(id)
     reconnectNotice.value = ''
     conversationId.value = id
     const item = history.value.find((x) => x.id === id)
@@ -545,7 +648,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     failure.value = ''
     expired.value = !!item?.expired
     sessionUnavailable.value = false
-    await recheckConversation()
+    await Promise.all([graphRequest, recheckConversation()])
   }
 
   const conversationRequests = new Map<
@@ -756,6 +859,9 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       reconnecting.value ||
       changingConnection.value ||
       checkingConversation.value ||
+      graphLoading.value ||
+      graphError.value ||
+      browsingHistory.value ||
       sessionUnavailable.value
     )
       return
@@ -1075,6 +1181,12 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       !id ||
       !action ||
       expired.value ||
+      graphLoading.value ||
+      graphError.value ||
+      browsingHistory.value ||
+      checkingConversation.value ||
+      reconnecting.value ||
+      changingConnection.value ||
       sessionUnavailable.value ||
       inflight.value[id] != null ||
       sending.value
@@ -1106,7 +1218,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       artifactError: '',
       artifacts: [],
     })
-    const assistantIndex = (transcripts.value[id]?.length ?? 0)
+    const assistantIndex = transcripts.value[id]?.length ?? 0
     append(id, {
       role: 'assistant',
       text: '',
@@ -1144,12 +1256,30 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         },
       )
       ok = result.status === ChatExecutionStatus.SUCCEEDED && !result.error
+      if (inflight.value[id] !== current) return false
+      const turns = [...(transcripts.value[id] ?? [])]
+      const assistant = turns[assistantIndex]
+      if (assistant) {
+        turns[assistantIndex] = {
+          ...assistant,
+          text: result.answer || assistant.text,
+          status: result.status,
+          error: result.error,
+          executionId: result.executionId || assistant.executionId,
+        }
+        transcripts.value = { ...transcripts.value, [id]: turns }
+      }
+      const entry = history.value.find((row) => row.id === id)
+      if (ok && kind === 'edit' && entry?.draft === text) entry.draft = ''
       if (!active()) return false
       if (ok && kind === 'edit' && draft.value === text) draft.value = ''
-      // Authoritative read-back from the server graph.
-      if (ok) await loadGraph(id)
+      if (ok) {
+        failure.value = ''
+        readingLeaves.delete(id)
+        await loadGraph(id, current)
+      }
       if (active() && !ok) failure.value = 'kept'
-      return ok
+      return active() && ok
     } catch {
       if (active()) failure.value = 'failed'
       return false
@@ -1162,6 +1292,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         delete next[id]
         inflight.value = next
       }
+      if (ok && conversationId.value === id && selectionVersion !== version) await loadGraph(id)
       persist()
     }
   }
@@ -1219,6 +1350,13 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     beginDraft,
     selectConversation,
     loadGraph,
+    messageVersions,
+    selectMessageVersion,
+    browsingHistory,
+    showLatestMessages,
+    retryGraph,
+    graphLoading,
+    graphError,
     send,
     sendEdit: (targetNodeId: string) => sendBranch(targetNodeId, 'edit'),
     sendRegenerate: (targetNodeId: string) => sendBranch(targetNodeId, 'regenerate'),

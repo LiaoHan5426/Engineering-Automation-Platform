@@ -363,6 +363,38 @@ function chooseEffort(effort: TaskContext['reasoning']) {
 const effortLabel = computed(() =>
   shownEffort.value === 'default' ? t('task.modelDefault') : t('task.' + shownEffort.value),
 )
+/** Prototype selection axes: read-only mirror of the real composer state, not a second control. */
+const selectionAxes = computed(() => {
+  const references = props.context.files.length + (props.context.prototypeVersionId ? 1 : 0)
+  const execution =
+    workbench.executionMode === 'plan'
+      ? t('composerUi.axisPlan')
+      : workbench.executionMode === 'agent'
+        ? t('composerUi.axisAgent')
+        : t('composerUi.axisChat')
+  return [
+    {
+      key: 'references',
+      label: t('composerUi.axisReferences', { count: references }),
+      tone: 'info' as const,
+    },
+    { key: 'execution', label: execution, tone: 'info' as const },
+    {
+      key: 'approval',
+      label:
+        props.context.approval === 'read_only'
+          ? t('composerUi.axisReadOnly')
+          : t('composerUi.axisApprove'),
+      tone: props.context.approval === 'read_only' ? ('info' as const) : ('warning' as const),
+    },
+    {
+      key: 'model',
+      label: props.modelLabel || t('modelUi.pending'),
+      tone: 'info' as const,
+    },
+    { key: 'effort', label: effortLabel.value, tone: 'info' as const },
+  ]
+})
 const contextCount = computed(() => ({
   files: props.context.files.length,
   limit: FILE_CAP,
@@ -605,6 +637,17 @@ async function loadVersions() {
         :disabled="disabled"
         @click="emit('update', (({ taskRef, ...rest }) => rest)(context))"
         >{{ t('generation.removeTask') }}</Button
+      >
+    </div>
+    <div class="selection-axes" data-testid="composer-selection-axes">
+      <Tag
+        v-for="axis in selectionAxes"
+        :key="axis.key"
+        effect="plain"
+        size="sm"
+        :type="axis.tone"
+        :data-testid="'composer-axis-' + axis.key"
+        >{{ axis.label }}</Tag
       >
     </div>
     <slot name="draft" />
@@ -1129,26 +1172,31 @@ async function loadVersions() {
   display: grid;
   gap: 8px;
 }
+
 .generation-target {
   display: grid;
   gap: 4px;
   min-width: 0;
   font-size: 12px;
 }
+
 .generation-target small {
   color: var(--text-mute);
   overflow-wrap: anywhere;
 }
+
 .composer-scope {
   display: flex;
+  gap: 10px;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
   padding: 2px 2px 0;
 }
+
 .composer-scope :deep(.eap-select) {
   max-width: min(280px, 70vw);
 }
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1156,105 +1204,146 @@ async function loadVersions() {
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
   border: 0;
+  clip: rect(0, 0, 0, 0);
 }
+
+.selection-axes {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 2px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.selection-axes::-webkit-scrollbar {
+  display: none;
+}
+
+.selection-axes :deep(.eap-tag) {
+  flex: 0 0 auto;
+  max-width: 220px;
+}
+
 .task-context {
   min-width: 0;
 }
+
 .context-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 10px;
+  align-items: center;
 }
+
 .context-toolbar > .bar-picker {
   flex-shrink: 0;
 }
+
 .composer-submit-controls {
   display: flex;
-  align-items: center;
   gap: 8px;
-  margin-left: auto;
+  align-items: center;
   min-width: 0;
   max-width: 100%;
+  margin-left: auto;
 }
+
 .composer-submit-controls .model-picker {
   flex: 1 1 auto;
   min-width: 0;
 }
+
 .composer-submit-controls .model-picker > :deep(button) {
   display: inline-flex;
-  max-width: 100%;
   min-width: 0;
+  max-width: 100%;
 }
+
 .model-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
 }
+
 .composer-submit-controls > :deep(button[type='submit']) {
   flex: 0 0 34px;
   margin-left: 0;
 }
+
 .composer-status {
   margin-top: 8px;
   font-size: 11px;
-  color: var(--text-mute);
   line-height: 1.5;
+  color: var(--text-mute);
 }
+
 .composer-status :deep(p) {
   margin: 0;
   overflow-wrap: anywhere;
 }
+
 .composer-status :deep(a) {
   white-space: nowrap;
 }
+
 .context-chips {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 10px;
+  align-items: center;
 }
+
 .model-picker {
   min-width: 0;
 }
+
 .model-picker :deep(.eap-button) {
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .execution-picker,
 .bar-picker {
   position: static;
 }
+
 .execution-menu {
   display: grid;
   gap: 6px;
 }
+
 .execution-menu h3 {
   margin: 2px 8px;
   font-size: 13px;
 }
+
 .execution-menu > :deep(button) {
-  white-space: normal;
-  text-align: start;
-  line-height: 1.6;
   padding: 8px 12px;
+  line-height: 1.6;
+  text-align: start;
+  white-space: normal;
 }
+
 .choice-check {
   margin-left: auto;
 }
+
 .context-toolbar > .bar-picker > button {
   padding: 5px 8px;
   font-size: 12px;
   font-weight: 500;
 }
+
 .composer-add-menu {
   min-width: 0;
 }
+
 .composer-layers {
   display: grid;
   grid-template-columns: minmax(110px, 34%) minmax(0, 1fr);
@@ -1262,18 +1351,22 @@ async function loadVersions() {
   align-items: start;
   min-width: 0;
 }
+
 .composer-popup-content {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
 .composer-popup-content :is(input, select, textarea) {
   min-width: 0;
   max-width: 100%;
 }
+
 .context-meter {
   margin-left: auto;
   white-space: nowrap;
 }
+
 .context-toolbar > .context-meter {
   flex: 0 0 32px;
   width: 32px;
@@ -1281,46 +1374,55 @@ async function loadVersions() {
   height: 32px;
   padding: 4px;
 }
+
 .model-menu {
   display: grid;
   gap: 8px;
 }
+
 .model-setup-link {
-  color: var(--accent);
-  font-size: 12px;
   padding: 4px 8px;
+  font-size: 12px;
+  color: var(--accent);
 }
+
 .model-effort-head {
   display: grid;
   gap: 2px;
   padding: 4px 8px 8px;
-  border-bottom: 1px solid var(--border);
   margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
 }
+
 .model-effort-head strong {
   font-size: 14px;
   color: var(--text);
 }
+
 .model-effort-head small {
-  color: var(--text-mute);
   font-size: 12px;
+  color: var(--text-mute);
 }
+
 .effort-caption {
   margin: 4px 8px 0;
   font-size: 11px;
   color: var(--text-mute);
 }
+
 .context-toolbar label {
   display: grid;
   gap: 5px;
   font-size: 12px;
 }
+
 .context-toolbar select {
   padding: 7px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface);
 }
+
 .context-menu {
   display: grid;
   gap: 12px;
@@ -1329,41 +1431,50 @@ async function loadVersions() {
   background: var(--surface-2);
   border-radius: 12px;
 }
+
 .context-menu textarea {
-  width: 100%;
   display: block;
+  width: 100%;
 }
+
 .context-chips {
   margin: 10px 0;
 }
+
 .composer-search {
   width: 100%;
-  margin-bottom: 10px;
   padding: 8px;
+  margin-bottom: 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+
 .menu-choice {
   display: flex;
-  justify-content: space-between;
   gap: 8px;
+  justify-content: space-between;
   width: 100%;
 }
+
 .expert-choice {
   display: grid;
   justify-content: start;
 }
+
 .menu-choice small {
   color: var(--text-mute);
 }
+
 .effort-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
+
 .model-picker {
   margin-left: 0;
 }
+
 .composer-add {
   min-width: 34px;
 }

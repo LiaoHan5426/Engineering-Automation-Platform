@@ -47,6 +47,23 @@ const visible = computed(() =>
     (item.name + item.id).toLowerCase().includes(filter.value.toLowerCase()),
   ),
 )
+/** Prototype board 05 cards: stable tone per expert id, no hard-coded sample identities. */
+function cardTone(id: string) {
+  let hash = 0
+  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
+  return ['accent', 'success', 'warning', 'error'][hash % 4]
+}
+/** Tags come from the expert's real granted resources, never from sample copy. */
+function cardTags(item: Definition): Array<{ key: string; label: string; count: number }> {
+  const tags: Array<{ key: string; label: string; count: number }> = []
+  const tools = item.agent?.tools?.length ?? 0
+  const knowledge = item.knowledgeBases?.length ?? 0
+  const rules = item.rulePacks?.length ?? 0
+  if (tools) tags.push({ key: 'tools', label: 'expertWorkspace.tagTools', count: tools })
+  if (knowledge) tags.push({ key: 'knowledge', label: 'expertWorkspace.tagKnowledge', count: knowledge })
+  if (rules) tags.push({ key: 'rules', label: 'expertWorkspace.tagRules', count: rules })
+  return tags.slice(0, 2)
+}
 const agent = computed(() => selected.value?.apiVersion === 'eap/v2')
 const runnable = computed(
   () =>
@@ -214,7 +231,18 @@ onDeactivated(() => {
     >
     <p v-if="loading" role="status">{{ t('expertAgent.loading') }}</p>
     <template v-if="route.page === 'list'">
-      <p>{{ t('expertWorkspace.listHint') }}</p>
+      <div class="expert-gallery-head">
+        <div>
+          <h2>{{ t('expertWorkspace.list') }}</h2>
+          <p>
+            {{
+              t('expertWorkspace.enabledCount', {
+                count: visible.filter((item) => states[item.id]?.enabled).length,
+              })
+            }}
+          </p>
+        </div>
+      </div>
       <Input
         v-model="filter"
         :aria-label="t('expertWorkspace.search')"
@@ -226,19 +254,40 @@ onDeactivated(() => {
           :key="item.id"
           :label="item.name"
           :data-testid="'expert-card-' + item.id"
+          class="expert-gallery-card"
+          :class="'expert-gallery-card--' + cardTone(item.id)"
           @activate="navigate({ page: 'overview', expertId: item.id })"
         >
-          <h2>{{ item.name }}</h2>
-          <p>
-            {{
-              t(item.apiVersion === 'eap/v2' ? 'expertWorkspace.agent' : 'expertWorkspace.workflow')
-            }}
-            ·
-            {{
-              t(states[item.id]?.enabled ? 'expertWorkspace.enabled' : 'expertWorkspace.disabled')
-            }}
-          </p>
-          <p>{{ item.agent?.goal || t('expertWorkspace.workflowHint') }}</p>
+          <span class="expert-card-top">
+            <span
+              class="expert-card-avatar"
+              data-testid="expert-card-avatar"
+              aria-hidden="true"
+              >{{ item.name.trim().charAt(0) }}</span
+            >
+            <span class="expert-card-identity">
+              <strong>{{ item.name }}</strong>
+              <small>{{
+                t(
+                  states[item.id]?.builtin
+                    ? 'expertWorkspace.builtin'
+                    : 'expertWorkspace.custom',
+                )
+              }}</small>
+            </span>
+          </span>
+          <span class="expert-card-desc">{{
+            item.agent?.goal || t('expertWorkspace.workflowHint')
+          }}</span>
+          <span class="expert-card-tags">
+            <span
+              v-for="tag in cardTags(item)"
+              :key="tag.key"
+              class="expert-card-tag"
+              data-testid="expert-card-tag"
+              >{{ t(tag.label) }}</span
+            >
+          </span>
         </ActionCard>
       </div>
       <EmptyState v-if="!loading && !error && !visible.length">{{
@@ -323,10 +372,96 @@ onDeactivated(() => {
   gap: 8px;
 }
 
+.expert-gallery-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.expert-gallery-head h2 {
+  margin: 0;
+}
+.expert-gallery-head p {
+  margin: 4px 0 0;
+  color: var(--eap-text-color-secondary);
+  font-size: 12px;
+}
+
 .expert-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+}
+
+/* Prototype board 05: 300x150 expert cards — avatar, name, role type, description, tags. */
+.expert-gallery-card {
+  min-height: 150px;
+}
+.expert-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.expert-card-avatar {
+  display: inline-flex;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--eap-radius-md, 8px);
+  background: var(--eap-color-primary-soft);
+  color: var(--eap-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+.expert-gallery-card--success .expert-card-avatar {
+  background: var(--eap-color-success-soft);
+  color: var(--eap-color-success);
+}
+.expert-gallery-card--warning .expert-card-avatar {
+  background: var(--eap-color-warning-soft);
+  color: var(--eap-color-warning);
+}
+.expert-gallery-card--error .expert-card-avatar {
+  background: var(--eap-color-danger-soft);
+  color: var(--eap-color-danger);
+}
+.expert-card-identity {
+  display: grid;
+  min-width: 0;
+}
+.expert-card-identity strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.expert-card-identity small {
+  color: var(--eap-text-color-secondary);
+  font-size: 10px;
+}
+.expert-card-desc {
+  color: var(--eap-text-color-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.expert-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.expert-card-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--eap-fill-color-hover);
+  color: var(--eap-text-color-secondary);
+  font-size: 10px;
 }
 
 .expert-cards p,

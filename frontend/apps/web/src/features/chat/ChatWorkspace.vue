@@ -422,6 +422,8 @@ const canRibbonRetry = computed(() => {
   if (
     session.expired.value ||
     session.sessionUnavailable.value ||
+    session.graphLoading.value ||
+    session.graphError.value ||
     session.checkingConversation.value ||
     session.reconnecting.value
   )
@@ -676,6 +678,9 @@ watchEffect(() => {
       title: item.title,
       archived: item.archived,
       updatedAt: item.updatedAt,
+      // Real local flags drive the sidebar status chip; no invented states.
+      draft: item.draft,
+      expired: item.expired,
     })),
     activeId,
     busyIds: Object.keys(session.inflight.value).filter((id) => session.inflight.value[id] != null),
@@ -773,6 +778,16 @@ const outgoingText = computed(() => {
 /** Node id of a user question being edited; sending then creates a versioned sibling branch. */
 const editingNodeId = ref<string | null>(null)
 
+async function changeMessageVersion(turn: ChatTurn, direction: number) {
+  if (!turn.nodeId) return
+  const versions = session.messageVersions(turn.nodeId)
+  const target = versions[versions.findIndex((node) => node.id === turn.nodeId) + direction]
+  if (target) {
+    editingNodeId.value = null
+    await session.selectMessageVersion(target.id)
+  }
+}
+
 function editQuestion(turn: ChatTurn) {
   if (!turn.nodeId || session.sending.value) return
   editingNodeId.value = turn.nodeId
@@ -803,7 +818,25 @@ async function regenerateAnswer(index: number) {
   await session.sendRegenerate(question.nodeId)
 }
 
+const graphRetryControl = ref<InstanceType<typeof Button>>()
+async function retryGraph() {
+  const id = session.conversationId.value
+  const control = graphRetryControl.value?.$el as HTMLButtonElement | undefined
+  const restoreFocus = document.activeElement === control
+  await session.retryGraph()
+  await nextTick()
+  if (
+    restoreFocus &&
+    session.conversationId.value === id &&
+    session.graphError.value &&
+    control?.isConnected
+  )
+    control.focus()
+}
+
 async function sendTask() {
+  if (session.graphLoading.value || session.graphError.value || session.browsingHistory.value)
+    return
   if (workbench.executionMode === 'agent' && !agentReady.value) return
   const editing = editingNodeId.value
   const extras = currentExtras()
@@ -1138,6 +1171,32 @@ onMounted(async () => {
           @scroll="onFeedScroll"
           @load="showOlderTurns"
         >
+          <Feedback v-if="session.browsingHistory.value" tone="info" data-testid="branch-reading">
+            {{ t('chat.readingBranch') }}
+            <Button
+              size="sm"
+              variant="secondary"
+              data-testid="branch-latest"
+              @click="session.showLatestMessages()"
+              >{{ t('chat.latestBranch') }}</Button
+            >
+          </Feedback>
+          <Feedback
+            v-if="session.graphError.value || session.graphLoading.value"
+            :tone="session.graphError.value ? 'warning' : 'info'"
+            data-testid="graph-error"
+          >
+            {{ t(session.graphError.value ? 'historyUi.graphFailed' : 'historyUi.graphLoading') }}
+            <Button
+              size="sm"
+              variant="secondary"
+              ref="graphRetryControl"
+              data-testid="retry-graph"
+              :disabled="session.graphLoading.value || session.sending.value"
+              @click="retryGraph"
+              >{{ t('historyUi.retryGraph') }}</Button
+            >
+          </Feedback>
           <Feedback v-if="session.storageError.value" tone="warning">{{
             t('historyUi.storageError')
           }}</Feedback>
@@ -1268,8 +1327,49 @@ onMounted(async () => {
                 "
               />
               <p v-else-if="turn.text" class="turn-text">{{ turn.text }}</p>
+              <div
+                v-if="turn.nodeId && session.messageVersions(turn.nodeId).length > 1"
+                class="turn-version"
+                data-testid="message-versions"
+              >
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  :aria-label="t('chat.previousVersion')"
+                  :disabled="
+                    session.sending.value ||
+                    session.graphLoading.value ||
+                    session.messageVersions(turn.nodeId)[0]?.id === turn.nodeId
+                  "
+                  @click="changeMessageVersion(turn, -1)"
+                  >‹</Button
+                >
+                <span
+                  >{{
+                    session.messageVersions(turn.nodeId).findIndex((n) => n.id === turn.nodeId) + 1
+                  }}
+                  / {{ session.messageVersions(turn.nodeId).length }}</span
+                >
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  :aria-label="t('chat.nextVersion')"
+                  :disabled="
+                    session.sending.value ||
+                    session.graphLoading.value ||
+                    session.messageVersions(turn.nodeId).at(-1)?.id === turn.nodeId
+                  "
+                  @click="changeMessageVersion(turn, 1)"
+                  >›</Button
+                >
+              </div>
               <Button
-                v-if="turn.role === 'user' && turn.nodeId && !session.sending.value"
+                v-if="
+                  turn.role === 'user' &&
+                  turn.nodeId &&
+                  !session.sending.value &&
+                  !session.browsingHistory.value
+                "
                 size="sm"
                 variant="ghost"
                 data-testid="question-edit"
@@ -1533,6 +1633,8 @@ onMounted(async () => {
           <Button
             v-if="
               !session.expired.value &&
+              !session.graphError.value &&
+              !session.graphLoading.value &&
               (session.failure.value === 'failed' ||
                 session.failure.value === 'kept' ||
                 session.failure.value === 'cancelled' ||
@@ -1846,6 +1948,9 @@ onMounted(async () => {
                   session.changingConnection.value ||
                   session.checkingConversation.value ||
                   session.sessionUnavailable.value ||
+                  session.graphLoading.value ||
+                  session.graphError.value ||
+                  session.browsingHistory.value ||
                   session.opening.value ||
                   !session.draft.value.trim() ||
                   (!!session.pendingConnectionId.value && !!session.conversationId.value) ||

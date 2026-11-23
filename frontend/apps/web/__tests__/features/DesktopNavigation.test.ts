@@ -5,7 +5,10 @@ const disabledPluginHost = scenarioHost(false)
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { chatBinding, currentExtras, workbench } from '../../src/features/shell/workbench'
 import { resetLocalBridgeForTests } from '../../src/features/shell/localBridge'
-import { resetLocalProjectsForTests } from '../../src/features/shell/localProjects'
+import {
+  createLocalProject,
+  resetLocalProjectsForTests,
+} from '../../src/features/shell/localProjects'
 import { workspaceDirty } from '../../src/features/shell/runtimeIdentity'
 import { runtimeApi } from '@eap/runtime-client'
 import { createApp, h, nextTick, ref, type App } from 'vue'
@@ -118,13 +121,18 @@ const pages = [
     const sections = [...sidebar.children]
       .map((node) => node.getAttribute('data-testid'))
       .filter(Boolean)
+    // The prototype gives the sidebar its own 56px header segment above the
+    // creation/search tree, so it leads the section order.
     expect(sections).toEqual([
+      'sidebar-head',
       'new-chat',
       'sidebar-filter',
       'project-tree',
       'unbound-sessions',
       'sidebar-tools',
+      'sidebar-storage-card',
     ])
+    expect(sidebar.querySelector('[data-testid="sidebar-head-new"]')).not.toBeNull()
     expect(
       sidebar.querySelector('[data-testid="new-project"]')?.closest('.sidebar-section-head'),
     ).not.toBeNull()
@@ -220,7 +228,7 @@ const pages = [
     expect(buttons.length).toBe(5)
     ;(buttons[4] as HTMLButtonElement).click()
     await nextTick()
-    expect(selected.at(-1)).toBe('model-settings')
+    expect(selected.at(-1)).toBe('settings')
     expect(root.querySelector('.desktop-sidebar')?.textContent).toContain('plugins')
     ;(buttons[2] as HTMLButtonElement).click()
     await nextTick()
@@ -432,6 +440,64 @@ const pages = [
     await nextTick()
     expect(workbench.selectedProjectId).toBeNull()
     expect(selected.at(-1)).toBe('chat')
+  })
+  it('switches the real local workspace from the sidebar header without starting a chat', async () => {
+    const created = createLocalProject('文档分组')!
+    workbench.selectedProjectId = 'local-eap'
+    const navigate = vi.fn()
+    root = document.createElement('div')
+    document.body.append(root)
+    app = createApp({
+      render: () => h(DesktopNavigation, { activeView: 'chat', pages, onNavigate: navigate }),
+    })
+    app.use(i18n).mount(root)
+    const head = root.querySelector('[data-testid="sidebar-head"]') as HTMLElement
+    expect(head.querySelector('[data-testid="workspace-switcher-name"]')?.textContent).toContain(
+      'EAP',
+    )
+    expect(head.textContent).not.toContain('code · 编程')
+    ;(head.querySelector('[data-testid="workspace-switcher"]') as HTMLButtonElement).click()
+    await nextTick()
+    expect(
+      document.querySelector('[data-testid="workspace-project-local-eap"]')?.textContent,
+    ).toContain('EAP')
+    expect(
+      document.querySelector(`[data-testid="workspace-project-${created.id}"]`)?.textContent,
+    ).toContain('文档分组')
+    ;(
+      document.querySelector(`[data-testid="workspace-project-${created.id}"]`) as HTMLButtonElement
+    ).click()
+    await nextTick()
+    expect(workbench.selectedProjectId).toBe(created.id)
+    expect(head.querySelector('[data-testid="workspace-switcher-name"]')?.textContent).toContain(
+      '文档分组',
+    )
+    expect(navigate).not.toHaveBeenCalled()
+    ;(head.querySelector('[data-testid="workspace-switcher"]') as HTMLButtonElement).click()
+    await nextTick()
+    ;(document.querySelector('[data-testid="workspace-free"]') as HTMLButtonElement).click()
+    await nextTick()
+    expect(workbench.selectedProjectId).toBeNull()
+    expect(head.querySelector('[data-testid="workspace-switcher-name"]')?.textContent).toMatch(
+      /自由对话|Free chat/,
+    )
+    expect(navigate).not.toHaveBeenCalled()
+  })
+  it('keeps the settings header as a settings title without a workspace switcher', async () => {
+    root = document.createElement('div')
+    document.body.append(root)
+    app = createApp({
+      render: () =>
+        h(DesktopNavigation, {
+          activeView: 'settings',
+          pages: [...pages, { id: 'settings', name: 'Settings' }],
+        }),
+    })
+    app.use(i18n).mount(root)
+    await nextTick()
+    const head = root.querySelector('[data-testid="sidebar-head"]') as HTMLElement
+    expect(head.textContent).toMatch(/设置|Settings/)
+    expect(head.querySelector('[data-testid="workspace-switcher"]')).toBeNull()
   })
   it('seeds a journal draft from the free section and filters the project tree', async () => {
     workbench.selectedProjectId = 'local-eap'
@@ -672,120 +738,193 @@ const pages = [
     expect(root.querySelector('[data-testid="host-notes"]')).toBeNull()
     expect(root.textContent).not.toMatch(/不接受远端多租户|multi-tenant grant store/i)
   })
-})
+  it('renders session status chips only from real fields and a real-count storage card', async () => {
+    workbench.selectedProjectId = 'local-eap'
+    workbench.sessionExtras = {
+      drafting: { scenarioId: null, experts: [], resources: [], projectId: 'local-eap' },
+      verified: { scenarioId: null, experts: [], resources: [], projectId: 'local-eap' },
+      plain: { scenarioId: null, experts: [], resources: [], projectId: 'local-eap' },
+    }
+    chatBinding.value = {
+      history: [
+        {
+          id: 'drafting',
+          title: '草稿会话',
+          archived: false,
+          draft: 'unfinished',
+          updatedAt: '2026-10-27T08:05:00.000Z',
+        },
+        {
+          id: 'verified',
+          title: '已核对会话',
+          archived: false,
+          updatedAt: '2026-10-26T08:05:00.000Z',
+        },
+        { id: 'plain', title: '普通会话', archived: false },
+      ],
+      activeId: 'verified',
+      busyIds: [],
+      references: [],
+      draft: '',
+      sending: false,
+      workspaceLabel: '',
+      memory: '',
+      model: '',
+      connectionName: '',
+      approval: 'review',
+      goal: 'chat',
+      executionMode: 'chat',
+      scenarioId: null,
+      proposalFiles: [],
+      appliedFiles: [],
+      verificationChecks: [{ name: 'typecheck', exitCode: 0, summary: '' }],
+      verification: 'passed',
+      select: () => {},
+      create: () => {},
+    }
+    root = document.createElement('div')
+    document.body.append(root)
+    app = createApp({ render: () => h(DesktopNavigation, { activeView: 'chat', pages }) })
+    app.use(i18n).mount(root)
+    await nextTick()
 
-})
-
-let shellApp: App
-let shellRoot: HTMLDivElement
-const create = vi.fn()
-const select = vi.fn()
-
-beforeEach(() => {
-  localStorage.clear()
-  sessionStorage.clear()
-  resetLocalProjectsForTests()
-  workbench.origin = 'chat'
-  workbench.workMode = 'code'
-  workbench.pendingNewChat = false
-  workbench.pendingDraft = ''
-  workbench.selectedProjectId = 'local-eap'
-  workbench.sessionExtras = {
-    source: { scenarioId: null, experts: [], resources: [], projectId: 'local-eap' },
-  }
-  chatBinding.value = {
-    history: [{ id: 'source', title: 'Source session', archived: false }],
-    activeId: 'source',
-    draft: '未发送的 Work 草稿',
-    references: [],
-    sending: false,
-    workspaceLabel: '',
-    memory: '',
-    model: '',
-    connectionName: '',
-    approval: 'review',
-    goal: 'chat',
-    executionMode: 'chat',
-    scenarioId: null,
-    proposalFiles: [],
-    verification: 'not_requested',
-    create,
-    select,
-  }
-  for (const method of [
-    'health',
-    'capabilities',
-    'databases',
-    'experts',
-    'tasks',
-    'stats',
-  ] as const) {
-    vi.spyOn(runtimeApi, method).mockRejectedValue(
-      new Error('No service in shell navigation tests'),
+    const rows = [...root.querySelectorAll('[data-testid="session-status"]')]
+    // Only two sessions have real evidence: a local draft and a fully verified
+    // active session. The plain session must not invent a "completed" chip.
+    expect(rows.length).toBe(2)
+    const drafting = [...root.querySelectorAll('.session-row')].find((r) =>
+      r.textContent?.includes('草稿会话'),
     )
-  }
-  vi.spyOn(runtimeApi, 'sendAiMessage').mockRejectedValue(new Error('Navigation must not send'))
-  vi.spyOn(runtimeApi, 'openAiConversation').mockRejectedValue(
-    new Error('Navigation must not create'),
-  )
-  shellRoot = document.createElement('div')
-  document.body.append(shellRoot)
-})
+    expect(
+      drafting?.querySelector('[data-testid="session-status"]')?.getAttribute('data-status'),
+    ).toBe('draft')
+    const verified = [...root.querySelectorAll('.session-row')].find((r) =>
+      r.textContent?.includes('已核对会话'),
+    )
+    expect(
+      verified?.querySelector('[data-testid="session-status"]')?.getAttribute('data-status'),
+    ).toBe('verified')
+    const plain = [...root.querySelectorAll('.session-row')].find((r) =>
+      r.textContent?.includes('普通会话'),
+    )
+    expect(plain?.querySelector('[data-testid="session-status"]')).toBeNull()
 
-afterEach(() => {
-  shellApp?.unmount()
-  shellRoot.remove()
-  window.history.replaceState(null, '', '/')
-  chatBinding.value = null
-  workbench.origin = 'chat'
-  workbench.workMode = 'code'
-  workbench.sessionExtras = {}
-  workbench.notice = ''
-  localStorage.clear()
-  sessionStorage.clear()
-  vi.restoreAllMocks()
-  vi.clearAllMocks()
-})
-
-async function mountSource(hash = 'work') {
-  window.history.replaceState(null, '', `/#${hash}`)
-  shellApp = createApp(Shell).use(i18n)
-  shellApp.mount(shellRoot)
-  await settle()
-}
-
-// Views are async components; wait for the target control to actually appear
-// instead of assuming a fixed number of microtask ticks.
-async function click(selector: string) {
-  let button: HTMLButtonElement | null = null
-  await vi.waitFor(() => {
-    button = shellRoot.querySelector<HTMLButtonElement>(selector)
-    expect(button, `Required control: ${selector}`).not.toBeNull()
+    const storage = root.querySelector('[data-testid="sidebar-storage-card"]')
+    expect(storage).not.toBeNull()
+    expect(storage?.getAttribute('data-groups')).toBe('1')
+    expect(storage?.getAttribute('data-sessions')).toBe('3')
+    // No invented byte/MB figures from the prototype mock.
+    expect(storage?.textContent).not.toMatch(/\d+\s*MB/i)
   })
-  button!.click()
-  await settle()
-}
-
-async function settle() {
-  for (let i = 0; i < 8; i++) await nextTick()
-}
-
-function expectSourceIntact(mode = 'work') {
-  expect(chatBinding.value?.activeId).toBe('source')
-  expect(chatBinding.value?.draft).toBe('未发送的 Work 草稿')
-  expect(chatBinding.value?.sending).toBe(false)
-  expect(workbench.selectedProjectId).toBe('local-eap')
-  expect(workbench.sessionExtras.source.projectId).toBe('local-eap')
-  expect(workbench.workMode).toBe(mode)
-  expect(workbench.pendingNewChat).toBe(false)
-  expect(workbench.pendingDraft).toBe('')
-  expect(create).not.toHaveBeenCalled()
-  expect(select).not.toHaveBeenCalled()
-  expect(runtimeApi.sendAiMessage).not.toHaveBeenCalled()
-  expect(runtimeApi.openAiConversation).not.toHaveBeenCalled()
-}
-
+})
 describe('source-surface return through the real App navigation', () => {
+  let shellApp: App
+  let shellRoot: HTMLDivElement
+  const create = vi.fn()
+  const select = vi.fn()
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    resetLocalProjectsForTests()
+    workbench.origin = 'chat'
+    workbench.workMode = 'code'
+    workbench.pendingNewChat = false
+    workbench.pendingDraft = ''
+    workbench.selectedProjectId = 'local-eap'
+    workbench.sessionExtras = {
+      source: { scenarioId: null, experts: [], resources: [], projectId: 'local-eap' },
+    }
+    chatBinding.value = {
+      history: [{ id: 'source', title: 'Source session', archived: false }],
+      activeId: 'source',
+      draft: '未发送的 Work 草稿',
+      references: [],
+      sending: false,
+      workspaceLabel: '',
+      memory: '',
+      model: '',
+      connectionName: '',
+      approval: 'review',
+      goal: 'chat',
+      executionMode: 'chat',
+      scenarioId: null,
+      proposalFiles: [],
+      verification: 'not_requested',
+      create,
+      select,
+    }
+    for (const method of [
+      'health',
+      'capabilities',
+      'databases',
+      'experts',
+      'tasks',
+      'stats',
+    ] as const) {
+      vi.spyOn(runtimeApi, method).mockRejectedValue(
+        new Error('No service in shell navigation tests'),
+      )
+    }
+    vi.spyOn(runtimeApi, 'sendAiMessage').mockRejectedValue(new Error('Navigation must not send'))
+    vi.spyOn(runtimeApi, 'openAiConversation').mockRejectedValue(
+      new Error('Navigation must not create'),
+    )
+    shellRoot = document.createElement('div')
+    document.body.append(shellRoot)
+  })
+
+  afterEach(() => {
+    shellApp?.unmount()
+    shellRoot?.remove()
+    window.history.replaceState(null, '', '/')
+    chatBinding.value = null
+    workbench.origin = 'chat'
+    workbench.workMode = 'code'
+    workbench.sessionExtras = {}
+    workbench.notice = ''
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
+  })
+
+  async function mountSource(hash = 'work') {
+    window.history.replaceState(null, '', `/#${hash}`)
+    shellApp = createApp(Shell).use(i18n)
+    shellApp.mount(shellRoot)
+    await settle()
+  }
+
+  async function click(selector: string) {
+    let button: HTMLButtonElement | null = null
+    await vi.waitFor(() => {
+      button = shellRoot.querySelector<HTMLButtonElement>(selector)
+      expect(button, `Required control: ${selector}`).not.toBeNull()
+    })
+    button!.click()
+    await settle()
+  }
+
+  async function settle() {
+    for (let i = 0; i < 8; i++) await nextTick()
+  }
+
+  function expectSourceIntact(mode = 'work') {
+    expect(chatBinding.value?.activeId).toBe('source')
+    expect(chatBinding.value?.draft).toBe('未发送的 Work 草稿')
+    expect(chatBinding.value?.sending).toBe(false)
+    expect(workbench.selectedProjectId).toBe('local-eap')
+    expect(workbench.sessionExtras.source.projectId).toBe('local-eap')
+    expect(workbench.workMode).toBe(mode)
+    expect(workbench.pendingNewChat).toBe(false)
+    expect(workbench.pendingDraft).toBe('')
+    expect(create).not.toHaveBeenCalled()
+    expect(select).not.toHaveBeenCalled()
+    expect(runtimeApi.sendAiMessage).not.toHaveBeenCalled()
+    expect(runtimeApi.openAiConversation).not.toHaveBeenCalled()
+  }
+
   it.each([
     ['work', '', 'work'],
     ['code', '', 'chat'],
@@ -840,7 +979,7 @@ describe('source-surface return through the real App navigation', () => {
   it('keeps the Work source stable across settings children and returns without resetting it', async () => {
     await mountSource()
     await click('.activity-bar button:nth-child(5)')
-    expect(window.location.hash).toBe('#model-settings')
+    expect(window.location.hash).toBe('#settings')
     expect(workbench.origin).toBe('work')
     expect(shellRoot.querySelector('[data-testid="project-tree"]')).toBeNull()
     const rules = [...shellRoot.querySelectorAll<HTMLButtonElement>('.desktop-sidebar button')].find(
@@ -867,7 +1006,6 @@ describe('source-surface return through the real App navigation', () => {
     expect(window.location.hash).toBe('#experts')
     await click('[data-testid="expert-roles-nav"]')
     expect(window.location.hash).toBe('#expert-catalog')
-    // App, not a copied test watcher, records Work as the source of chat.
     expect(workbench.origin).toBe('work')
     expect(shellRoot.querySelector('[data-testid="project-tree"]')).toBeNull()
     await click('[data-testid="expert-add"]')
@@ -882,5 +1020,93 @@ describe('source-surface return through the real App navigation', () => {
     ).toBe('page')
     expectSourceIntact()
     expect(currentExtras().experts).toHaveLength(1)
+  })
+})
+
+describe('prototype area deep links through the real App', () => {
+  let shellApp: App
+  let shellRoot: HTMLDivElement
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    resetLocalProjectsForTests()
+    workbench.origin = 'chat'
+    workbench.workMode = 'code'
+    workbench.pendingNewChat = false
+    workbench.pendingDraft = ''
+    workbench.selectedProjectId = 'local-eap'
+    workbench.sessionExtras = {
+      source: { scenarioId: null, experts: [], resources: [], projectId: 'local-eap' },
+    }
+    chatBinding.value = {
+      history: [{ id: 'source', title: 'Source session', archived: false }],
+      activeId: 'source',
+      draft: '未发送的 Work 草稿',
+      references: [],
+      sending: false,
+      workspaceLabel: '',
+      memory: '',
+      model: '',
+      connectionName: '',
+      approval: 'review',
+      goal: 'chat',
+      executionMode: 'chat',
+      scenarioId: null,
+      proposalFiles: [],
+      verification: 'not_requested',
+      create: vi.fn(),
+      select: vi.fn(),
+    }
+    for (const method of [
+      'health',
+      'capabilities',
+      'databases',
+      'experts',
+      'tasks',
+      'stats',
+    ] as const) {
+      vi.spyOn(runtimeApi, method).mockRejectedValue(
+        new Error('No service in shell navigation tests'),
+      )
+    }
+    shellRoot = document.createElement('div')
+    document.body.append(shellRoot)
+  })
+
+  afterEach(() => {
+    shellApp?.unmount()
+    shellRoot?.remove()
+    window.history.replaceState(null, '', '/')
+    chatBinding.value = null
+    workbench.origin = 'chat'
+    workbench.workMode = 'code'
+    workbench.sessionExtras = {}
+    localStorage.clear()
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  async function mountSource(hash = 'work') {
+    window.history.replaceState(null, '', `/#${hash}`)
+    shellApp = createApp(Shell).use(i18n)
+    shellApp.mount(shellRoot)
+    for (let i = 0; i < 8; i++) await nextTick()
+  }
+
+  it('opens the settings area on #settings instead of falling back to code', async () => {
+    await mountSource('settings')
+    expect(shellRoot.querySelector('.settings-search')).not.toBeNull()
+    expect(
+      shellRoot.querySelector('.activity-bar button:nth-child(5)')?.getAttribute('aria-current'),
+    ).toBe('page')
+  })
+
+  it('opens the code area on #code', async () => {
+    await mountSource('code')
+    expect(shellRoot.querySelector('.settings-search')).toBeNull()
+    expect(
+      shellRoot.querySelector('.activity-bar button:nth-child(1)')?.getAttribute('aria-current'),
+    ).toBe('page')
   })
 })

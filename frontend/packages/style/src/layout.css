@@ -1,6 +1,15 @@
 :root {
+  /* Ardot boards 01–18: 56px top bar, 72px icon rail, 288px workspace
+     sidebar, docked 380px inspector. The navigation column is derived so
+     appearance preferences that change the sidebar width stay consistent. */
+  --eap-layout-topbar-height: 56px;
   --eap-layout-sidebar-width: 288px;
   --eap-layout-rail-width: 360px;
+  --eap-layout-activity-width: 72px;
+  --eap-layout-inspector-width: 380px;
+  --eap-layout-navigation-width: calc(
+    var(--eap-layout-activity-width) + var(--eap-layout-sidebar-width)
+  );
   --eap-layout-content-max-width: 1480px;
 }
 

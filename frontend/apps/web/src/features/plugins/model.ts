@@ -1,4 +1,5 @@
 export const SHELL_PAGE_IDS = [
+  'settings',
   'sql',
   'scenes',
   'work',
@@ -84,8 +85,31 @@ export function contributionHash(instanceId: BuilderInstanceId): string {
   return `builder-${instanceId}`
 }
 
+/**
+ * The Ardot five-entry shell names its areas #code / #work / #scenes /
+ * #experts / #settings, but some areas have no same-named view: the code area
+ * lands on the chat workspace and the settings area on the model catalog.
+ * Resolve area hashes to a canonical view so a deep link or refresh reaches
+ * the same place the corresponding activity-bar entry opens. The settings area
+ * is a full center; individual catalog pages remain available through it.
+ */
+const AREA_LANDING: Readonly<Record<string, string>> = {
+  code: 'chat',
+}
+export function resolveAreaView(id: string): string {
+  return AREA_LANDING[id] ?? id
+}
+
 export function isKnownHash(id: string): boolean {
-  return isShellPage(id) || id === 'chat' || id === 'builder-alpha' || id === 'builder-beta'
+  const view = resolveAreaView(id)
+  return (
+    isShellPage(view) ||
+    view === 'chat' ||
+    view === 'workdoc' ||
+    view === 'scenedesigner' ||
+    view === 'builder-alpha' ||
+    view === 'builder-beta'
+  )
 }
 
 export function enabledHashes(installation: Installation): string[] {

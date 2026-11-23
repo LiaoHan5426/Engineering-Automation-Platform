@@ -20,6 +20,13 @@ afterEach(() => {
   localStorage.clear()
 })
 
+it('opens on the prototype dark canvas by default', () => {
+  // Ardot code-dark is the primary board; the first paint must match it.
+  expect(appearanceDefaults.theme).toBe('dark')
+  expect(normalizeAppearance({}).theme).toBe('dark')
+  expect(decodeAppearance(null).theme).toBe('dark')
+})
+
 it('restores validated settings and applies them before app mount', () => {
   localStorage.setItem(
     APPEARANCE_KEY,

@@ -24,16 +24,19 @@ function graphApiFromStored(getSnapshot: () => string): Pick<ChatApi, 'conversat
       } catch {
         turns = []
       }
-      const all: ChatMessageNode[] = turns.map((turn, index) => ({
-        id: turn.nodeId ?? `${id}-node-${index}`,
-        parentId: turn.parentId ?? (index > 0 ? `${id}-node-${index - 1}` : null),
-        role: turn.role === 'user' ? 'USER' : 'ASSISTANT',
-        version: 1,
-        text: turn.text,
-        executionId: turn.executionId ?? null,
-        sequence: index + 1,
-        ...({ _turn: turn } as Record<string, unknown>),
-      } as ChatMessageNode))
+      const all: ChatMessageNode[] = turns.map(
+        (turn, index) =>
+          ({
+            id: turn.nodeId ?? `${id}-node-${index}`,
+            parentId: turn.parentId ?? (index > 0 ? `${id}-node-${index - 1}` : null),
+            role: turn.role === 'user' ? 'USER' : 'ASSISTANT',
+            version: 1,
+            text: turn.text,
+            executionId: turn.executionId ?? null,
+            sequence: index + 1,
+            ...({ _turn: turn } as Record<string, unknown>),
+          }) as ChatMessageNode,
+      )
       return { conversationId: id, path: all, all }
     },
   }
@@ -76,6 +79,333 @@ function deferred<T>() {
   })
   return { promise, resolve, reject }
 }
+
+describe('消息版本浏览', () => {
+  it('显示兄弟版本并记住各分支后续，浏览只读且保留草稿', async () => {
+    const nodes: ChatMessageNode[] = [
+      { id: 'q', parentId: null, role: 'USER', version: 1, text: '问题', sequence: 1 },
+      { id: 'a1', parentId: 'q', role: 'ASSISTANT', version: 1, text: '旧回答', sequence: 2 },
+      { id: 'a2', parentId: 'q', role: 'ASSISTANT', version: 2, text: '新回答', sequence: 3 },
+      { id: 'q2', parentId: 'a1', role: 'USER', version: 1, text: '旧分支后续', sequence: 4 },
+    ]
+    const reads: Array<string | undefined> = []
+    const session = createChatSession({
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({ conversationId: 'c', workspaceLabel: '', memory: '' }),
+      sendAiMessage: async () => {
+        throw new Error('浏览不得发送')
+      },
+      conversationGraph: async (id, leaf) => {
+        reads.push(leaf)
+        const path = leaf === 'q2' ? [nodes[0]!, nodes[1]!, nodes[3]!] : [nodes[0]!, nodes[2]!]
+        return { conversationId: id, path, all: nodes }
+      },
+    })
+    await session.openConversation()
+    await session.loadGraph('c')
+    session.draft.value = '未发送草稿'
+    expect(session.messageVersions('a2').map((n) => n.id)).toEqual(['a1', 'a2'])
+    await session.selectMessageVersion('a1')
+    expect(session.turns.value.at(-1)?.text).toBe('旧分支后续')
+    await session.selectMessageVersion('a2')
+    await session.selectMessageVersion('a1')
+    expect(reads).toEqual([undefined, 'q2', 'a2', 'q2'])
+    expect(session.draft.value).toBe('未发送草稿')
+  })
+})
+
+describe('消息图读取恢复', () => {
+  const graph = (id: string, text = id): ChatGraph => ({
+    conversationId: id,
+    path: [{ id: `${id}-user`, parentId: null, role: 'USER', version: 1, text, sequence: 1 }],
+    all: [],
+  })
+  function setup(conversationGraph: NonNullable<ChatApi['conversationGraph']>) {
+    let serial = 0
+    let sends = 0
+    const session = createChatSession({
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({
+        conversationId: `c${++serial}`,
+        workspaceLabel: '',
+        memory: '',
+      }),
+      conversationGraph,
+      sendAiMessage: async () => {
+        sends++
+        return result()
+      },
+    })
+    return { session, sends: () => sends }
+  }
+  it('首次读取失败仍选择目标并保留其草稿，重试只读取消息', async () => {
+    let failed = true
+    const { session, sends } = setup(async (id) => {
+      if (failed) throw new Error('offline')
+      return graph(id)
+    })
+    await session.openConversation()
+    session.draft.value = '独立草稿'
+    session.beginDraft()
+    await session.selectConversation('c1')
+    expect(session.conversationId.value).toBe('c1')
+    expect(session.graphError.value).toBe(true)
+    expect(session.draft.value).toBe('独立草稿')
+    failed = false
+    await session.retryGraph()
+    expect(session.graphError.value).toBe(false)
+    expect(session.turns.value[0]?.text).toBe('c1')
+    expect(session.draft.value).toBe('独立草稿')
+    expect(sends()).toBe(0)
+  })
+  it('启动恢复首次读取失败可重试且不会误报本地存储错误', async () => {
+    let fail = true
+    const snapshot = JSON.stringify({
+      version: 1,
+      activeId: 'saved',
+      items: [
+        {
+          id: 'saved',
+          title: '历史',
+          draft: '保留草稿',
+          archived: false,
+          workspaceLabel: '',
+          memory: '',
+          connectionId: null,
+        },
+      ],
+      transcripts: {},
+    })
+    const session = createChatSession(
+      {
+        aiStatus: async () => status(),
+        openAiConversation: async () => {
+          throw new Error('不得创建')
+        },
+        sendAiMessage: async () => {
+          throw new Error('不得发送')
+        },
+        conversationGraph: async (id) => {
+          if (fail) throw new Error('offline')
+          return graph(id)
+        },
+      },
+      { getItem: () => snapshot, setItem: () => {} },
+    )
+    await session.restoreLastConversation()
+    expect(session.conversationId.value).toBe('saved')
+    expect(session.graphError.value).toBe(true)
+    expect(session.storageError.value).toBe(false)
+    expect(session.draft.value).toBe('保留草稿')
+    fail = false
+    await session.retryGraph()
+    expect(session.turns.value[0]?.text).toBe('saved')
+  })
+  it('A/B/A切换后旧A失败不能污染新A内容和状态', async () => {
+    const stale = deferred<ChatGraph>()
+    let reads = 0
+    const { session } = setup(async (id) => (++reads === 1 ? stale.promise : graph(id, '新内容')))
+    await session.openConversation()
+    await session.openConversation()
+    const first = session.selectConversation('c1')
+    await session.selectConversation('c2')
+    await session.selectConversation('c1')
+    stale.reject(new Error('旧失败'))
+    await first
+    expect(session.graphError.value).toBe(false)
+    expect(session.graphLoading.value).toBe(false)
+    expect(session.turns.value[0]?.text).toBe('新内容')
+  })
+  it('读取完成不能将新草稿切回旧会话', async () => {
+    const stale = deferred<ChatGraph>()
+    const { session } = setup(async () => stale.promise)
+    await session.openConversation()
+    await session.openConversation()
+    const first = session.selectConversation('c1')
+    session.beginDraft()
+    session.draft.value = '新草稿'
+    stale.resolve(graph('c1'))
+    await first
+    expect(session.conversationId.value).toBeNull()
+    expect(session.draft.value).toBe('新草稿')
+    expect(session.graphLoading.value).toBe(false)
+    expect(session.graphError.value).toBe(false)
+  })
+  it('刷新失败保留旧消息和草稿，同一会话的过期请求不能覆盖恢复结果', async () => {
+    const stale = deferred<ChatGraph>()
+    let calls = 0
+    const { session } = setup(async (id) => {
+      calls++
+      if (calls === 2) throw new Error('offline')
+      if (calls === 3) return stale.promise
+      return graph(id, calls === 1 ? '旧消息' : '新消息')
+    })
+    await session.openConversation()
+    await session.loadGraph('c1')
+    session.draft.value = '未发送草稿'
+    await session.loadGraph('c1')
+    expect(session.graphError.value).toBe(true)
+    expect(session.turns.value[0]?.text).toBe('旧消息')
+    const pending = session.loadGraph('c1')
+    await session.loadGraph('c1')
+    stale.resolve(graph('c1', '过期消息'))
+    await pending
+    expect(session.graphError.value).toBe(false)
+    expect(session.turns.value[0]?.text).toBe('新消息')
+    expect(session.draft.value).toBe('未发送草稿')
+  })
+  it.each([false, true])('A/B乱序完成不会改变最新选择或错误（失败=%s）', async (failed) => {
+    const pending = deferred<ChatGraph>()
+    const { session } = setup(async (id) => (id === 'c1' ? pending.promise : graph(id)))
+    await session.openConversation()
+    await session.openConversation()
+    const first = session.selectConversation('c1')
+    await session.selectConversation('c2')
+    session.draft.value = 'B草稿'
+    if (failed) pending.reject(new Error('offline'))
+    else pending.resolve(graph('c1'))
+    await first
+    expect(session.conversationId.value).toBe('c2')
+    expect(session.draft.value).toBe('B草稿')
+    expect(session.graphError.value).toBe(false)
+    expect(session.turns.value[0]?.text).toBe('c2')
+  })
+  it.each(['edit', 'regenerate'] as const)(
+    '分支%s成功后读回失败保留结果，恢复不重发',
+    async (kind) => {
+      let reads = 0
+      let writes = 0
+      const branchResult = deferred<AiMessageResult>()
+      const session = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+        conversationGraph: async (id) => {
+          reads++
+          if (reads === 2) throw new Error('offline')
+          return graph(id)
+        },
+        sendAiMessage: async () => {
+          throw new Error('不得重发')
+        },
+        editAiMessage: async () => {
+          writes++
+          return branchResult.promise
+        },
+        regenerateAiMessage: async () => {
+          writes++
+          return branchResult.promise
+        },
+      })
+      await session.openConversation()
+      await session.loadGraph('c1')
+      session.draft.value = '修改问题'
+      const pending =
+        kind === 'edit' ? session.sendEdit('c1-user') : session.sendRegenerate('c1-user')
+      session.draft.value = '发送期间新草稿'
+      branchResult.resolve(result({ answer: '已成功回答' }))
+      expect(await pending).toBe(true)
+      expect(session.graphError.value).toBe(true)
+      expect(session.turns.value.at(-1)).toMatchObject({ text: '已成功回答', status: 'SUCCEEDED' })
+      await session.retryGraph()
+      expect(writes).toBe(1)
+      expect(reads).toBe(3)
+      expect(session.graphError.value).toBe(false)
+      expect(session.draft.value).toBe('发送期间新草稿')
+    },
+  )
+  it('分支成功读回期间切换会话不会清除新会话编辑状态或覆盖内容', async () => {
+    const read = deferred<ChatGraph>()
+    let serial = 0
+    let reads = 0
+    const session = createChatSession({
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({
+        conversationId: `c${++serial}`,
+        workspaceLabel: '',
+        memory: '',
+      }),
+      sendAiMessage: async () => result(),
+      conversationGraph: async (id) => (++reads === 2 ? read.promise : graph(id)),
+      editAiMessage: async () => result(),
+    })
+    await session.openConversation()
+    await session.loadGraph('c1')
+    session.draft.value = '编辑问题'
+    const sent = session.sendEdit('c1-user')
+    await Promise.resolve()
+    await session.openConversation()
+    session.draft.value = 'B草稿'
+    read.reject(new Error('late failure'))
+    expect(await sent).toBe(false)
+    expect(session.conversationId.value).toBe('c2')
+    expect(session.draft.value).toBe('B草稿')
+    expect(session.graphError.value).toBe(false)
+    expect(session.turns.value).toEqual([])
+  })
+  it.each(['post', 'graph'] as const)('分支%s在途A/B/A往返后只读恢复权威节点', async (stage) => {
+    const post = deferred<AiMessageResult>()
+    const read = deferred<ChatGraph>()
+    const enteredRead = deferred<void>()
+    let serial = 0
+    let reads = 0
+    let writes = 0
+    const session = createChatSession({
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({
+        conversationId: `c${++serial}`,
+        workspaceLabel: '',
+        memory: '',
+      }),
+      sendAiMessage: async () => result(),
+      editAiMessage: async () => {
+        writes++
+        return post.promise
+      },
+      conversationGraph: async (id) => {
+        if (id === 'c2') return graph(id)
+        reads++
+        if (stage === 'graph' && reads === 2) {
+          enteredRead.resolve()
+          return read.promise
+        }
+        return graph(id, reads === 1 ? '旧问题' : '权威分支')
+      },
+    })
+    await session.openConversation()
+    await session.openConversation()
+    await session.selectConversation('c1')
+    session.draft.value = '修改问题'
+    const sending = session.sendEdit('c1-user')
+    if (stage === 'graph') {
+      post.resolve(result())
+      await enteredRead.promise
+    }
+    await session.selectConversation('c2')
+    await session.selectConversation('c1')
+    session.draft.value = '往返后草稿'
+    if (stage === 'post') post.resolve(result())
+    else read.resolve(graph('c1', '过期分支'))
+    await sending
+    expect(writes).toBe(1)
+    expect(session.graphError.value).toBe(false)
+    expect(session.graphLoading.value).toBe(false)
+    expect(session.turns.value[0]).toMatchObject({ nodeId: 'c1-user', text: '权威分支' })
+    expect(session.draft.value).toBe('往返后草稿')
+  })
+  it('读取期间不能发送，发送启动前的读取不能覆盖发送结果', async () => {
+    const pending = deferred<ChatGraph>()
+    const { session, sends } = setup(async () => pending.promise)
+    await session.openConversation()
+    session.draft.value = '保留'
+    const read = session.loadGraph('c1')
+    await session.send()
+    expect(sends()).toBe(0)
+    pending.resolve(graph('c1'))
+    await read
+    await session.send()
+    expect(sends()).toBe(1)
+  })
+})
 
 describe('chat session', () => {
   it('sends explicit planning without tools and preserves the selected implementation settings', async () => {
