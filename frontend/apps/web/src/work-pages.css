@@ -1510,7 +1510,9 @@
   padding: 0 8px 8px 0;
 }
 .body--sql {
-  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr) var(--eap-layout-rail-width);
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr) var(
+      --eap-layout-rail-width
+    );
 }
 .body > .workbench {
   padding: 26px 30px;
@@ -1563,9 +1565,8 @@
 }
 @media (max-width: 1100px) {
   .body {
-    grid-template-columns: calc(
-        var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px)
-      )
+    grid-template-columns:
+      calc(var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px))
       minmax(0, 1fr);
   }
   .body > .inspector {
@@ -1667,7 +1668,9 @@
   grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr);
 }
 .body.body--sql {
-  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr) var(--eap-layout-rail-width);
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr) var(
+      --eap-layout-rail-width
+    );
 }
 .shell-tool {
   white-space: nowrap;
@@ -1689,9 +1692,8 @@
 @media (max-width: 1100px) {
   .body.body--chat,
   .body.body--sql {
-    grid-template-columns: calc(
-        var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px)
-      )
+    grid-template-columns:
+      calc(var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px))
       minmax(0, 1fr);
   }
 }
@@ -1810,9 +1812,17 @@
 }
 
 /* Standalone editors own their internal resource/inspector panes. */
-.app .body.body--editor { grid-template-columns: minmax(0, 1fr); }
-.body.body--editor > .workbench { padding: 0; overflow: hidden; border-radius: 0; }
-.body.body--editor > .inspector { display: none; }
+.app .body.body--editor {
+  grid-template-columns: minmax(0, 1fr);
+}
+.body.body--editor > .workbench {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0;
+}
+.body.body--editor > .inspector {
+  display: none;
+}
 
 /* Ardot boards 01–18: on wide screens the read-only inspector is a docked
    380px region. The 72px rail and 288px sidebar are one navigation column in
@@ -1851,9 +1861,8 @@
   .body.body--inspector,
   .body.body--inspector.body--chat,
   .body.body--inspector.body--sql {
-    grid-template-columns: calc(
-        var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px)
-      )
+    grid-template-columns:
+      calc(var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px))
       minmax(0, 1fr);
   }
 
@@ -1907,30 +1916,35 @@
    surface that replaces the standard navigation/workbench/inspector grid. */
 .app--workdoc,
 .app--scenedesigner,
-.app--settings {
+.app--settings,
+.app--patterns {
   grid-template-rows: minmax(0, 1fr);
 }
 
 .app--workdoc > .topbar,
 .app--scenedesigner > .topbar,
-.app--settings > .topbar {
+.app--settings > .topbar,
+.app--patterns > .topbar {
   display: none;
 }
 
 .body--workdoc,
 .body--scenedesigner,
-.body--settings {
+.body--settings,
+.body--patterns {
   display: block;
   overflow: hidden;
 }
 
 .body--workdoc > :not(.workdoc-surface),
 .body--scenedesigner > :not(.workdoc-surface),
-.body--settings > :not(.settings-center-surface) {
+.body--settings > :not(.settings-center-surface),
+.body--patterns > :not(.patterns-surface) {
   display: none !important;
 }
 
 .workdoc-surface,
-.settings-center-surface {
+.settings-center-surface,
+.patterns-surface {
   height: 100%;
 }

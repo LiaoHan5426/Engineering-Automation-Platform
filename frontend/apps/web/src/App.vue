@@ -15,8 +15,9 @@ const DatabaseManager = defineAsyncComponent(
 )
 const RuleManager = defineAsyncComponent(() => import('./features/rule/RuleManager.vue'))
 const ModelSettings = defineAsyncComponent(() => import('./features/settings/ModelSettings.vue'))
-const SettingsCenter = defineAsyncComponent(
-  () => import('./features/settings/SettingsCenter.vue'),
+const SettingsCenter = defineAsyncComponent(() => import('./features/settings/SettingsCenter.vue'))
+const InteractionPatterns = defineAsyncComponent(
+  () => import('./features/shell/InteractionPatterns.vue'),
 )
 const SkillManager = defineAsyncComponent(() => import('./features/settings/SkillManager.vue'))
 const AppearanceSettings = defineAsyncComponent(
@@ -172,6 +173,7 @@ const shellTitle = computed(() => {
       : i18n.global.t('desktop.newChat')
   }
   if (activeView.value === 'board') return i18n.global.t('desktop.board')
+  if (activeView.value === 'patterns') return i18n.global.t('patterns.title')
   if (activeView.value === 'expert-catalog') return i18n.global.t('expertWorkspace.roles')
   if (activeView.value === 'experts') return i18n.global.t('desktop.experts')
   if (activeView.value === 'scenes') return i18n.global.t('desktop.scenes')
@@ -199,6 +201,7 @@ const shellBreadcrumb = computed(() => {
   if (['experts', 'expert-catalog'].includes(activeView.value))
     return `EAP / ${i18n.global.t('desktop.experts')} / ${name}`
   if (activeView.value === 'board') return `EAP / ${i18n.global.t('desktop.board')}`
+  if (activeView.value === 'patterns') return i18n.global.t('patterns.breadcrumb')
   if (activeView.value === 'sql') return name
   return `EAP / ${i18n.global.t('desktop.settings')} / ${name}`
 })
@@ -349,6 +352,7 @@ const inspectorArea = computed<InspectorArea>(() => {
   if (
     [
       'settings',
+      'patterns',
       'model-settings',
       'knowledge',
       'rules',
@@ -1110,6 +1114,7 @@ onUnmounted(() => {
       'app--workdoc': activeView === 'workdoc',
       'app--scenedesigner': activeView === 'scenedesigner',
       'app--settings': activeView === 'settings',
+      'app--patterns': activeView === 'patterns',
       'drawer-open': narrow && workbench.sidebarOpen,
     }"
   >
@@ -1259,10 +1264,16 @@ onUnmounted(() => {
         'body--workdoc': activeView === 'workdoc',
         'body--scenedesigner': activeView === 'scenedesigner',
         'body--settings': activeView === 'settings',
+        'body--patterns': activeView === 'patterns',
       }"
     >
+      <InteractionPatterns
+        v-if="activeView === 'patterns'"
+        class="patterns-surface"
+        @navigate="activeView = $event"
+      />
       <SettingsCenter
-        v-if="activeView === 'settings'"
+        v-else-if="activeView === 'settings'"
         class="settings-center-surface"
         @navigate="activeView = $event"
       />

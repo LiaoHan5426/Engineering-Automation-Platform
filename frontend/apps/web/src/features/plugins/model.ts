@@ -1,5 +1,6 @@
 export const SHELL_PAGE_IDS = [
   'settings',
+  'patterns',
   'sql',
   'scenes',
   'work',

@@ -4,6 +4,8 @@ export const settingsCenterMessages = {
     breadcrumb: '设置 / 工作区',
     workspaceGroup: '工作区',
     preferenceGroup: '偏好',
+    referenceGroup: '参考',
+    patterns: '交互形态规范',
     models: '模型与连接',
     knowledge: '知识库',
     rules: '规则库',
@@ -13,11 +15,15 @@ export const settingsCenterMessages = {
     plugins: '插件中心',
     appearance: '外观',
     modelsDesc: '配置模型供应商与连接凭据。密钥仅保存在本机，不上传；新增连接需显式验证后才可用。',
-    knowledgeDesc: '管理知识集合与文档，配置导入来源、授权范围与检索策略；集合可增删，文档可导入与重建索引。',
-    rulesDesc: '管理规则包与事实词表。规则/事实词表为固定配置只读，动态规则可增删改；规则包支持集合式启停管控。',
-    databasesDesc: '登记业务数据源与连接信息，查看表结构与索引。数据源可新增、编辑、删除，连接需显式验证。',
+    knowledgeDesc:
+      '管理知识集合与文档，配置导入来源、授权范围与检索策略；集合可增删，文档可导入与重建索引。',
+    rulesDesc:
+      '管理规则包与事实词表。规则/事实词表为固定配置只读，动态规则可增删改；规则包支持集合式启停管控。',
+    databasesDesc:
+      '登记业务数据源与连接信息，查看表结构与索引。数据源可新增、编辑、删除，连接需显式验证。',
     skillsDesc: '登记本地脚本或工具为可复用技能。经文件校验与可信来源确认后保存，运行时按需调用。',
-    capabilitiesDesc: '盘点本机可用能力，区分 CLI 工具、MCP 服务与内置能力。Git 等按工具整体集成，探测结果有界且可核对。',
+    capabilitiesDesc:
+      '盘点本机可用能力，区分 CLI 工具、MCP 服务与内置能力。Git 等按工具整体集成，探测结果有界且可核对。',
     pluginsDesc: '管理扩展插件的启用与停用。停用涉及依赖互锁时需二次确认，避免影响依赖它的工作流。',
     appearanceDesc: '配置主题、字号与界面密度。主题支持深浅双模式，切换即时生效并写入本地偏好。',
     connections: '连接配置',
@@ -78,6 +84,8 @@ export const settingsCenterMessages = {
     breadcrumb: 'Settings / Workspace',
     workspaceGroup: 'Workspace',
     preferenceGroup: 'Preferences',
+    referenceGroup: 'Reference',
+    patterns: 'Interaction patterns',
     models: 'Models & connections',
     knowledge: 'Knowledge bases',
     rules: 'Rule packs',
@@ -86,14 +94,22 @@ export const settingsCenterMessages = {
     capabilities: 'Capability catalog',
     plugins: 'Plugin center',
     appearance: 'Appearance',
-    modelsDesc: 'Configure model providers and credentials. Secrets stay on this machine and new connections require explicit verification.',
-    knowledgeDesc: 'Manage knowledge collections and documents, import sources, grants and retrieval policy.',
-    rulesDesc: 'Manage rule packs and the fact vocabulary. Shipped rules are read-only; dynamic rules can be edited.',
-    databasesDesc: 'Register data sources and inspect table and index profiles. Connections require explicit verification.',
-    skillsDesc: 'Register local scripts or tools as reusable skills after validation and trusted-source confirmation.',
-    capabilitiesDesc: 'Inventory CLI tools, MCP services and built-in capabilities. Probes are bounded and reviewable.',
-    pluginsDesc: 'Manage plugin enablement. Disabling a plugin with dependants requires confirmation.',
-    appearanceDesc: 'Configure theme, font size and density. Changes apply immediately and persist locally.',
+    modelsDesc:
+      'Configure model providers and credentials. Secrets stay on this machine and new connections require explicit verification.',
+    knowledgeDesc:
+      'Manage knowledge collections and documents, import sources, grants and retrieval policy.',
+    rulesDesc:
+      'Manage rule packs and the fact vocabulary. Shipped rules are read-only; dynamic rules can be edited.',
+    databasesDesc:
+      'Register data sources and inspect table and index profiles. Connections require explicit verification.',
+    skillsDesc:
+      'Register local scripts or tools as reusable skills after validation and trusted-source confirmation.',
+    capabilitiesDesc:
+      'Inventory CLI tools, MCP services and built-in capabilities. Probes are bounded and reviewable.',
+    pluginsDesc:
+      'Manage plugin enablement. Disabling a plugin with dependants requires confirmation.',
+    appearanceDesc:
+      'Configure theme, font size and density. Changes apply immediately and persist locally.',
     connections: 'Connections',
     collections: 'Knowledge collections',
     rulePacks: 'Rule packs',
@@ -112,7 +128,8 @@ export const settingsCenterMessages = {
     restoreDefaults: 'Restore defaults',
     detail: 'Open detailed settings',
     loading: 'Loading settings data…',
-    empty: 'No records were returned by the runtime. Prototype sample rows are never shown as real data.',
+    empty:
+      'No records were returned by the runtime. Prototype sample rows are never shown as real data.',
     verified: 'Verified',
     unverified: 'Unverified',
     enabled: 'Enabled',

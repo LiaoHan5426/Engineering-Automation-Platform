@@ -9,6 +9,7 @@ import { expertWorkspaceMessages } from './expertWorkspaceMessages'
 import { workDocumentMessages } from './workDocumentMessages'
 import { sceneDesignerMessages } from './sceneDesignerMessages'
 import { settingsCenterMessages } from './settingsCenterMessages'
+import { interactionPatternsMessages } from './interactionPatternsMessages'
 import { knowledgeContextMessages } from './knowledgeContextMessages'
 import { contextBudgetMessages } from './contextBudgetMessages'
 import { workingMemoryMessages } from './workingMemoryMessages'
@@ -46,6 +47,7 @@ export const i18n = createI18n({
       workDocument: workDocumentMessages['zh-CN'],
       sceneDesigner: sceneDesignerMessages['zh-CN'],
       settingsCenter: settingsCenterMessages['zh-CN'],
+      patterns: interactionPatternsMessages['zh-CN'],
       knowledgeContext: knowledgeContextMessages['zh-CN'],
       contextBudget: contextBudgetMessages['zh-CN'],
       workingMemory: workingMemoryMessages['zh-CN'],
@@ -404,6 +406,7 @@ export const i18n = createI18n({
       workDocument: workDocumentMessages['en-US'],
       sceneDesigner: sceneDesignerMessages['en-US'],
       settingsCenter: settingsCenterMessages['en-US'],
+      patterns: interactionPatternsMessages['en-US'],
       knowledgeContext: knowledgeContextMessages['en-US'],
       contextBudget: contextBudgetMessages['en-US'],
       workingMemory: workingMemoryMessages['en-US'],

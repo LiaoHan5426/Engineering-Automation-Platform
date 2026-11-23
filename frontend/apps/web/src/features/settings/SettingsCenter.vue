@@ -114,9 +114,7 @@ function status(
   badLabel: string,
   tone: StatusTone = 'ok',
 ): Pick<SettingRecord, 'status' | 'tone'> {
-  return ok
-    ? { status: okLabel, tone }
-    : { status: badLabel, tone: tone === 'ok' ? 'warn' : tone }
+  return ok ? { status: okLabel, tone } : { status: badLabel, tone: tone === 'ok' ? 'warn' : tone }
 }
 
 async function loadModels(): Promise<SettingRecord[]> {
@@ -142,7 +140,9 @@ async function loadKnowledge(): Promise<SettingRecord[]> {
   return result.items.map((item) => ({
     id: item.id,
     title: item.name,
-    meta: [t('settingsCenter.documents', { count: item.documents }), item.description].filter(Boolean).join(' · '),
+    meta: [t('settingsCenter.documents', { count: item.documents }), item.description]
+      .filter(Boolean)
+      .join(' · '),
     status: t('settingsCenter.available'),
     tone: 'neutral',
   }))
@@ -196,10 +196,7 @@ async function loadSkills(): Promise<SettingRecord[]> {
 }
 
 async function loadCapabilities(): Promise<SettingRecord[]> {
-  const [catalog, servers] = await Promise.all([
-    runtimeApi.capabilities(),
-    runtimeApi.mcpServers(),
-  ])
+  const [catalog, servers] = await Promise.all([runtimeApi.capabilities(), runtimeApi.mcpServers()])
   const capabilityRecords = catalog.items.slice(0, 7).map((item) => ({
     id: `cap-${item.name}`,
     title: `${item.title} · ${item.kindLabel}`,
@@ -217,7 +214,12 @@ async function loadCapabilities(): Promise<SettingRecord[]> {
     meta: [t('settingsCenter.tools', { count: item.tools.length }), item.transport, item.endpoint]
       .filter(Boolean)
       .join(' · '),
-    ...status(item.usable, t('settingsCenter.connected'), t('settingsCenter.unavailable'), 'neutral'),
+    ...status(
+      item.usable,
+      t('settingsCenter.connected'),
+      t('settingsCenter.unavailable'),
+      'neutral',
+    ),
   }))
   return [...capabilityRecords, ...serverRecords]
 }
@@ -367,7 +369,15 @@ onMounted(() => void load())
         <strong>{{ t('settingsCenter.title') }}</strong>
       </header>
       <div v-for="group in groupedCategories" :key="group.group" class="sc-group">
-        <p>{{ t(group.group === 'workspace' ? 'settingsCenter.workspaceGroup' : 'settingsCenter.preferenceGroup') }}</p>
+        <p>
+          {{
+            t(
+              group.group === 'workspace'
+                ? 'settingsCenter.workspaceGroup'
+                : 'settingsCenter.preferenceGroup',
+            )
+          }}
+        </p>
         <Button
           v-for="item in group.items"
           :key="item.id"
@@ -378,6 +388,16 @@ onMounted(() => void load())
           :data-testid="'settings-center-category-' + item.id"
           @click="select(item.id)"
           >{{ t(`settingsCenter.${item.id}`) }}</Button
+        >
+      </div>
+      <div class="sc-group">
+        <p>{{ t('settingsCenter.referenceGroup') }}</p>
+        <Button
+          variant="navigation"
+          class="sc-category"
+          data-testid="settings-center-patterns"
+          @click="emit('navigate', 'patterns')"
+          >{{ t('settingsCenter.patterns') }}</Button
         >
       </div>
     </aside>
@@ -401,7 +421,9 @@ onMounted(() => void load())
         >
         <div>
           <strong>{{ t(`settingsCenter.${category}`) }}</strong>
-          <small>{{ t('settingsCenter.breadcrumb') }} / {{ t(`settingsCenter.${category}`) }}</small>
+          <small
+            >{{ t('settingsCenter.breadcrumb') }} / {{ t(`settingsCenter.${category}`) }}</small
+          >
         </div>
         <Button variant="secondary" data-testid="settings-center-detail" @click="openDetail">{{
           t('settingsCenter.detail')
@@ -415,7 +437,9 @@ onMounted(() => void load())
         </header>
 
         <div class="sc-list-head">
-          <h2>{{ t(headingKey) }} <span v-if="!loading">{{ records.length }}</span></h2>
+          <h2>
+            {{ t(headingKey) }} <span v-if="!loading">{{ records.length }}</span>
+          </h2>
           <Button variant="primary" :disabled="loading" @click="primaryAction"
             ><IconPlus />{{ t(actionKey) }}</Button
           >
@@ -425,7 +449,9 @@ onMounted(() => void load())
         <Feedback v-if="error" tone="error" role="alert" data-testid="settings-center-error">{{
           error
         }}</Feedback>
-        <Feedback v-if="loading" tone="info" role="status">{{ t('settingsCenter.loading') }}</Feedback>
+        <Feedback v-if="loading" tone="info" role="status">{{
+          t('settingsCenter.loading')
+        }}</Feedback>
 
         <div class="sc-records">
           <article

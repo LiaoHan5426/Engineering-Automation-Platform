@@ -20,6 +20,8 @@ describe('plugin prototype store', () => {
     expect(isShellPage('chat')).toBe(false)
     expect(isKnownHash('plugins')).toBe(true)
     expect(isKnownHash('builder-alpha')).toBe(true)
+    expect(isShellPage('patterns')).toBe(true)
+    expect(isKnownHash('patterns')).toBe(true)
     expect(INSTALLATION_KEY.startsWith('eap.console.')).toBe(false)
   })
 

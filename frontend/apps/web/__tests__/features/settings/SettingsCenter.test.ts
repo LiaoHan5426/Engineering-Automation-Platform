@@ -82,22 +82,24 @@ describe('SettingsCenter', () => {
     expect(root.textContent).toContain('能力目录')
     expect(root.textContent).toContain('插件中心')
     expect(root.textContent).toContain('外观')
-    expect(root.querySelector('[data-testid="settings-center-record-conn-1"]')?.textContent).toContain(
-      '真实主连接',
-    )
+    expect(
+      root.querySelector('[data-testid="settings-center-record-conn-1"]')?.textContent,
+    ).toContain('真实主连接')
   })
 
   it('loads a category from real API data instead of prototype sample rows', async () => {
     await mount()
-    ;(root.querySelector('[data-testid="settings-center-category-knowledge"]') as HTMLElement).click()
+    ;(
+      root.querySelector('[data-testid="settings-center-category-knowledge"]') as HTMLElement
+    ).click()
     await vi.waitFor(() => {
       expect(
         root.querySelector('[data-testid="settings-center-record-kb-1"]')?.textContent,
       ).toContain('真实知识库')
     })
-    expect(root.querySelector('[data-testid="settings-center-record-kb-1"]')?.textContent).toContain(
-      '12',
-    )
+    expect(
+      root.querySelector('[data-testid="settings-center-record-kb-1"]')?.textContent,
+    ).toContain('12')
     expect(root.textContent).not.toContain('产品文档库')
   })
 
@@ -106,7 +108,9 @@ describe('SettingsCenter', () => {
       response: { status: 502, data: { code: 'DB_FAILED', detail: '真实数据库资料读取失败' } },
     })
     await mount()
-    ;(root.querySelector('[data-testid="settings-center-category-databases"]') as HTMLElement).click()
+    ;(
+      root.querySelector('[data-testid="settings-center-category-databases"]') as HTMLElement
+    ).click()
     await vi.waitFor(() => {
       expect(root.querySelector('[data-testid="settings-center-error"]')?.textContent).toContain(
         '真实数据库资料读取失败',
@@ -115,5 +119,14 @@ describe('SettingsCenter', () => {
     expect(root.querySelector('[data-testid="settings-center-empty"]')).toBeTruthy()
     ;(root.querySelector('[data-testid="settings-center-detail"]') as HTMLElement).click()
     expect(navigate).toHaveBeenCalledWith('databases')
+  })
+
+  it('links to the interaction-pattern reference without inventing settings data', async () => {
+    await mount()
+    const link = root.querySelector('[data-testid="settings-center-patterns"]') as HTMLElement
+    expect(link).toBeTruthy()
+    expect(link.textContent).toContain('交互形态规范')
+    link.click()
+    expect(navigate).toHaveBeenCalledWith('patterns')
   })
 })
