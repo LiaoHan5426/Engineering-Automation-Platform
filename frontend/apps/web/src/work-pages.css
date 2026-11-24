@@ -1838,6 +1838,36 @@
   min-width: 0;
 }
 
+/* Cordis ui-sidebar-right column: always the right track / drawer — never wrap
+   under the nav when the ≤1100px inspector media query collapses to two columns. */
+.body > #eap-cordis-sidebar-right[data-sidebar-right-seat] {
+  grid-column: -2 / -1;
+  width: var(--eap-layout-inspector-width);
+  min-width: 0;
+  z-index: 20;
+}
+
+@media (width <= 1100px) {
+  .body.body--inspector:has(> #eap-cordis-sidebar-right[data-sidebar-right-seat]:not([hidden])) {
+    grid-template-columns:
+      calc(var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px))
+      minmax(0, 1fr);
+  }
+
+  .body > #eap-cordis-sidebar-right[data-sidebar-right-seat]:not([hidden]) {
+    position: fixed;
+    top: var(--eap-layout-topbar-height, 56px);
+    right: 0;
+    bottom: 0;
+    left: auto;
+    grid-column: auto;
+    width: min(var(--eap-layout-inspector-width), 100vw);
+    max-width: 100vw;
+    z-index: 45;
+    box-shadow: -8px 0 24px rgb(0 0 0 / 35%);
+  }
+}
+
 /* The legacy `.inspector-toggle` rule hides the SQL-only details button;
   the prototype inspector toggle belongs to the top bar on every area. */
 .topbar .workspace-inspector-toggle {

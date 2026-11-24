@@ -5,8 +5,10 @@ import { Badge, Button, Input, ConfirmBox, Feedback, Collapse, Dialog } from '@e
 import type { PluginHost } from './host'
 import { GRANTS, MANIFESTS, type PluginId } from './model'
 import { PLUGIN_SERVICE_DEPENDENCIES } from './pluginRuntimeView'
+import DshPluginManager from './DshPluginManager.vue'
 
 const props = defineProps<{ host: PluginHost }>()
+const emit = defineEmits<{ dshChanged: [] }>()
 const { t } = useI18n()
 const detailsTarget = ref<PluginId | null>(null)
 const projectId = ref('')
@@ -110,6 +112,7 @@ function toggle(host: PluginHost, id: PluginId) {
       <h1>{{ t('plugin.center') }}</h1>
       <p>{{ t('plugin.centerHint') }}</p>
     </div>
+    <DshPluginManager data-testid="dsh-plugin-manager-slot" @changed="emit('dshChanged')" />
     <div class="plugin-toolbar">
       <Button
         variant="secondary"

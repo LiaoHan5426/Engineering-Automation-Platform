@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /** F3: merged PluginCenter dependency + runtime facets. */
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, type App } from 'vue'
 import { runtimeApi } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
@@ -22,6 +22,11 @@ afterEach(() => {
   app = undefined
   root?.remove()
   vi.restoreAllMocks()
+})
+
+beforeEach(() => {
+  vi.spyOn(runtimeApi.plugins, 'list').mockResolvedValue({ items: [] })
+  vi.spyOn(runtimeApi.plugins, 'contributions').mockResolvedValue({ uiClients: [] })
 })
 
 async function mount(store = memoryStore()) {

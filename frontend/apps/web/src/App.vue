@@ -42,6 +42,7 @@ import WorkspaceInspector from './features/shell/WorkspaceInspector.vue'
 import { type InspectorSnapshot } from './features/shell/inspectorTabs'
 import type { InspectorArea } from './lib/inspectorMessages'
 import PluginSlot from './features/plugins/PluginSlot.vue'
+import CordisIslandHost from './features/plugins/CordisIslandHost.vue'
 import { createPluginHost } from './features/plugins/host'
 import { isKnownHash, resolveAreaView } from './features/plugins/model'
 import { i18n } from './lib/i18n'
@@ -135,6 +136,12 @@ const shellPages = [
   },
 ]
 const pluginHost = createPluginHost()
+const cordisIslandRefresh = ref(0)
+const cordisIsland = ref<{ syncFromServer: () => Promise<void> }>()
+function onDshPluginsChanged() {
+  cordisIslandRefresh.value += 1
+  void cordisIsland.value?.syncFromServer()
+}
 /** 落地页：打开就是能干活的地方。壳页面保持固定；插件入口由注册表按启停追加。 */
 const DEFAULT_VIEW = 'chat'
 const pages = computed(() => [
@@ -1118,6 +1125,7 @@ onUnmounted(() => {
       'drawer-open': narrow && workbench.sidebarOpen,
     }"
   >
+    <CordisIslandHost ref="cordisIsland" :refresh-token="cordisIslandRefresh" />
     <header class="topbar">
       <Button
         size="sm"
@@ -2023,7 +2031,11 @@ onUnmounted(() => {
 
         <AppearanceSettings v-else-if="activeView === 'appearance'" />
         <ModelSettings ref="modelSettings" v-else-if="activeView === 'model-settings'" />
-        <PluginCenter v-else-if="activeView === 'plugins'" :host="pluginHost" />
+        <PluginCenter
+          v-else-if="activeView === 'plugins'"
+          :host="pluginHost"
+          @dsh-changed="onDshPluginsChanged"
+        />
 
         <!-- MANAGERS -->
         <KeepAlive>
@@ -2087,6 +2099,15 @@ onUnmounted(() => {
         :narrow="inspectorDrawer"
         open
         @close="workspaceInspectorOpen = false"
+      />
+
+      <!-- Cordis ui-sidebar-right column mount (guide/tabs rendered by Client seat). -->
+      <aside
+        id="eap-cordis-sidebar-right"
+        class="workspace-inspector eap-dsh-rightbar"
+        data-testid="cordis-sidebar-right-column"
+        hidden
+        aria-label="Cordis right sidebar"
       />
 
       <!-- INSPECTOR -->

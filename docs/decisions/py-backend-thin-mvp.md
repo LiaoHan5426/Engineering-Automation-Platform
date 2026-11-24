@@ -21,6 +21,8 @@ Development pace on the Java full-stack was too slow for a usable daily Chat pat
 
 Edit/regenerate branching, full CT-01 DB event append-only, board/code proposals, MCP, knowledge FTS, Postgres, managed-tool installer, LangGraph default loop, deleting the Java reactor.
 
+**Update (2026-11-24):** L2 DSH plugin host (install/UI contributions with control on server) is accepted in [`py-backend-plugin-host-l2.md`](py-backend-plugin-host-l2.md); that slice supersedes “no plugins” for this track only.
+
 ## Acceptance (this slice)
 
 - Install/run from `py-backend` with module `.venv`.

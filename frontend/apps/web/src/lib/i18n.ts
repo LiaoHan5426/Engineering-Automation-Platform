@@ -345,6 +345,12 @@ export const i18n = createI18n({
         mockActivationFailReason: 'mock：激活贡献失败（已回滚）',
         enable: '启用',
         disable: '停用',
+        dshTitle: 'DSH 插件（服务端权威）',
+        dshHint:
+          '安装与启停由 py-backend 权威管理。Cordis 岛只渲染 Client UI；Host API / Agent / 工具不在浏览器执行。',
+        dshSourcePlaceholder: '本机 DSH 包目录（如 dsh-better-sidebar）',
+        dshInstall: '安装到服务端',
+        dshEmpty: '尚未安装 DSH 插件。安装并启用后，侧栏 Client UI 会出现在壳层。',
         hiddenTitle: '插件入口已隐藏',
         hiddenBody:
           '已有实例配置仍留在本机，这里不能新建操作。对话记录不会因为这份配置而在后端重启后恢复。',
@@ -735,6 +741,12 @@ export const i18n = createI18n({
         mockActivationFailReason: 'mock: contribution activation failed (rolled back)',
         enable: 'Enable',
         disable: 'Disable',
+        dshTitle: 'DSH plugins (server authority)',
+        dshHint:
+          'Install and enable are owned by py-backend. The Cordis island only renders Client UI; Host API / Agent / tools never run in the browser.',
+        dshSourcePlaceholder: 'Local DSH package directory (e.g. dsh-better-sidebar)',
+        dshInstall: 'Install on server',
+        dshEmpty: 'No DSH plugins installed. After install + enable, the Client UI appears in the shell.',
         hiddenTitle: 'Plugin entry hidden',
         hiddenBody:
           'Saved instance configuration remains on this browser. New operations are unavailable here. Chat transcripts are not restored after a backend restart.',

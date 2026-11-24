@@ -13,7 +13,7 @@
     "check:boundaries": "vsh check-boundaries",
     "check:circular": "vsh check-circular",
     "check:architecture": "vsh check",
-    "lint:tests": "vp lint scripts/vsh/__tests__ apps/web/__tests__ apps/backend-mock/__tests__ packages/request/__tests__ packages/ui/__tests__ packages/icons/__tests__ packages/runtime-client/__tests__",
+    "lint:tests": "vp lint scripts/vsh/__tests__ apps/web/__tests__ apps/backend-mock/__tests__ packages/request/__tests__ packages/ui/__tests__ packages/icons/__tests__ packages/runtime-client/__tests__ packages/plugin-runtime/__tests__",
     "fmt:tests": "vp fmt \"**/__tests__/**/*.ts\" --check",
     "dev": "vp dev",
     "dev:mock": "vp dev apps/web --mode mock --host 127.0.0.1",

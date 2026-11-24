@@ -62,3 +62,18 @@ class ChatExecutionEventRow(SQLModel, table=True):
     code: str = Field(default="")
     payload_json: str = Field(default="")
     occurred_at: datetime = Field(default_factory=utc_now)
+
+
+class PluginInstallRow(SQLModel, table=True):
+    """Server-authoritative install/enable for DSH-shaped packages."""
+
+    __tablename__ = "plugin_install"
+
+    name: str = Field(primary_key=True)
+    version: str
+    enabled: bool = Field(default=False)
+    install_path: str
+    client_entry: str = Field(default="")
+    package_json: str = Field(default="")
+    installed_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)

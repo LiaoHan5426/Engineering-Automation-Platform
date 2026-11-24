@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@eap/expert-sdk": "workspace:*",
+    "@eap/plugin-runtime": "workspace:*",
     "@eap/plugin-table": "workspace:*",
     "@eap/request": "workspace:*",
     "@eap/runtime-client": "workspace:*",
@@ -19,6 +20,8 @@
     "grapesjs": "^0.22.7",
     "monaco-editor": "^0.57.0",
     "nprogress": "catalog:frontend",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "vue": "catalog:frontend",
     "vue-i18n": "catalog:frontend"
   },

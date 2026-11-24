@@ -53,11 +53,16 @@ class Settings(BaseSettings):
             return py_backend.parent
         return Path(self.eap_data_root).resolve()
 
+    @property
+    def plugins_root(self) -> Path:
+        return self.eap_home / "plugins"
+
     def ensure_layout(self) -> None:
         (self.eap_home / "db").mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         (self.eap_home / "logs").mkdir(parents=True, exist_ok=True)
         (self.eap_home / "tasks").mkdir(parents=True, exist_ok=True)
+        self.plugins_root.mkdir(parents=True, exist_ok=True)
 
 
 def get_settings() -> Settings:

@@ -27,8 +27,12 @@ python main.py
 ```
 
 Host/port/reload come from `.env` (`EAP_HOST` / `EAP_PORT` / `EAP_RELOAD`, default
-`127.0.0.1:8080` with hot reload on). Reloads watch `app/` only. Disable with
-`EAP_RELOAD=false`. Equivalent: `uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload`.
+`127.0.0.1:8080` with hot reload on). Reloads watch `app/` only (with a short
+delay and `WATCHFILES_FORCE_POLLING=1` on Windows drive-letter roots so edits
+are not missed). Disable with `EAP_RELOAD=false`. Equivalent:
+`uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload`.
+After a reload blip the plugin Host re-syncs from the registry on the next
+request; if the Vite page still shows Host errors, refresh once.
 
 Health: `GET http://127.0.0.1:8080/api/health`
 
@@ -47,3 +51,9 @@ Compatible with `@eap/runtime-client` Chat paths under `/api/ai/…`
 `http://127.0.0.1:8080/api` for live wiring (**frontend accept: unverified** until done).
 
 Default data directory: `py-backend/.eap/` (gitignored via root `.eap/`). Override with `EAP_DATA_ROOT`.
+
+## L2 plugins (Cordis Client + Host bridge)
+
+- **Authority:** install/enable, Agent tools, Host `/sidebar/api/*` (fs / settings / session) stay on py-backend.
+- **Workspace:** `Settings.workspace_root` + Host `session.cwd` — aligned with dsh-personal working directory. **No EAP Cordis profile** directory or profile id.
+- **Frontend:** `@eap/plugin-runtime` assembles Cordis Client packages (ui-slots / ui-sidebar-right / dockkit) like dsh-personal; Vue shell only syncs contributions and mounts `#eap-cordis-sidebar-right`. Decision: `docs/decisions/py-backend-plugin-host-l2.md`.

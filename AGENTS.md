@@ -2,7 +2,7 @@
 
 Deterministic-first, LLM-last. Prefer Git / SVN / ripgrep / shell / Maven; call an external coding agent only when those cannot finish the task. External agent output is observation, not truth—verify via VCS diff, build, and scoped tests before accepting completion.
 
-Layout: `backend/` Java/Maven reactor (`eap-api`, `eap-engine`, `eap-ai`, `eap-web`, `eap-spring`, host `eap-applications/eap-full-application`); `frontend/` Vue monorepo (Vite+, `apps/*`, `packages/*`); `py-backend/` FastAPI + SQLite colocated Chat host (thin MVP; venv = `py-backend/.venv`; Chat production path for this track — see `docs/decisions/py-backend-thin-mvp.md`; Java Chat not dual-run); `scripts/` optional Python (bootstrap/tools, not Agent host). Do not put backend build files at repo root.
+Layout: `backend/` Java/Maven reactor (`eap-api`, `eap-engine`, `eap-ai`, `eap-web`, `eap-spring`, host `eap-applications/eap-full-application`); `frontend/` Vue monorepo (Vite+, `apps/*`, `packages/*`); `py-backend/` FastAPI + SQLite colocated Chat host + L2 plugin registry/Host bridge (thin MVP; venv = `py-backend/.venv`; Chat + plugin install authority for this track — see `docs/decisions/py-backend-thin-mvp.md` and `docs/decisions/py-backend-plugin-host-l2.md`; Cordis Client = dsh-personal-style package assembly UI-only, workspace=`workspace_root`/`session.cwd`, **no EAP profile**; Java Chat not dual-run); `scripts/` optional Python (bootstrap/tools, not Agent host). Do not put backend build files at repo root.
 
 <a id="development-evolution"></a>
 

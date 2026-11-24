@@ -2,6 +2,13 @@ import { defineConfig, loadEnv } from 'vite-plus'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { VueMcp } from 'vite-plugin-vue-mcp'
+import { dshViteAliasList } from '../../packages/plugin-runtime/src/dsh/viteAlias.ts'
+
+/**
+ * No @vitejs/plugin-vue-jsx: dsh-personal RightbarSeat is .tsx with h()+setup-return
+ * render; vue-jsx empties that render and yields data-slot-error on rightbar.session.
+ * React better-sidebar JSX uses Vite esbuild automatic runtime (react/jsx-runtime).
+ */
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -15,7 +22,16 @@ export default defineConfig(({ command, mode }) => {
     process.env.VITE_API_SCOPE ||
     (command === 'serve' && !/^https?:\/\//.test(apiURL) ? target + apiURL : apiURL)
   return {
-    optimizeDeps: { include: ['monaco-editor'] },
+    optimizeDeps: {
+      include: [
+        'monaco-editor',
+        'vue',
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'react/jsx-runtime',
+      ],
+    },
     plugins: [
       vue(),
       tailwindcss(),
@@ -23,10 +39,21 @@ export default defineConfig(({ command, mode }) => {
         ? [VueMcp({ host: '127.0.0.1', updateCursorMcpJson: false })]
         : []),
     ],
+    resolve: {
+      alias: dshViteAliasList,
+      dedupe: ['vue', 'react', 'react-dom'],
+    },
     define: {
       'import.meta.env.VITE_API_URL': JSON.stringify(apiURL),
       'import.meta.env.VITE_API_SCOPE': JSON.stringify(apiScope),
     },
-    server: { host: '127.0.0.1', proxy: { '/api': { target, changeOrigin: true } } },
+    server: {
+      host: '127.0.0.1',
+      proxy: {
+        '/api': { target, changeOrigin: true },
+        // better-sidebar Client fetches same-origin /sidebar/* → py-backend Host bridge
+        '/sidebar': { target, changeOrigin: true },
+      },
+    },
   }
 })

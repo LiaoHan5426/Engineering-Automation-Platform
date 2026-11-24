@@ -40,6 +40,8 @@ def problem_from_code(code: str) -> JSONResponse:
         "UNKNOWN_CONNECTION": (404, "connection not found"),
         "INVALID_CONNECTION": (400, "invalid connection payload"),
         "TOOL_MODE_UNSUPPORTED": (400, "tool mode unsupported in thin MVP"),
+        "UNKNOWN_PLUGIN": (404, "plugin not installed"),
+        "HOST_NOT_ACTIVE": (409, "plugin host bridge not active"),
     }
     status, detail = mapping.get(code, (400, code))
     return problem(status, code, detail)

@@ -104,11 +104,20 @@ import { ModelErrors } from './errors/modelErrors.ts'
 import { ToolErrors } from './errors/toolErrors.ts'
 import { createRequestClient, openStream, type RequestClient } from '@eap/request'
 import { createExpertAgentApi } from './expertAgent.ts'
+import { createPluginApi } from './plugins.ts'
 import { createTaskDescriptionApi } from './taskDescription.ts'
 import { createTaskDetailApi } from './taskDetail.ts'
 export { createTaskDetailApi, isTaskDetailFields } from './taskDetail.ts'
 export type { TaskDetailOptimizationRequest, TaskDetailOptimization } from './taskDetail'
 export { createTaskDescriptionApi } from './taskDescription.ts'
+export { createPluginApi } from './plugins.ts'
+export type {
+  PluginInstallItem,
+  PluginUiContribution,
+  PluginContributions,
+  PluginHostStatus,
+  PluginHostEnvelope,
+} from './plugins.ts'
 export type {
   TaskDescriptionOptimizationRequest,
   TaskDescriptionOptimization,
@@ -184,6 +193,7 @@ export const runtimeApi = {
   ...createExpertAgentApi(client),
   ...createTaskDescriptionApi(client),
   ...createTaskDetailApi(client),
+  ...createPluginApi(client),
   scenarios: () => get<{ items: ScenarioSnapshot[] }>('/scenarios'),
   scenarioWorkflowDependencies: (signal?: AbortSignal) =>
     client
