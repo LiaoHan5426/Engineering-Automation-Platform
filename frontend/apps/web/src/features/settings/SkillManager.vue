@@ -464,19 +464,23 @@ label,
   gap: 12px;
   min-width: 0;
 }
+
 section,
 section > div {
   min-width: 0;
 }
+
 code {
-  overflow-wrap: anywhere;
   word-break: break-all;
+  overflow-wrap: anywhere;
 }
+
 pre {
   max-width: 100%;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
+
 article {
   display: grid;
   gap: 8px;

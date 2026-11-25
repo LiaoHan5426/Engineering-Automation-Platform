@@ -272,10 +272,11 @@ label {
   gap: 12px;
   min-width: 0;
 }
+
 pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   max-height: 240px;
   overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 </style>

@@ -195,67 +195,81 @@ async function save() {
   display: grid;
   gap: 16px;
 }
+
 .model-catalog h2 {
   font-size: 18px;
 }
+
 .model-catalog p,
 .model-catalog .hint {
+  margin: 0;
   font-size: 12px;
   line-height: 1.7;
   color: var(--text-soft);
-  margin: 0;
 }
+
 .model-catalog > label {
   display: grid;
   gap: 6px;
 }
+
 .model-catalog input:not([type='checkbox']),
 .model-catalog select {
   min-width: 0;
 }
+
 .catalog-actions,
 .catalog-manual {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-  flex-wrap: wrap;
 }
+
 .catalog-manual input {
   flex: 1;
 }
+
 .catalog-actions span {
   font-size: 12px;
 }
+
 .catalog-models {
   max-height: min(280px, 42dvh);
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+
 .catalog-model {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
   padding: 12px;
   border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
 }
+
 .catalog-model label {
   display: inline-flex;
-  align-items: center;
   gap: 6px;
+  align-items: center;
   overflow-wrap: anywhere;
 }
+
 .catalog-model :deep(summary) {
   font-size: 12px;
 }
+
 .catalog-model details label {
   margin-right: 12px;
 }
-@media (max-width: 760px) {
+
+@media (width <= 760px) {
   .catalog-models {
     max-height: min(240px, 36dvh);
   }
+
   .catalog-model {
     padding: 10px;
   }

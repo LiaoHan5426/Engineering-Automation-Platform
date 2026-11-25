@@ -75,18 +75,19 @@ onBeforeUnmount(() => ticket++)
 <style scoped>
 .version-meta {
   font-size: 11px;
-  overflow-wrap: anywhere;
   color: var(--text-soft);
-}
-pre {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+pre {
   max-height: 320px;
-  overflow: auto;
-  color: var(--eap-code-text);
-  background: var(--eap-code-bg);
   padding: 12px;
-  border-radius: 8px;
+  overflow: auto;
   font-size: 11px;
+  color: var(--eap-code-text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: var(--eap-code-bg);
+  border-radius: 8px;
 }
 </style>

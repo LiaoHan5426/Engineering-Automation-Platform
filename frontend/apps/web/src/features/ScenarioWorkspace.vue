@@ -1092,195 +1092,229 @@ onMounted(() => {
 
 <style scoped>
 .scenario-workspace {
-  padding: 24px;
-  max-width: 1180px;
-  margin: auto;
   display: grid;
   gap: 16px;
+  max-width: 1180px;
+  padding: 24px;
+  margin: auto;
 }
+
 .scene-head,
 .draft-actions {
   display: flex;
-  justify-content: space-between;
   gap: 12px;
   align-items: start;
+  justify-content: space-between;
 }
+
 h1,
 h2,
 h3 {
   margin: 0;
 }
+
 .scene-tabs {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
 }
+
 .scene-catalog {
   display: grid;
   gap: 12px;
 }
+
 .scene-catalog-toolbar {
   display: flex;
   justify-content: flex-end;
 }
+
 .scene-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
+
 .workflow-section {
   display: grid;
   gap: 16px;
   min-width: 0;
 }
+
 .workflow-section > section {
   display: grid;
   gap: 12px;
   min-width: 0;
   padding: 16px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface);
 }
+
 .workflow-section :deep(.eap-button) {
   justify-self: start;
 }
+
 .workflow-section p {
   margin: 0;
   overflow-wrap: anywhere;
 }
+
 .scene-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 14px;
+  align-content: start;
   padding: 0;
   list-style: none;
-  align-content: start;
 }
+
 .scene-card {
   min-height: 168px;
 }
+
 .scene-card strong {
   font-size: 16px;
 }
+
 .scene-card span {
   font-size: 12px;
-  color: var(--text-soft);
   line-height: 1.55;
+  color: var(--text-soft);
 }
+
 button.scene-link {
   margin: 0;
 }
+
 button.scene-link:hover {
   text-decoration: underline;
 }
+
 button.scene-delete:disabled {
   text-decoration: none;
 }
+
 .scene-detail-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 10px;
+  align-items: center;
 }
+
 .scene-detail-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
+
 .scene-config {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
   margin: 0;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
   background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
 }
+
 .scene-config > label {
   display: grid;
   gap: 4px;
   font-size: 12px;
   color: var(--text-soft);
 }
+
 .scene-config :deep(.eap-input),
 .scene-config :deep(.eap-textarea),
 .scene-config :deep(.eap-select) {
   width: 100%;
   min-width: 0;
 }
+
 .scene-modes,
 .scene-policy-row {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-  margin: 0;
   padding: 10px 12px;
+  margin: 0;
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface-2);
 }
+
 .scene-modes label,
 .scene-policy-row label {
   display: flex;
-  align-items: center;
   gap: 6px;
+  align-items: center;
   font-size: 12px;
   color: var(--text-soft);
 }
+
 .scene-policy-row label {
   display: grid;
   gap: 4px;
 }
+
 .scene-policy-row select {
   width: 100%;
   min-width: 0;
   font: inherit;
   font-size: 12px;
 }
+
 .scene-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin: 0;
 }
+
 .scene-meta span {
   padding: 3px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-2);
   font-size: 11px;
   color: var(--text-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
 }
+
 .dep-banner {
   display: grid;
   gap: 8px;
   padding: 12px;
+  background: var(--warn-bg);
   border: 1px solid var(--eap-color-warning-border);
   border-radius: 10px;
-  background: var(--warn-bg);
 }
+
 .dep-banner p {
   margin: 0;
   font-size: 12px;
-  color: var(--warn-text);
   line-height: 1.55;
+  color: var(--warn-text);
 }
+
 .dep-banner-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
+
 .scene-detail {
   display: grid;
   gap: 10px;
   padding: 16px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: var(--surface);
 }
+
 .scenario-steps {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1288,6 +1322,7 @@ button.scene-delete:disabled {
   padding: 0;
   list-style: none;
 }
+
 .scenario-steps li,
 .gate {
   padding: 14px;
@@ -1295,6 +1330,7 @@ button.scene-delete:disabled {
   border: 1px solid var(--border);
   border-radius: 12px;
 }
+
 .scope-status {
   display: flex;
   flex-wrap: wrap;
@@ -1303,53 +1339,53 @@ button.scene-delete:disabled {
   font-size: 11px;
   color: var(--text-soft);
 }
+
 .scope-status span {
   padding: 3px 8px;
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--surface-2);
 }
+
 .dep-where {
   margin: 6px 0 0;
   font-size: 11px;
-  color: var(--text-soft);
   line-height: 1.5;
+  color: var(--text-soft);
 }
+
 small {
   display: block;
-  color: var(--text-soft);
   font-size: 11px;
+  color: var(--text-soft);
 }
-.scene-config {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-}
+
 .scene-config label {
   display: grid;
   gap: 7px;
   font-size: 12px;
 }
+
 .hint,
 p {
   line-height: 1.55;
 }
+
 .acceptance-checklist {
   display: grid;
   gap: 8px;
-  margin: 12px 0 0;
   padding: 12px;
+  margin: 12px 0 0;
+  background: var(--surface-2);
   border: 1px dashed var(--border-strong);
   border-radius: 10px;
-  background: var(--surface-2);
 }
+
 .acceptance-checklist legend {
-  font-size: 12px;
   padding: 0 4px;
+  font-size: 12px;
 }
+
 .acceptance-checklist label {
   display: flex;
   gap: 8px;
@@ -1357,24 +1393,29 @@ p {
   font-size: 12px;
   line-height: 1.5;
 }
+
 .acceptance-checklist input {
-  margin-top: 2px;
   flex-shrink: 0;
+  margin-top: 2px;
 }
-@media (max-width: 1000px) {
+
+@media (width <= 1000px) {
   .scene-layout,
   .scenario-steps {
     grid-template-columns: 1fr;
   }
 }
-@media (max-width: 760px) {
+
+@media (width <= 760px) {
   .scenario-workspace {
     padding: 12px;
   }
+
   .scene-head,
   .draft-actions {
     flex-wrap: wrap;
   }
+
   .scene-detail {
     padding: 12px;
   }

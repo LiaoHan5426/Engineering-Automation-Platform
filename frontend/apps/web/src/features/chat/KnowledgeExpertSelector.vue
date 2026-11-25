@@ -220,12 +220,13 @@ defineExpose({ show, close })
 <style scoped>
 .knowledge-selector {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
+  align-items: center;
 }
+
 pre {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 </style>

@@ -439,93 +439,109 @@ async function makeDefault(item: ModelConnection) {
 <style scoped>
 .model-settings-workspace {
   max-width: 1200px;
-  margin: auto;
   padding: 24px 32px;
+  margin: auto;
 }
+
 .model-pipeline {
   display: grid;
   gap: 6px;
-  margin: 0 0 8px;
   padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-3, var(--surface));
+  margin: 0 0 8px;
   font-size: 12px;
   line-height: 1.55;
   color: var(--text-soft);
+  background: var(--surface-3, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 10px;
 }
+
 .model-pipeline strong {
-  color: var(--text);
   font-size: 13px;
+  color: var(--text);
 }
+
 .model-overview {
   display: flex;
-  gap: 24px;
   flex-wrap: wrap;
+  gap: 24px;
   padding: 14px 0 22px;
-  color: var(--text-soft);
   font-size: 12px;
+  color: var(--text-soft);
 }
+
 .model-overview strong {
   margin-left: 8px;
   color: var(--text);
 }
+
 .connection-search {
   width: 100%;
   max-width: 340px;
   margin: 16px 0;
 }
+
 .connection-cards {
   display: grid;
   gap: 12px;
-  list-style: none;
   padding: 0;
+  list-style: none;
 }
+
 .connection-cards > li {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   padding: 16px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface);
 }
+
 .connection-identity {
   display: grid;
-  gap: 5px;
   flex: 1 1 220px;
+  gap: 5px;
   min-width: 0;
 }
+
 .connection-identity strong {
   font-size: 14px;
 }
+
 .connection-identity span,
 .connection-identity small {
   font-size: 11px;
   color: var(--text-soft);
   overflow-wrap: anywhere;
 }
+
 .model-settings-workspace :deep(.connection-settings-card) {
   padding: 20px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--surface);
 }
-@media (max-width: 760px) {
+
+@media (width <= 760px) {
   .model-settings-workspace {
     padding: 16px 12px;
   }
+
   .model-pipeline {
     padding: 10px 12px;
   }
+
   .connection-cards > li {
     padding: 12px;
   }
+
   .connection-cards :deep(button) {
     flex: 1 1 auto;
     min-width: 0;
   }
+
   .connection-dialog {
     width: calc(100vw - 16px);
     max-height: calc(100dvh - 24px);

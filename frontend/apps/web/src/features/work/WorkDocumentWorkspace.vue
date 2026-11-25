@@ -910,9 +910,9 @@ onMounted(() => {
 
 .wd-axes {
   margin: 0 0 8px;
-  color: var(--text-mute);
   font-size: 12px;
   line-height: 1.5;
+  color: var(--text-mute);
 }
 
 .wd-input-box {

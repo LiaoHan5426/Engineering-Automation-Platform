@@ -221,38 +221,44 @@ defineExpose({ refresh })
   gap: 12px;
   margin-block-end: 20px;
 }
+
 .dsh-plugins__install {
   display: grid;
   gap: 4px;
   margin: 0;
 }
+
 .dsh-plugins__install-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
+
 .dsh-plugins__install-row :deep(input) {
   flex: 1 1 16rem;
   min-width: 0;
 }
+
 .dsh-plugins__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
   gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
+
 .dsh-plugins__item {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
+  justify-content: space-between;
   padding: 16px;
   border: 1px solid var(--eap-line, var(--border));
   border-radius: 12px;
 }
+
 .dsh-plugins__meta,
 .dsh-plugins__actions {
   display: flex;
@@ -261,21 +267,25 @@ defineExpose({ refresh })
   align-items: center;
   min-width: 0;
 }
+
 .dsh-plugins__meta {
   flex-direction: column;
   align-items: flex-start;
 }
+
 .dsh-plugins__meta h4,
 .dsh-plugins__install h3,
 .dsh-plugins h3 {
   margin: 0;
 }
+
 .hint {
-  color: var(--eap-muted, #666);
-  font-size: 0.85rem;
   margin: 0;
+  font-size: 0.85rem;
+  color: var(--eap-muted, #666);
   overflow-wrap: anywhere;
 }
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -283,8 +293,8 @@ defineExpose({ refresh })
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+  clip: rect(0, 0, 0, 0);
 }
 </style>

@@ -1,4 +1,5 @@
 @import url('@eap/style/themes.css');
+
 /* Theme tokens + document base from @eap/style (must precede Tailwind rules). */
 @import url('@eap/style/base.css');
 /* stylelint-disable-next-line import-notation -- Tailwind v4 requires a bare string import. */
@@ -302,7 +303,7 @@ label.row {
 
 .ws {
   display: inline-flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -1269,22 +1270,22 @@ label.row {
 
 .eap-panel > header.cap-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content auto;
   grid-template-areas: 'title status tools';
+  grid-template-columns: minmax(0, 1fr) max-content auto;
   gap: 8px 16px;
   align-items: start;
   margin-bottom: 0;
 }
 
 .eap-panel > header.cap-head:not(:has(.cap-head__status)) {
-  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: 'title tools';
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .cap-head__main {
-  grid-area: title;
   display: flex;
   flex-direction: column;
+  grid-area: title;
   gap: 6px;
   min-width: 0;
 }
@@ -1298,8 +1299,8 @@ label.row {
 .eap-panel > header.cap-head .cap-head__main > p {
   max-width: none;
   margin: 0;
-  overflow-wrap: anywhere;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .eap-panel > header.cap-head .cap-head__main > p.cap-head__flags {
@@ -1347,8 +1348,8 @@ label.row {
 .trusted-tool-list {
   display: grid;
   gap: 10px;
-  margin: 12px 0 0;
   padding: 0;
+  margin: 12px 0 0;
   list-style: none;
 }
 
@@ -1358,9 +1359,9 @@ label.row {
   gap: 6px 8px;
   align-items: center;
   padding: 10px 12px;
+  background: var(--surface-2, var(--panel-bg));
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface-2, var(--panel-bg));
 }
 
 .trusted-tool-list > li > strong {
@@ -1385,8 +1386,8 @@ label.row {
 .mcp-matrix-list {
   display: grid;
   gap: 10px;
-  margin: 10px 0 0;
   padding: 0;
+  margin: 10px 0 0;
   list-style: none;
 }
 
@@ -1394,9 +1395,9 @@ label.row {
   display: grid;
   gap: 8px;
   padding: 12px 14px;
+  background: var(--surface-2, var(--panel-bg));
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface-2, var(--panel-bg));
 }
 
 .mcp-matrix-item__title {
@@ -1423,16 +1424,16 @@ label.row {
 }
 
 .trusted-git-result {
-  margin: 10px 0 0;
-  padding: 10px 12px;
-  overflow: auto;
   max-height: 240px;
+  padding: 10px 12px;
+  margin: 10px 0 0;
+  overflow: auto;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.55;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   color: var(--text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
   background: var(--surface-2, var(--panel-bg));
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1446,8 +1447,8 @@ label.row {
 }
 
 .trusted-git-result--collapse .trusted-git-result__body {
-  margin: 8px 0 0;
   max-height: 320px;
+  margin: 8px 0 0;
 }
 
 .cap-meta {
@@ -1558,17 +1559,6 @@ label.row {
   position: relative;
 }
 
-.ws {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.ws b {
-  font-weight: 600;
-  color: var(--text);
-}
-
 .ws .caret {
   font-size: 10px;
   color: var(--text-mute);
@@ -1629,8 +1619,8 @@ label.row {
 /* 状态条：原来占一整页的「概览」折在这里。四个数字与它们的口径都还在，但落地页是
    干活的地方——单人本机打开这个工具是为了给它一段 SQL，不是为了先看一遍计数。 */
 .status-strip {
-  margin: 0 0 16px;
   padding: 14px;
+  margin: 0 0 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1645,16 +1635,16 @@ label.row {
 }
 
 .status-more {
-  margin-top: 10px;
   padding-top: 10px;
+  margin-top: 10px;
   border-top: 1px solid var(--border);
 }
 
 .status-more > summary {
-  cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-mute);
+  cursor: pointer;
 }
 
 .status-more .why,
@@ -1686,9 +1676,9 @@ label.row {
 
 .studio-side-head {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
 .studio-side-head b {
@@ -1712,9 +1702,9 @@ label.row {
 
 .task-item {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
   width: 100%;
 }
 
@@ -1739,8 +1729,8 @@ label.row {
 .studio-main {
   display: flex;
   flex-direction: column;
-  min-width: 0;
   gap: 16px;
+  min-width: 0;
 }
 
 .studio-stream {
@@ -1753,8 +1743,8 @@ label.row {
 
 .stream-empty {
   padding: 40px 8px;
-  text-align: center;
   color: var(--text-soft);
+  text-align: center;
 }
 
 .stream-empty-title {
@@ -1773,9 +1763,9 @@ label.row {
 
 .stream-head {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
   gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
   margin: 20px 0 6px;
 }
 
@@ -1791,23 +1781,23 @@ label.row {
 }
 
 .composer-more {
-  margin-top: 10px;
   padding-top: 8px;
+  margin-top: 10px;
   border-top: 1px dashed var(--border);
 }
 
 .composer-more > summary {
-  cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-soft);
+  cursor: pointer;
 }
 
 .composer-bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 12px;
+  align-items: center;
   margin-top: 12px;
 }
 

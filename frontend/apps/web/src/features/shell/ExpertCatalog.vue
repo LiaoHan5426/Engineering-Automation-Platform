@@ -137,101 +137,118 @@ function add(id: string) {
   gap: 16px;
   padding: 8px 0 24px;
 }
+
 .expert-head {
   display: flex;
+  gap: 12px;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
 }
+
 h1 {
   margin: 0;
   font-size: 22px;
 }
+
 p {
-  color: var(--text-soft);
-  line-height: 1.6;
   margin: 0;
+  line-height: 1.6;
+  color: var(--text-soft);
 }
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: end;
 }
+
 .expert-search {
   display: grid;
   flex: 1;
   gap: 4px;
   min-width: 160px;
-  color: var(--text-soft);
   font-size: 12px;
+  color: var(--text-soft);
 }
+
 .category-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
+
 input {
   flex: 1;
   min-width: 160px;
   padding: 8px 10px;
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
-  background: var(--surface);
 }
+
 ul {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
-  margin: 0;
   padding: 0;
+  margin: 0;
   list-style: none;
 }
+
 .expert-card {
+  position: relative;
   display: grid;
   gap: 6px;
   padding: 14px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface);
-  position: relative;
 }
+
 .expert-card-head {
   display: flex;
+  gap: 8px;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
 }
+
 .expert-card p:nth-of-type(1) {
   font-size: 12px;
   color: var(--text-soft);
 }
+
 .expert-add {
   flex: 0 0 auto;
   width: 28px;
   height: 28px;
 }
+
 .expert-soon {
   flex: 0 0 auto;
+  padding: 4px 8px;
   font-size: 11px;
   color: var(--warn-text);
   background: var(--warn-bg);
   border: 1px solid var(--eap-color-warning-border);
   border-radius: 8px;
-  padding: 4px 8px;
 }
+
 h2 {
   margin: 0;
   font-size: 16px;
 }
-@media (max-width: 760px) {
+
+@media (width <= 760px) {
   h1 {
     font-size: 20px;
   }
+
   input {
-    min-width: 0;
     flex: 1 1 100%;
+    min-width: 0;
   }
+
   ul {
     grid-template-columns: 1fr;
   }

@@ -365,15 +365,15 @@ onDeactivated(() => {
 
 .expert-count {
   margin: 4px 0 0;
-  color: var(--eap-text-color-secondary);
   font-size: 12px;
+  color: var(--eap-text-color-secondary);
 }
 
 .expert-search {
   display: grid;
   gap: 4px;
-  color: var(--eap-text-color-secondary);
   font-size: 12px;
+  color: var(--eap-text-color-secondary);
 }
 
 .expert-cards {
@@ -386,71 +386,82 @@ onDeactivated(() => {
 .expert-gallery-card {
   min-height: 150px;
 }
+
 .expert-card-top {
   display: flex;
-  align-items: center;
   gap: 10px;
+  align-items: center;
 }
+
 .expert-card-avatar {
   display: inline-flex;
   flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
   align-items: center;
   justify-content: center;
-  border-radius: var(--eap-radius-md, 8px);
-  background: var(--eap-color-primary-soft);
-  color: var(--eap-color-primary);
+  width: 36px;
+  height: 36px;
   font-size: 15px;
   font-weight: 600;
+  color: var(--eap-color-primary);
+  background: var(--eap-color-primary-soft);
+  border-radius: var(--eap-radius-md, 8px);
 }
+
 .expert-gallery-card--success .expert-card-avatar {
-  background: var(--eap-color-success-soft);
   color: var(--eap-color-success);
+  background: var(--eap-color-success-soft);
 }
+
 .expert-gallery-card--warning .expert-card-avatar {
-  background: var(--eap-color-warning-soft);
   color: var(--eap-color-warning);
+  background: var(--eap-color-warning-soft);
 }
+
 .expert-gallery-card--error .expert-card-avatar {
-  background: var(--eap-color-danger-soft);
   color: var(--eap-color-danger);
+  background: var(--eap-color-danger-soft);
 }
+
 .expert-card-identity {
   display: grid;
   min-width: 0;
 }
+
 .expert-card-identity strong {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+
 .expert-card-identity small {
-  color: var(--eap-text-color-secondary);
   font-size: 10px;
-}
-.expert-card-desc {
   color: var(--eap-text-color-secondary);
+}
+
+.expert-card-desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
   font-size: 11px;
   line-height: 1.5;
+  color: var(--eap-text-color-secondary);
   overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-  overflow: hidden;
 }
+
 .expert-card-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
+
 .expert-card-tag {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--eap-fill-color-hover);
-  color: var(--eap-text-color-secondary);
   font-size: 10px;
+  color: var(--eap-text-color-secondary);
+  background: var(--eap-fill-color-hover);
+  border-radius: 999px;
 }
 
 .expert-cards p,

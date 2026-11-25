@@ -2232,66 +2232,77 @@ onMounted(async () => {
 
 <style scoped>
 .chat-connections {
-  border: 1px solid var(--border);
   padding: 14px 18px;
-  border-radius: 12px;
   margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
+
 .chat-connections > :deep(summary) {
-  cursor: pointer;
   font-weight: 600;
+  cursor: pointer;
 }
+
 .chat-log {
-  list-style: none;
-  padding: 0;
   display: grid;
   gap: 18px;
   max-width: 1100px;
+  padding: 0;
+  list-style: none;
 }
+
 .chat-log > li {
   padding: 18px 22px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 16px;
 }
+
 .chat-log > li > p {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
+
 .chat-log > li:has(> strong:first-child) {
   min-width: 0;
 }
+
 .chat-composer {
   display: grid;
   gap: 14px;
 }
+
 .chat-composer textarea {
   display: block;
   width: 100%;
   padding: 14px;
+  resize: vertical;
   border: 1px solid var(--border-strong);
   border-radius: 12px;
-  resize: vertical;
 }
+
 .code-proposal {
   display: grid;
   gap: 12px;
   margin: 16px 0;
 }
+
 .code-comparison {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+
 .code-comparison pre {
-  overflow: auto;
   max-height: 380px;
   padding: 12px;
-  background: var(--eap-code-bg);
+  overflow: auto;
   color: var(--eap-code-text);
+  background: var(--eap-code-bg);
   border-radius: 8px;
 }
-@media (max-width: 800px) {
+
+@media (width <= 800px) {
   .code-comparison {
     grid-template-columns: 1fr;
   }
@@ -2304,85 +2315,99 @@ onMounted(async () => {
   padding: 0;
   background: transparent;
 }
+
 .live-utilities {
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
-  align-items: stretch;
   gap: 0;
+  align-items: stretch;
+  min-width: 0;
   padding: 4px 24px 6px;
   margin: 0;
-  flex-shrink: 0;
   border-bottom: 1px solid var(--border);
-  min-width: 0;
 }
+
 .live-utilities__row {
   display: flex;
-  align-items: center;
   flex-wrap: nowrap;
   gap: 8px;
-  min-width: 0;
+  align-items: center;
   width: 100%;
-}
-.session-status {
   min-width: 0;
-  flex: 1 1 auto;
 }
+
+.session-status {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .session-status--notice .hint {
   display: inline-block;
   max-width: 100%;
   padding: 2px 8px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--warn-text, var(--text));
+  white-space: nowrap;
   background: var(--warn-bg, var(--surface-2));
   border-radius: 6px;
 }
+
 .session-tools {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
   flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
 }
+
 .session-tools__group {
   display: flex;
-  align-items: center;
   gap: 2px;
+  align-items: center;
 }
+
 .session-tools__sep {
   align-self: stretch;
   margin-block: 6px;
   border-inline-start: 1px solid var(--border);
 }
+
 .session-tools .shell-tool {
-  white-space: nowrap;
-  min-block-size: 2rem;
   min-inline-size: 2rem;
+  min-block-size: 2rem;
+  white-space: nowrap;
 }
+
 .session-tools .shell-tool:is([aria-pressed='true']) {
   box-shadow: inset 0 0 0 1px var(--eap-color-primary);
 }
+
 @media (pointer: coarse) {
   .session-tools .shell-tool {
-    min-block-size: 2.75rem;
     min-inline-size: 2.75rem;
+    min-block-size: 2.75rem;
   }
 }
-@media (max-width: 760px) {
+
+@media (width <= 760px) {
   .live-utilities {
-    padding: 8px 12px 10px;
     gap: 8px;
+    padding: 8px 12px 10px;
   }
+
   .live-utilities__row {
     flex-wrap: wrap;
   }
+
   .session-tools {
+    flex-wrap: wrap;
     max-width: 100%;
     margin-left: 0;
-    flex-wrap: wrap;
   }
 }
+
 .chat-main {
   display: flex;
   flex-direction: column;
@@ -2390,43 +2415,48 @@ onMounted(async () => {
   min-height: 0;
   overflow: hidden;
 }
+
 .session-rail {
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  border-left: 1px solid var(--border);
   background: var(--surface);
+  border-left: 1px solid var(--border);
 }
+
 .terminal-dock {
   flex: 0 0 auto;
-  max-height: min(280px, 36vh);
   min-height: 140px;
+  max-height: min(280px, 36vh);
   overflow: hidden;
-  border-top: 1px solid var(--border);
   background: var(--eap-code-bg);
+  border-top: 1px solid var(--border);
 }
-@media (max-width: 1000px) {
+
+@media (width <= 1000px) {
   .session-rail {
     position: fixed;
-    z-index: 30;
     top: 56px;
     right: 12px;
     bottom: 12px;
+    z-index: 30;
     width: min(340px, calc(100vw - 24px));
     border: 1px solid var(--border);
     border-radius: 16px;
     box-shadow: 0 12px 36px color-mix(in srgb, var(--text) 16%, transparent);
   }
 }
+
 .outgoing-preview {
   margin: 4px 0 2px;
   font-size: 12px;
   color: var(--text-soft);
 }
+
 .outgoing-preview > :deep(summary) {
   display: inline-flex;
-  align-items: center;
   gap: 6px;
+  align-items: center;
   width: auto;
   padding: 0;
   font-size: 12px;
@@ -2434,118 +2464,138 @@ onMounted(async () => {
   color: var(--accent);
   list-style: none;
 }
+
 .outgoing-preview > :deep(summary)::-webkit-details-marker {
   display: none;
 }
+
 .outgoing-preview > :deep(summary)::marker {
   content: none;
 }
+
 .outgoing-preview > :deep(summary)::before {
-  content: '▸';
-  color: var(--text-mute);
   font-size: 10px;
+  color: var(--text-mute);
+  content: '▸';
 }
+
 .outgoing-preview[open] {
-  padding: 8px 10px;
-  background: var(--surface-2);
-  border-radius: 10px;
   max-height: min(180px, 18vh);
+  padding: 8px 10px;
   overflow: auto;
   overscroll-behavior: contain;
+  background: var(--surface-2);
+  border-radius: 10px;
 }
+
 .outgoing-preview[open] > :deep(summary)::before {
   content: '▾';
 }
+
 .outgoing-preview p,
 .outgoing-preview ul {
   margin: 4px 0;
 }
+
 .outgoing-preview pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   max-height: 9em;
-  overflow: auto;
   margin: 6px 0;
+  overflow: auto;
   font: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
+
 .chat-feed {
   flex: 1;
   min-height: 0;
   overflow: auto;
 }
+
 .chat-feed > .hint {
-  font-size: 11px;
   margin: 4px 0;
+  font-size: 11px;
   color: var(--text-soft);
 }
+
 .catalog-fail {
-  margin: 6px 0 0;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--danger-bg);
-  border: 1px solid var(--danger-border);
+  margin: 6px 0 0;
   font-size: 12px;
+  font-weight: 600;
   line-height: 1.45;
   color: var(--danger);
-  font-weight: 600;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: 8px;
 }
+
 .chat-composer {
   display: block;
-  gap: 0;
   flex: 0 0 auto;
+  gap: 0;
   max-block-size: min(34dvh, 280px);
   overflow: auto;
-  overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
+
 .chat-composer:has(textarea.composer-draft:disabled) textarea,
 .chat-composer:has(textarea.composer-draft:disabled) :deep(.context-toolbar) {
   opacity: 0.5;
 }
+
 .chat-composer textarea {
-  border: 0;
-  background: transparent;
   min-block-size: 2.75rem;
   padding: 4px 2px;
   font-size: 14px;
   resize: vertical;
-}
-.chat-composer textarea.composer-draft:focus {
-  outline: none;
-  box-shadow: none;
+  background: transparent;
   border: 0;
 }
+
+.chat-composer textarea.composer-draft:focus {
+  outline: none;
+  border: 0;
+  box-shadow: none;
+}
+
 .chat-log {
   gap: 24px;
   max-width: none;
 }
+
 .turn-node {
   display: grid;
   gap: 10px;
   min-width: 0;
 }
+
 .turn-steps {
   display: grid;
   gap: 4px;
   margin: 0;
 }
+
 .turn-steps__label {
   margin: 0;
   font-size: 11px;
-  letter-spacing: 0.02em;
   color: var(--text-soft);
+  letter-spacing: 0.02em;
 }
+
 .turn-step {
+  padding-inline: 10px;
   margin: 0;
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface-2);
-  padding-inline: 10px;
 }
+
 .turn-step :deep(.eap-collapse__summary) {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   min-height: 28px;
   font-size: 12px;
   font-weight: 500;
@@ -2553,83 +2603,99 @@ onMounted(async () => {
   color: var(--text-soft);
   list-style: none;
 }
+
 .turn-step :deep(.eap-collapse__summary)::-webkit-details-marker {
   display: none;
 }
+
 .turn-step :deep(.eap-collapse__summary)::marker {
   content: none;
 }
+
 .turn-step :deep(.eap-collapse__summary)::before {
-  content: '▸';
-  color: var(--text-mute);
   font-size: 10px;
+  color: var(--text-mute);
+  content: '▸';
 }
+
 .turn-step[open] :deep(.eap-collapse__summary)::before {
   content: '▾';
 }
+
 .turn-body {
   min-width: 0;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 14px;
   padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
 }
+
 .turn-body .turn-answer {
-  line-height: 1.8;
   font-size: 14px;
+  line-height: 1.8;
   color: var(--text);
 }
+
 .turn-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
+
 .chat-log > li.turn-user,
 .chat-log > li.turn-assistant {
   min-width: 0;
 }
+
 .chat-log > li > strong {
   font-size: 11px;
   color: var(--text-soft);
 }
+
 .chat-log > li > p,
 .chat-log > li .turn-text {
-  line-height: 1.9;
   font-size: 14px;
+  line-height: 1.9;
 }
+
 /* Answers carry tables and code: they need the column, not intrinsic text width.
    User drafts keep content sizing and stay right-aligned. */
 .chat-log > li.turn-assistant {
-  width: 100%;
   justify-self: stretch;
-  border: 0;
-  background: transparent;
+  width: 100%;
   padding: 0;
+  background: transparent;
+  border: 0;
 }
+
 .jump-latest-anchor {
   position: relative;
   z-index: 2;
   height: 0;
 }
+
 .jump-latest {
   position: absolute;
   bottom: 10px;
   left: 50%;
-  transform: translateX(-50%);
   box-shadow: var(--eap-box-shadow-overlay);
+  transform: translateX(-50%);
 }
+
 .turn-meta {
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-soft);
 }
+
 .code-comparison > div:first-child pre {
-  background: var(--danger-bg);
   color: var(--danger);
+  background: var(--danger-bg);
 }
+
 .code-comparison > div:last-child pre {
-  background: var(--ok-bg);
   color: var(--ok);
+  background: var(--ok-bg);
 }
 </style>

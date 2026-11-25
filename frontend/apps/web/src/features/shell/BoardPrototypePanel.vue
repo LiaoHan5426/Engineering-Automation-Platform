@@ -200,24 +200,29 @@ onBeforeUnmount(() => {
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
+
 h3 {
   margin: 0;
   font-size: 14px;
 }
+
 label {
   display: grid;
   gap: 8px;
 }
+
 .board-prototype :deep(.eap-select) {
   max-width: 100%;
 }
+
 .board-prototype__actions {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
 }
+
 code {
-  overflow-wrap: anywhere;
   font-size: 11px;
+  overflow-wrap: anywhere;
 }
 </style>

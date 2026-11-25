@@ -210,59 +210,67 @@ onMounted(() => {
   min-width: 0;
   min-height: 0;
 }
+
 header {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
 }
+
 header strong {
   font-size: 13px;
   color: var(--text);
 }
+
 header button {
   margin-left: auto;
 }
+
 .repo-tree {
-  margin: 0;
-  padding: 0;
-  list-style: none;
   max-height: min(420px, 48vh);
+  padding: 0;
+  margin: 0;
   overflow: auto;
+  list-style: none;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface);
 }
+
 small {
   display: block;
-  overflow-wrap: anywhere;
+  margin: 8px 0;
   font-size: 10px;
   color: var(--text-mute);
-  margin: 8px 0;
-}
-pre {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
-  max-height: min(280px, 32vh);
-  overflow: auto;
-  background: var(--surface-2);
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 11px;
 }
+
+pre {
+  max-height: min(280px, 32vh);
+  padding: 12px;
+  overflow: auto;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
 .hint {
   margin: 0;
   font-size: 11px;
   line-height: 1.5;
   color: var(--text-mute);
 }
+
 [role='alert'] {
-  margin: 0;
   padding: 8px 10px;
-  border-radius: 8px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger);
   background: var(--danger-bg);
   border: 1px solid var(--danger-border);
-  color: var(--danger);
-  font-size: 12px;
+  border-radius: 8px;
 }
 </style>

@@ -220,9 +220,10 @@ defineExpose({ show, close })
 </template>
 <style scoped>
 pre {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
+
 label {
   display: block;
 }

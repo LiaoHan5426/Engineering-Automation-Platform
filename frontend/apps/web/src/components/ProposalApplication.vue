@@ -233,19 +233,22 @@ watch(writing, (value) => emit('pending', value), { flush: 'sync' })
   gap: 8px;
   min-width: 0;
 }
+
 .proposal-application__bar {
   display: flex;
-  align-items: center;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
+
 .proposal-application p,
 .proposal-application code {
   overflow-wrap: anywhere;
 }
+
 .proposal-application label {
   display: flex;
-  align-items: flex-start;
   gap: 6px;
+  align-items: flex-start;
 }
 </style>

@@ -240,8 +240,9 @@ ul {
 li {
   margin-block: 8px;
 }
+
 pre {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 </style>

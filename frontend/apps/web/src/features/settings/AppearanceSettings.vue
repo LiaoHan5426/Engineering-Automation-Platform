@@ -109,18 +109,21 @@ const split = computed({
   gap: 20px;
   width: 100%;
 }
+
 .appearance-field {
   display: grid;
   gap: 8px;
-  margin-block: 16px;
   max-width: 560px;
+  margin-block: 16px;
 }
+
 .appearance-preview {
   height: 140px;
   margin-block: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
 }
+
 .appearance-preview :deep(.eap-splitter__panel > div) {
   height: 100%;
   padding: 16px;

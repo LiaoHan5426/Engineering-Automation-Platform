@@ -24,6 +24,8 @@ export default {
     },
   ],
   rules: {
+    // Shared element endings (b, p, .hint) across unrelated parents trip this; DOM-unaware false positives.
+    'no-descending-specificity': null,
     // Vue SFC compiler directives are valid selector syntax, not unknown CSS pseudo classes.
     'selector-pseudo-class-no-unknown': [
       true,

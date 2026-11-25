@@ -1140,8 +1140,8 @@ async function loadVersions() {
 @media (pointer: coarse) {
   .context-toolbar > :deep(button),
   .composer-submit-controls > :deep(button) {
-    min-block-size: 2.75rem;
     min-inline-size: 2.75rem;
+    min-block-size: 2.75rem;
   }
 }
 
@@ -1202,10 +1202,12 @@ async function loadVersions() {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+  margin: 10px 0;
 }
 
 .model-picker {
   min-width: 0;
+  margin-left: 0;
 }
 
 .model-picker :deep(.eap-button) {
@@ -1283,9 +1285,9 @@ async function loadVersions() {
   min-width: 2.75rem;
   height: 32px;
   padding: 0 8px;
-  color: var(--text-mute);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  color: var(--text-mute);
 }
 
 .model-menu {
@@ -1350,10 +1352,6 @@ async function loadVersions() {
   width: 100%;
 }
 
-.context-chips {
-  margin: 10px 0;
-}
-
 .composer-search {
   width: 100%;
   padding: 8px;
@@ -1382,10 +1380,6 @@ async function loadVersions() {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.model-picker {
-  margin-left: 0;
 }
 
 .composer-add {

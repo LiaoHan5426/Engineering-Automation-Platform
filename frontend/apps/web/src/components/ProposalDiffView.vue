@@ -117,29 +117,34 @@ const newFileLabel = () => t('task.newFile')
   min-width: 0;
   min-height: 0;
 }
+
 .proposal-diff-monaco {
-  min-height: min(360px, 42vh);
   height: min(360px, 42vh);
+  min-height: min(360px, 42vh);
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
 }
+
 .proposal-diff-loading {
   font-size: 12px;
   color: var(--text-soft);
 }
+
 .proposal-diff-fallback pre {
-  font-size: 11px;
-  white-space: pre-wrap;
-  background: var(--danger-bg);
-  color: var(--danger);
   max-height: min(280px, 32vh);
   overflow: auto;
+  font-size: 11px;
+  color: var(--danger);
+  white-space: pre-wrap;
+  background: var(--danger-bg);
 }
+
 .proposal-diff-fallback pre.added {
-  background: var(--ok-bg);
   color: var(--ok);
+  background: var(--ok-bg);
 }
+
 .hint {
   margin: 0;
   font-size: 11px;

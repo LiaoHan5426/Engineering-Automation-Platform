@@ -10,11 +10,13 @@
 
   --eap-color-white: #fff;
   --eap-color-on-primary: #fff;
+
   /* Accent: indigo */
   --eap-color-primary: #6e7ae8;
   --eap-color-primary-hover: #8a94ee;
   --eap-color-primary-soft: #222545;
   --eap-color-primary-focus: #8a94ee;
+
   /* Semantic status colours */
   --eap-color-success: #3fb99c;
   --eap-color-success-soft: #12332c;
@@ -29,11 +31,13 @@
   --eap-color-info-soft: #222545;
   --eap-color-neutral: #a1a1ab;
   --eap-color-neutral-soft: #22232a;
+
   /* Text: neutral greys (no blue cast) */
   --eap-text-color-primary: #f2f3f5;
   --eap-text-color-regular: #c9cad1;
   --eap-text-color-secondary: #a1a1ab;
   --eap-text-color-placeholder: #6b6d78;
+
   /* Surfaces: neutral near-black */
   --eap-bg-color: #0f1013;
   --eap-fill-color-blank: #191a1f;
@@ -45,6 +49,7 @@
   --eap-border-color-strong: #3a3b45;
   --eap-box-shadow: 0 1px 2px rgb(0 0 0 / 40%);
   --eap-box-shadow-overlay: 0 10px 36px rgb(0 0 0 / 50%);
+
   /* Activity rail is the darkest surface */
   --eap-rail-color: #0a0b0d;
   --eap-rail-text: #a1a1ab;

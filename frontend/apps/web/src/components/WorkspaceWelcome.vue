@@ -139,22 +139,26 @@ function toggleExpert(id: string) {
 .preview-scene-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 }
+
 .preview-scene-grid > button {
-  min-width: 0;
   grid-template-columns: 24px minmax(0, 1fr) auto;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
+
 .preview-scene-grid > button > * {
   min-width: 0;
 }
+
 .welcome-section-head {
   flex-wrap: wrap;
   gap: 8px;
 }
+
 .preview-welcome .expert-pills > button {
   min-width: 0;
   max-width: 100%;
-  white-space: normal;
   overflow-wrap: anywhere;
+  white-space: normal;
 }
 </style>

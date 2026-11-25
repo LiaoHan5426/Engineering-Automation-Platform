@@ -314,38 +314,44 @@ onBeforeUnmount(() => {
   gap: 12px;
   min-width: 0;
 }
+
 .verification__actions {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
 }
+
 .verification p,
 .verification code,
 .verification li {
   overflow-wrap: anywhere;
 }
+
 .verification code {
   font-size: 11px;
 }
+
 .verification h3 {
-  font-size: 14px;
   margin: 0;
+  font-size: 14px;
 }
+
 .verification__check {
   display: grid;
   gap: 8px;
-  border-top: 1px solid var(--border);
   padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
+
 .verification pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   max-height: 320px;
-  overflow: auto;
-  background: var(--eap-code-bg);
-  color: var(--eap-code-text);
   padding: 12px;
-  border-radius: 8px;
+  overflow: auto;
   font-size: 11px;
+  color: var(--eap-code-text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: var(--eap-code-bg);
+  border-radius: 8px;
 }
 </style>

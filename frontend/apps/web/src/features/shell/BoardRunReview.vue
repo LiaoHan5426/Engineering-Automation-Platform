@@ -176,34 +176,39 @@ onBeforeUnmount(() => {
 <style scoped>
 .review-actions {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
 }
+
 .review-evidence {
   display: grid;
   gap: 10px;
   min-width: 0;
 }
+
 .review-path,
 code {
   overflow-wrap: anywhere;
 }
+
 code {
   font-size: 11px;
 }
+
 pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   max-height: 360px;
-  overflow: auto;
-  background: var(--eap-code-bg);
-  color: var(--eap-code-text);
   padding: 12px;
-  border-radius: 8px;
+  overflow: auto;
   font-size: 11px;
+  color: var(--eap-code-text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: var(--eap-code-bg);
+  border-radius: 8px;
 }
+
 h3 {
-  font-size: 14px;
   margin: 0;
+  font-size: 14px;
 }
 </style>

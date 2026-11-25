@@ -138,34 +138,39 @@ defineExpose({ start })
 <style scoped>
 .chatgpt-account-card {
   padding: 22px;
+  margin-bottom: 24px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--surface);
-  margin-bottom: 24px;
 }
+
 .chatgpt-account-card h2 {
-  font-size: 18px;
   margin-bottom: 8px;
+  font-size: 18px;
 }
+
 .chatgpt-account-card p {
+  margin-bottom: 14px;
   font-size: 13px;
   line-height: 1.7;
-  margin-bottom: 14px;
   color: var(--text-soft);
 }
+
 .authorization-pending {
-  margin-top: 16px;
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
+  gap: 12px;
   align-items: center;
+  margin-top: 16px;
 }
+
 .authorization-pending p {
   flex-basis: 100%;
   margin: 0;
 }
+
 .authorization-pending a {
-  color: var(--accent);
   font-size: 13px;
+  color: var(--accent);
 }
 </style>

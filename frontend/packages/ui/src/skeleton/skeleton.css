@@ -5,6 +5,7 @@
   background: var(--eap-fill-color);
   border-radius: var(--eap-border-radius-sm);
 }
+
 .eap-skeleton--animated {
   animation: eap-skeleton-pulse 1.5s ease-in-out infinite alternate;
 }
