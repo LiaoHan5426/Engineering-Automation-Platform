@@ -1,14 +1,12 @@
 // @vitest-environment happy-dom
 /**
- * Production seat is real ui-sidebar-right.apply (see boot.cordis.test.ts).
- * Legacy host helpers remain only as deprecated re-exports — this file keeps
- * a smoke check that guide contract attrs still exist on the DSH seat surface.
+ * The right column is a shell outlet. A DSH guide attribute is not part of boot.
  */
 import { describe, expect, it } from 'vite-plus/test'
+import { CLIENT_PACKAGE_APPLY } from '../src/client/assembly.ts'
 
 describe('sidebar-right contract', () => {
-  it('documents acceptance selectors for the real DSH seat', () => {
-    expect('data-sidebar-right-guide').toBeTruthy()
-    expect('data-sidebar-right-tab-body').toBeTruthy()
+  it('does not apply a dsh client package from the shell', () => {
+    expect(CLIENT_PACKAGE_APPLY).toEqual([])
   })
 })

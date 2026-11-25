@@ -28,10 +28,11 @@ describe('plugin prototype store', () => {
   it('maps the five prototype area hashes onto a landing view', () => {
     // Ardot five-entry shell: #code / #work / #scenes / #experts / #settings.
     expect(resolveAreaView('code')).toBe('chat')
-    expect(resolveAreaView('settings')).toBe('settings')
+    expect(resolveAreaView('settings')).toBe('model-settings')
     expect(resolveAreaView('work')).toBe('work')
     expect(resolveAreaView('scenes')).toBe('scenes')
     expect(resolveAreaView('experts')).toBe('experts')
+    expect(resolveAreaView('expert-catalog')).toBe('experts')
     // Canonical view hashes and unrelated values pass through unchanged.
     expect(resolveAreaView('chat')).toBe('chat')
     expect(resolveAreaView('rules')).toBe('rules')

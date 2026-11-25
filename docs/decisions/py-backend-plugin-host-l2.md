@@ -1,7 +1,7 @@
 # Decision: py-backend L2 plugin host (DSH-better-sidebar, control stays on server)
 
 **Date:** 2026-11-24  
-**Status:** Accepted for this slice  
+**Status:** Accepted for this slice, with one correction on 2026-11-25: loading `ui-sidebar-right` was a DSH plugin test, not a confirmed seat owner. The shell declares those seats. Boot does not apply that package.  
 **Fixture:** `dsh-better-sidebar@0.31.1` (real npm/DSH package; no hand-rolled demo plugin)
 
 ## Context
@@ -14,7 +14,7 @@ Frontend plugin UI is assembled the **same way as [dsh-personal](../../dsh-perso
 
 1. **Package contract = DSH shape** (`package.json` `dsh.bundle` / `dsh.client`, `cordis.patch.yml`, `exports["./client"]`). No parallel EAP-only demo plugin for acceptance.
 2. **Authority on py-backend:** install, enable/disable, Host JSON/WS APIs (`/sidebar/api/*` and equivalents), agent/tool registration, session-authoritative state.
-3. **Cordis Client (browser) follows dsh-personal:** PLATFORM libs (`ui-slots` / `ui-dockkit` — **not** Cordis `apply`) + Cordis plugins **`ui-renderer.apply` → slots** and **`ui-sidebar-right.apply` → RightbarSeat** (no hand-rolled seat). Plugin `./client` loads after. Remotes use DSH namespaces `session` / `settings` / `workspaceFiles` (EAP maps file ops to Host `fs.*`) → py-backend. Forbidden: install/enable, tool handlers, agent loop, forging Host success in-browser.
+3. **Client (browser):** the Vue shell owns the plugin context and the slot registry, and declares the seat catalog. Cordis, `ui-renderer`, and `ui-sidebar-right` are not loaded. Plugin `./client` loads after the shell. Remotes use DSH namespaces `session` / `settings` / `workspaceFiles` (EAP maps file ops to Host `fs.*`) → py-backend. Forbidden: install/enable, tool handlers, agent loop, forging Host success in-browser.
 4. **No EAP profile:** do not add `profiles/`, profile ids, or a Cordis “profile” identity beside workspace. Workspace authority = `Settings.workspace_root` + Host `session.cwd` (aligned with dsh-personal working directory).
 5. **Host bridge:** in-process bridge and/or Node sidecar supervised by py-backend; FastAPI is the gateway. Not “Host logic in the Cordis island.”
 6. **`@eap/runtime-client`:** Plugin management + Host API clients (baseUrl → py-backend). Does **not** execute Agent.
@@ -39,7 +39,7 @@ Frontend plugin UI is assembled the **same way as [dsh-personal](../../dsh-perso
 | `/sidebar/api/*`, uploads, Host WS | py-backend Host bridge |
 | Agent tools (`sidebar_open`, …) | py-backend Chat/tools |
 | Workspace / cwd | py-backend settings + Host `session.cwd` |
-| Client UI render (slots, right sidebar seat) | Cordis Client assembly (dsh-personal-style packages) |
+| Client UI render (slots, right sidebar seat) | Vue shell seat catalog and `slotRegistry.ts` |
 | Shell triad chat/builder/board enable | unchanged localStorage this slice |
 | EAP profile | **Forbidden** — do not create |
 

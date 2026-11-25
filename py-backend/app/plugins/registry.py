@@ -25,7 +25,7 @@ class PluginRegistry:
         self._engine = engine
         self._settings.ensure_layout()
 
-    def install_from_path(self, source: Path) -> dict[str, Any]:
+    def install_from_path(self, source: Path, *, spec: str) -> dict[str, Any]:
         info = read_dsh_package(source)
         dest = self._settings.plugins_root / info.name / info.version
         if dest.exists():
@@ -33,6 +33,7 @@ class PluginRegistry:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(source, dest)
         installed = read_dsh_package(dest)
+        enabled = False
         with Session(self._engine) as session:
             row = session.get(PluginInstallRow, installed.name)
             if row is None:
@@ -43,16 +44,19 @@ class PluginRegistry:
                     install_path=str(dest),
                     client_entry=installed.client_entry,
                     package_json=json.dumps(installed.package_json, ensure_ascii=False),
+                    install_spec=spec,
                 )
                 session.add(row)
             else:
+                enabled = row.enabled
                 row.version = installed.version
                 row.install_path = str(dest)
                 row.client_entry = installed.client_entry
                 row.package_json = json.dumps(installed.package_json, ensure_ascii=False)
+                row.install_spec = spec
                 row.updated_at = _now()
             session.commit()
-        return self._public(installed, enabled=False)
+        return self._public(installed, enabled=enabled, spec=spec)
 
     def list_plugins(self) -> dict[str, Any]:
         with Session(self._engine) as session:
@@ -70,10 +74,12 @@ class PluginRegistry:
                         "broken": True,
                         "description": "",
                         "clientEntry": row.client_entry,
+                        "installSpec": row.install_spec,
+                        "controlPlane": "py-backend",
                     }
                 )
                 continue
-            items.append(self._public(info, enabled=row.enabled))
+            items.append(self._public(info, enabled=row.enabled, spec=row.install_spec))
         return {"items": items}
 
     def get(self, name: str) -> PluginInstallRow | None:
@@ -94,9 +100,40 @@ class PluginRegistry:
             info = read_dsh_package(Path(row.install_path))
             row.enabled = enabled
             row.updated_at = _now()
+            spec = row.install_spec
             session.add(row)
             session.commit()
-            return self._public(info, enabled=enabled)
+            return self._public(info, enabled=enabled, spec=spec)
+
+    def uninstall(self, name: str) -> None:
+        with Session(self._engine) as session:
+            row = session.get(PluginInstallRow, name)
+            if row is None:
+                raise LookupError("UNKNOWN_PLUGIN")
+            install_path = row.install_path
+            session.delete(row)
+            session.commit()
+        self._remove_install_tree(install_path, name)
+
+    def install_spec_of(self, name: str) -> str:
+        with Session(self._engine) as session:
+            row = session.get(PluginInstallRow, name)
+            if row is None:
+                raise LookupError("UNKNOWN_PLUGIN")
+            return row.install_spec
+
+    def _remove_install_tree(self, install_path: str, name: str) -> None:
+        root = self._settings.plugins_root.resolve()
+        target = Path(install_path).resolve()
+        if root not in target.parents:
+            return
+        name_dir = (root / name).resolve()
+        if name_dir != root and root in name_dir.parents and (name_dir == target or name_dir in target.parents):
+            if name_dir.is_dir():
+                shutil.rmtree(name_dir)
+                return
+        if target.is_dir():
+            shutil.rmtree(target)
 
     def contributions(self) -> dict[str, Any]:
         with Session(self._engine) as session:
@@ -142,13 +179,14 @@ class PluginRegistry:
         return read_dsh_package(install_path)
 
     @staticmethod
-    def _public(info: DshPackageInfo, *, enabled: bool) -> dict[str, Any]:
+    def _public(info: DshPackageInfo, *, enabled: bool, spec: str) -> dict[str, Any]:
         return {
             "name": info.name,
             "version": info.version,
             "description": info.description,
             "enabled": enabled,
             "broken": False,
+            "installSpec": spec,
             "clientEntry": info.client_entry,
             "inject": list(info.inject),
             "hasBundlePatch": info.has_bundle_patch,

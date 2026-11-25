@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -9,6 +8,8 @@ from fastapi.responses import FileResponse
 from app.api.problem import problem, problem_from_code
 from app.plugins.dsh_package import DshPackageError
 from app.plugins.host_bridge import PluginHostBridge
+from app.plugins.install_spec import InvalidInstallSpecError
+from app.plugins.installer import InstallFetchError, install_from_spec
 from app.plugins.registry import PluginRegistry
 
 router = APIRouter(prefix="/plugins", tags=["plugins"])
@@ -30,11 +31,13 @@ def list_plugins(request: Request) -> dict[str, Any]:
 @router.post("/install")
 async def install_plugin(request: Request):
     body = await request.json()
-    source = Path(str(body.get("sourcePath") or "")).expanduser()
-    if not source.is_dir():
-        return problem(400, "INVALID_INSTALL_SOURCE", "sourcePath must be a package directory")
+    raw = str(body.get("spec") or body.get("sourcePath") or "")
     try:
-        item = _registry(request).install_from_path(source)
+        item = install_from_spec(_registry(request), raw)
+    except InvalidInstallSpecError as exc:
+        return problem(400, "INVALID_INSTALL_SPEC", exc.reason)
+    except InstallFetchError as exc:
+        return problem(400, exc.code, str(exc))
     except DshPackageError as exc:
         return problem(400, str(exc), "not a DSH web client package")
     _bridge(request).sync_enabled()
@@ -61,6 +64,37 @@ def disable_plugin(name: str, request: Request):
         return problem_from_code("UNKNOWN_PLUGIN")
     _bridge(request).sync_enabled()
     return item
+
+
+@router.post("/{name}/update")
+def update_plugin(name: str, request: Request):
+    registry = _registry(request)
+    try:
+        spec = registry.install_spec_of(name)
+    except LookupError:
+        return problem_from_code("UNKNOWN_PLUGIN")
+    if not spec.strip():
+        return problem(409, "INSTALL_SPEC_MISSING", "plugin has no recorded install spec")
+    try:
+        item = install_from_spec(registry, spec)
+    except InvalidInstallSpecError as exc:
+        return problem(400, "INVALID_INSTALL_SPEC", exc.reason)
+    except InstallFetchError as exc:
+        return problem(400, exc.code, str(exc))
+    except DshPackageError as exc:
+        return problem(400, str(exc), "not a DSH web client package")
+    _bridge(request).sync_enabled()
+    return item
+
+
+@router.post("/{name}/uninstall")
+def uninstall_plugin(name: str, request: Request):
+    try:
+        _registry(request).uninstall(name)
+    except LookupError:
+        return problem_from_code("UNKNOWN_PLUGIN")
+    _bridge(request).sync_enabled()
+    return {"name": name, "removed": True}
 
 
 @router.get("/contributions")

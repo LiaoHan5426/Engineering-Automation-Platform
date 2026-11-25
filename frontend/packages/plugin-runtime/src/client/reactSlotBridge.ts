@@ -20,6 +20,7 @@ import {
   type Component,
   type Ref,
 } from 'vue'
+import { translateRenderSlot } from './layoutNames'
 
 function isLikelyVueComponent(component: unknown): boolean {
   if (!component || (typeof component !== 'object' && typeof component !== 'function')) {
@@ -34,7 +35,7 @@ function isLikelyVueComponent(component: unknown): boolean {
   )
 }
 
-function isReactComponent(component: unknown): boolean {
+export function isReactComponent(component: unknown): boolean {
   if (typeof component !== 'function') return false
   if (isLikelyVueComponent(component)) return false
   return true
@@ -49,7 +50,11 @@ function unwrapMaybeRef<T>(value: T | Ref<T>): T {
  * better-sidebar NativeTabBody (`useTabInfo()` → plain snapshot with `.tab`).
  */
 function adaptPropsForReact(raw: Record<string, unknown>): Record<string, unknown> {
-  const next: Record<string, unknown> = { ...raw }
+  const next: Record<string, unknown> = {
+    ...raw,
+    renderSlot: translateRenderSlot(raw.renderSlot as never),
+    renderSlotChain: translateRenderSlot(raw.renderSlotChain as never),
+  }
   const useTabInfo = raw.useTabInfo
   if (typeof useTabInfo === 'function') {
     next.useTabInfo = () => {

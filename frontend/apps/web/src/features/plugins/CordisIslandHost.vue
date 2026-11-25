@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * Vue shell sync island for Cordis Client contributions.
- * Right-column geometry is `#eap-cordis-sidebar-right` in App body;
- * guide/tabs are rendered by ui-sidebar-right seat — not here.
+ * Right-column geometry is `#eap-cordis-sidebar-right` in App body.
+ * The shell renders that outlet. This host only syncs plugin clients.
  * Enable/disable stays on py-backend. No EAP profile.
  */
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'

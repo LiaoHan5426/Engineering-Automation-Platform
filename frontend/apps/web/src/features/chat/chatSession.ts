@@ -442,6 +442,11 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     }
   }
 
+  function markUnreachable() {
+    status.value = null
+    phase.value = 'offline'
+  }
+
   function rememberScratch() {
     if (!conversationId.value && !restoringSelection)
       scratch = { draft: draft.value, context: JSON.parse(JSON.stringify(context.value)) }
@@ -1345,6 +1350,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     lastContextBudget,
     sending,
     refreshStatus,
+    markUnreachable,
     restoreLastConversation,
     openConversation,
     beginDraft,

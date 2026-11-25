@@ -11,7 +11,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { runtimeApi } from '@eap/runtime-client'
-import { Tag, Button, Icon, Input, Feedback, EmptyState, Textarea, Tabs, RichText } from '@eap/ui'
+import { Button, Icon, Input, Feedback, EmptyState, Textarea, Tabs, RichText } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
 import { chatBinding, workbench } from '../shell/workbench'
 import { downloadMarkdownFile } from './documentExport'
@@ -349,7 +349,11 @@ onMounted(() => {
             {{ t('workDocument.tabOutline') }}</small
           >
         </div>
-        <span class="wd-status" :data-save-state="saving ? 'saving' : dirty ? 'dirty' : 'saved'">
+        <span
+          v-if="activeDoc"
+          class="wd-status"
+          :data-save-state="saving ? 'saving' : dirty ? 'dirty' : 'saved'"
+        >
           <span class="wd-status-dot" aria-hidden="true"></span>
           {{
             saving
@@ -428,15 +432,11 @@ onMounted(() => {
       </section>
 
       <section class="wd-composer">
-        <div class="wd-axes" data-testid="workdoc-axes">
-          <Tag
-            v-for="axis in composerAxes"
-            :key="axis.key"
-            size="sm"
-            :type="axis.tone === 'warning' ? 'warning' : 'info'"
-            >{{ axis.label }}</Tag
+        <p class="wd-axes" data-testid="workdoc-axes">
+          <span v-for="(axis, index) in composerAxes" :key="axis.key"
+            ><template v-if="index"> · </template>{{ axis.label }}</span
           >
-        </div>
+        </p>
         <div class="wd-input-box">
           <Input
             v-model="composerDraft"
@@ -909,10 +909,10 @@ onMounted(() => {
 }
 
 .wd-axes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+  margin: 0 0 8px;
+  color: var(--text-mute);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .wd-input-box {

@@ -9,7 +9,7 @@
 - **测试目录**：包根 `__tests__/`（与 `src/` 同级）；禁止在 `src` 散放 `*.test.*`。规范见 [`docs/decisions/frontend-test-layout.md`](../docs/decisions/frontend-test-layout.md)；资产收敛见 [`docs/decisions/test-asset-convergence.md`](../docs/decisions/test-asset-convergence.md)。
 - **包边界**：只依赖已声明包的公开 `exports`；检查在 `frontend/scripts/vsh`。新增检查先补本包测试；不用忽略名单掩盖违规。
 - Mock 只在 `apps/backend-mock`；生产 `src` 不得导入该包或按模拟环境分支。
-- `@eap/request` 无业务端点/默认鉴权地址；业务 DTO/错误/SSE/PluginApi 在 `@eap/runtime-client`（插件启停与 Host API 仍只打 py-backend）。`@eap/plugin-runtime` 用真实 dsh-personal：PLATFORM 库（ui-slots/dockkit）+ **`ui-renderer` / `ui-sidebar-right` 的 Cordis `apply`**（禁止自绘 seat）；插件 `./client` 其后加载。工作区权威是 py-backend `workspace_root` + Host `session.cwd`，**禁止** EAP Cordis profile。Remotes：`session`/`settings`/`workspaceFiles`（fs.* 映射）只代理 py-backend。Vue 壳只让列（`#eap-cordis-sidebar-right`）+ sync。页面禁止 `Button variant="custom"`、用原生元素假装控件、硬编码宿主色。
+- `@eap/request` 无业务端点/默认鉴权地址；业务 DTO/错误/SSE/PluginApi 在 `@eap/runtime-client`（插件启停与 Host API 仍只打 py-backend）。`@eap/plugin-runtime` 的上下文在 `shellContext.ts`，座位注册表在 `slotRegistry.ts`，由壳声明。不加载 Cordis、`ui-renderer`、`ui-sidebar-right`。插件 `./client` 在壳声明之后加载。工作区权威是 py-backend `workspace_root` + Host `session.cwd`，**禁止** EAP Cordis profile。Remotes：`session`/`settings`/`workspaceFiles`（fs.* 映射）只代理 py-backend。Vue 壳只让列（`#eap-cordis-sidebar-right`）+ sync。页面禁止 `Button variant="custom"`、用原生元素假装控件、硬编码宿主色。
 - 跨路由交付须核对真实宿主路由与资源加载；禁止凭页面名猜 URL。
 
 ## 验证（按 §3.6，不默认全跑）

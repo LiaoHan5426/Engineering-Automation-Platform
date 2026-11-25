@@ -47,13 +47,17 @@ const split = computed({
           <option value="default">{{ t('appearance.default') }}</option></Select
         ></label
       >
-      <Segmented
-        data-testid="appearance-density"
-        :label="t('appearance.density')"
-        :options="choices(['comfortable', 'compact'])"
-        :model-value="appearance.density"
-        @update:model-value="update('density', $event)"
-      />
+      <div class="appearance-field">
+        <span id="appearance-density-label">{{ t('appearance.density') }}</span>
+        <Segmented
+          data-testid="appearance-density"
+          aria-labelledby="appearance-density-label"
+          :label="t('appearance.density')"
+          :options="choices(['comfortable', 'compact'])"
+          :model-value="appearance.density"
+          @update:model-value="update('density', $event)"
+        />
+      </div>
     </Panel>
     <Panel :title="t('appearance.preview')">
       <label

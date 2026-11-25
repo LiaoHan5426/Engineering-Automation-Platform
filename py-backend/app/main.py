@@ -6,17 +6,21 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.catalog import router as catalog_router
 from app.api.connections import router as connections_router
 from app.api.conversations import router as conversations_router
+from app.api.git_executions import router as git_executions_router
 from app.api.plugins import router as plugins_router
 from app.api.problem import unhandled_error_handler
 from app.api.sidebar_gateway import router as sidebar_gateway_router
 from app.config import Settings, get_settings
+from app.catalog.service import CatalogService
 from app.persistence.connections import ConnectionStore
 from app.persistence.db import init_db, make_engine
 from app.persistence.execution_journal import ExecutionJournal
 from app.plugins.host_bridge import PluginHostBridge
 from app.plugins.registry import PluginRegistry
+from app.services.git_executions import GitExecutionService
 from app.services.chat_service import ChatService
 from app.services.tools.registry import CapabilityRegistry
 
@@ -47,6 +51,8 @@ def create_app(
         app.state.engine = engine
         app.state.journal = journal
         app.state.connections = connections
+        app.state.catalog = CatalogService(engine)
+        app.state.git_executions = GitExecutionService(settings.workspace_root)
         app.state.plugin_registry = plugin_registry
         app.state.plugin_host_bridge = plugin_host_bridge
         app.state.chat_service = ChatService(
@@ -55,6 +61,7 @@ def create_app(
             journal=journal,
             connections=connections,
             tools=tools,
+            catalog=app.state.catalog,
             offline_reply=offline_reply,
         )
 
@@ -84,10 +91,13 @@ def create_app(
     def health():
         return {
             "status": "ok",
+            "service": "py-backend",
             "host": "py-backend",
             "db": str(settings.db_path),
         }
 
+    app.include_router(catalog_router, prefix="/api")
+    app.include_router(git_executions_router, prefix="/api")
     app.include_router(conversations_router, prefix="/api")
     app.include_router(connections_router, prefix="/api")
     app.include_router(plugins_router, prefix="/api")

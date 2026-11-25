@@ -22,6 +22,7 @@ import {
   IconFolder,
   IconRefreshCw,
   IconLoaderCircle,
+  IconPanelRight,
 } from '@eap/icons'
 
 /** Bounded local catalog; no remote names or dynamic imports. */
@@ -49,5 +50,6 @@ export const iconComponents = {
   folder: IconFolder,
   'refresh-cw': IconRefreshCw,
   'loader-circle': IconLoaderCircle,
+  'panel-right': IconPanelRight,
 } as const
 export type IconName = keyof typeof iconComponents

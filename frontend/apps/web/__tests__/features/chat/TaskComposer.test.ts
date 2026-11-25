@@ -49,7 +49,7 @@ async function mount() {
   return context
 }
 describe('engineering task composer', () => {
-  it('shows the prototype selection axes from real composer state', async () => {
+  it('shows execution, approval, model, and files on the composer controls', async () => {
     workbench.executionMode = 'plan'
     const context = ref<TaskContext>({
       ...empty(),
@@ -73,20 +73,15 @@ describe('engineering task composer', () => {
     })
     app.use(i18n).mount(element)
     await nextTick()
-    const axes = element.querySelector('[data-testid=composer-selection-axes]')
-    expect(axes).not.toBeNull()
-    const text = axes?.textContent ?? ''
-    expect(text).toContain('引用 1 个文件')
-    expect(text).toContain('规划模式')
-    expect(text).toContain('只读')
-    expect(text).toContain('demo-model')
-    expect(text).toContain('最大')
+    expect(element.querySelector('[data-testid=composer-selection-axes]')).toBeNull()
+    expect(element.querySelector('[data-testid=execution-mode]')?.textContent).toContain('规划')
+    expect(element.querySelector('[data-testid=approval-policy]')?.textContent).toContain('只读')
+    expect(element.querySelector('[data-testid=model-picker]')?.textContent).toContain('demo-model')
+    expect(element.textContent).toContain('selection.ts')
 
     context.value = { ...context.value, files: [] }
     await nextTick()
-    expect(element.querySelector('[data-testid=composer-selection-axes]')?.textContent).toContain(
-      '引用 0 个文件',
-    )
+    expect(element.textContent).not.toContain('selection.ts')
   })
 
   it('selects a code target without a prototype and sends the exact target in the shared DTO', async () => {
@@ -306,7 +301,10 @@ describe('engineering task composer', () => {
   it('changes expert and approval as actual context and disables unsupported reasoning', async () => {
     const context = await mount()
     expect(element!.querySelector('[data-testid="composer-scope"]')).not.toBeNull()
-    expect(element!.querySelectorAll('.context-toolbar select')).toHaveLength(0)
+    expect(element!.querySelectorAll('.context-toolbar select')).toHaveLength(1)
+    expect(
+      element!.querySelector('.context-toolbar [data-testid="composer-scope-select"]'),
+    ).not.toBeNull()
     ;(element!.querySelector('[data-testid="composer-add"]') as HTMLButtonElement).click()
     await nextTick()
     expect(element!.querySelector('[data-testid="composer-cat-files"]')).not.toBeNull()
@@ -480,7 +478,7 @@ describe('engineering task composer', () => {
     await nextTick()
     ;(element.querySelector('[data-testid="manage-experts"]') as HTMLButtonElement).click()
     await nextTick()
-    expect(location.hash).toBe('#expert-catalog')
+    expect(location.hash).toBe('#experts')
     expect(draft.value).toBe('保留正文')
   })
   it('marks the current mode and returns focus to the draft on escape', async () => {

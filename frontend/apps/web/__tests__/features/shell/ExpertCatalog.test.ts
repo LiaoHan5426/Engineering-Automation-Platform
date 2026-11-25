@@ -49,7 +49,7 @@ it('exposes my-experts in the header and filters by category chips', async () =>
     /对话角色|Conversation roles/,
   )
   const mine = root.querySelector('[data-testid=experts-mine]') as HTMLButtonElement
-  expect(mine.textContent).toMatch(/我的专家|My experts/)
+  expect(mine.textContent).toMatch(/常用|Favorites/)
   mine.click()
   await nextTick()
   expect(mine.getAttribute('aria-pressed')).toBe('true')

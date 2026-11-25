@@ -26,6 +26,7 @@ export {
   IconFolder,
   IconRefreshCw,
   IconLoaderCircle,
+  IconPanelRight,
 } from '@eap/icons'
 export { default as Badge } from './badge/Badge.vue'
 export { default as Feedback } from './feedback/Feedback.vue'

@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { expertSidebarSection } from './expert/expertNavigation'
+import { settingsIds } from './settings/catalog'
 import { Input, DropdownMenu, Button, type MenuAction } from '@eap/ui'
 import {
   IconCode,
@@ -12,7 +13,6 @@ import {
   IconPlus,
   IconEllipsis,
   IconChevronRight,
-  IconArrowLeft,
 } from '@eap/ui'
 import {
   chatBinding,
@@ -56,7 +56,6 @@ function syncExpertSection() {
   })
 }
 const lastView = new Map<Area, string>()
-const query = ref('')
 const sidebarFilter = ref('')
 const showArchived = ref(false)
 const openMenuId = ref<string | null>(null)
@@ -69,32 +68,7 @@ const renamingProjectId = ref<string | null>(null)
 const renameProjectLabel = ref('')
 const pendingDeleteProjectId = ref<string | null>(null)
 const codeIds = ['chat', 'sql', 'board']
-/**
- * 设置菜单的唯一权威定义：分组与顺序来自桌面设计稿（工作区在前、偏好独立成组）。
- * 垂直列表由这里派生，任何新增设置页只改这里一处。
- */
-const settingsGroups = [
-  {
-    id: 'workspace',
-    labelKey: 'desktop.settingsGroupWorkspace',
-    ids: [
-      'settings',
-      'model-settings',
-      'knowledge',
-      'rules',
-      'databases',
-      'skills',
-      'capabilities',
-      'plugins',
-    ],
-  },
-  { id: 'preference', labelKey: 'desktop.settingsGroupPreference', ids: ['appearance'] },
-] as const
-const settingsIds = [
-  'settings',
-  ...settingsGroups.flatMap((group) => group.ids as readonly string[]),
-]
-const expertIds = ['expert-catalog', 'experts']
+const expertIds = ['experts']
 function isProjectExpanded(id: string) {
   if (expandedProjects.value[id] != null) return expandedProjects.value[id]!
   return workbench.selectedProjectId === id
@@ -202,6 +176,10 @@ function runProjectMenu(id: string, action?: (id: string) => void) {
 watch(
   () => props.activeView,
   (id) => {
+    if (settingsIds.includes(id)) {
+      lastView.set('settings', id)
+      return
+    }
     const match: Area | undefined =
       id === 'builder-alpha' || id === 'builder-beta'
         ? 'scenes'
@@ -209,11 +187,9 @@ watch(
           ? id
           : id === 'board' || id === 'chat' || id === 'sql'
             ? workbench.workMode
-            : id === 'expert-catalog' || id === 'experts'
+            : id === 'experts'
               ? 'experts'
-              : settingsIds.includes(id)
-                ? 'settings'
-                : undefined
+              : undefined
     if (!match) return
     area.value = match
     lastView.set(match, id)
@@ -221,27 +197,6 @@ watch(
   { immediate: true },
 )
 
-const settings = computed(() => {
-  const needle = query.value.trim().toLowerCase()
-  return settingsIds.flatMap((id) =>
-    props.pages.filter(
-      (page) =>
-        page.id === id &&
-        (!needle || page.name.toLowerCase().includes(needle) || id.includes(needle)),
-    ),
-  )
-})
-/** 分组视图：搜索命中后为空的分组不渲染标题，避免出现孤立的分组标签。 */
-const settingsGrouped = computed(() => {
-  const items = settings.value
-  return settingsGroups
-    .map((group) => ({
-      id: group.id,
-      labelKey: group.labelKey,
-      items: items.filter((item) => (group.ids as readonly string[]).includes(item.id)),
-    }))
-    .filter((group) => group.items.length > 0)
-})
 const analysis = computed(() => props.pages.find((page) => page.id === 'sql'))
 const conversations = computed(
   () => chatBinding.value?.history.filter((item) => item.archived === showArchived.value) ?? [],
@@ -254,20 +209,6 @@ function open(id: string) {
 }
 function sessionMode(): 'code' | 'work' {
   return workbench.workMode === 'work' ? 'work' : 'code'
-}
-function returnToSourceSession() {
-  if (props.canNavigate && !props.canNavigate()) return
-  // App records Work chat as "work"; returning must not create/select a session.
-  const origin = workbench.origin
-  emit(
-    'navigate',
-    codeIds.includes(origin) || origin === 'work'
-      ? origin
-      : sessionMode() === 'work'
-        ? 'work'
-        : 'chat',
-  )
-  workbench.sidebarOpen = false
 }
 function startChat(mode: 'code' | 'work') {
   workbench.workMode = mode
@@ -382,12 +323,10 @@ const storageCountLabel = computed(() =>
  * Ardot boards 01/04/05: the 56px sidebar header is a workspace switcher, not
  * a passive area label. It can only select local group labels that already
  * exist; it never invents a group, grants a repository or starts a chat.
- * Settings keeps its own title as on board 10.
  */
 const workspaceSwitcherOpen = ref(false)
-const hasWorkspaceSwitcher = computed(() => area.value !== 'settings')
+const hasWorkspaceSwitcher = computed(() => true)
 const workspaceLabel = computed(() => {
-  if (area.value === 'settings') return t('desktop.settings')
   const id = workbench.selectedProjectId
   return id ? projectLabel(id) || t('desktop.freeChat') : t('desktop.freeChat')
 })
@@ -432,6 +371,14 @@ function openExperts() {
 }
 function select(next: Area) {
   if (props.canNavigate && !props.canNavigate()) return
+  if (next === 'settings') {
+    const previous = lastView.get('settings')
+    const id = previous && settingsIds.includes(previous) ? previous : 'model-settings'
+    lastView.set('settings', id)
+    emit('navigate', id)
+    workbench.sidebarOpen = false
+    return
+  }
   area.value = next
   if (next === 'code' || next === 'work') workbench.workMode = next
   const previous = lastView.get(next)
@@ -447,11 +394,7 @@ function select(next: Area) {
     open(previous && codeIds.includes(previous) ? previous : 'chat')
     return
   }
-  if (next === 'experts') {
-    open(previous && expertIds.includes(previous) ? previous : 'experts')
-    return
-  }
-  open(previous && settingsIds.includes(previous) ? previous : 'settings')
+  open(previous && expertIds.includes(previous) ? previous : 'experts')
 }
 function chooseConversation(id: string) {
   openMenuId.value = null
@@ -569,28 +512,7 @@ onUnmounted(() => {
             <span class="sidebar-head__caret" aria-hidden="true">⌄</span></Button
           >
         </DropdownMenu>
-        <Button
-          v-if="area === 'code' || area === 'work' || area === 'scenes'"
-          size="sm"
-          variant="icon"
-          type="button"
-          class="sidebar-head__new"
-          data-testid="sidebar-head-new"
-          :aria-label="t('desktop.newProject')"
-          :title="t('desktop.newProject')"
-          @click="startNewProject"
-          ><IconPlus
-        /></Button>
       </div>
-      <Button
-        v-if="area === 'experts' || area === 'settings'"
-        variant="navigation"
-        type="button"
-        class="nav"
-        data-testid="back-to-source-session"
-        @click="returnToSourceSession"
-        ><IconArrowLeft />{{ t('desktop.backToSourceSession') }}</Button
-      >
       <Button
         v-if="area === 'work'"
         variant="navigation"
@@ -614,6 +536,7 @@ onUnmounted(() => {
         ><IconLayers />{{ t('sceneDesigner.stepDesign') }}</Button
       >
       <nav v-if="area === 'experts'" :aria-label="t('desktop.experts')">
+        <p class="expert-nav-label">{{ t('expertWorkspace.definitionsGroup') }}</p>
         <Button
           variant="navigation"
           :active="activeView === 'experts' && !expertTasksActive"
@@ -632,17 +555,8 @@ onUnmounted(() => {
           @click="openExpertTasks"
           >{{ t('expertWorkspace.allTasks') }}</Button
         >
-        <Button
-          variant="navigation"
-          :active="activeView === 'expert-catalog'"
-          :aria-current="activeView === 'expert-catalog' ? 'page' : undefined"
-          class="nav"
-          data-testid="expert-roles-nav"
-          @click="open('expert-catalog')"
-          >{{ t('expertWorkspace.roles') }}</Button
-        >
       </nav>
-      <template v-if="area === 'code' || area === 'work' || area === 'scenes'">
+      <template v-if="area === 'code' || area === 'work'">
         <Button
           variant="navigation"
           type="button"
@@ -986,30 +900,6 @@ onUnmounted(() => {
           </span>
         </div>
       </template>
-      <template v-else-if="area === 'settings'">
-        <h2>{{ t('desktop.settings') }}</h2>
-        <Input
-          v-model="query"
-          class="settings-search"
-          type="search"
-          :aria-label="t('desktop.settingsSearch')"
-          :placeholder="t('desktop.settingsSearch')"
-        />
-        <div v-for="group in settingsGrouped" :key="group.id" class="settings-group">
-          <p class="settings-group__label">{{ t(group.labelKey) }}</p>
-          <Button
-            variant="navigation"
-            v-for="item in group.items"
-            :key="item.id"
-            type="button"
-            class="nav"
-            :active="activeView === item.id"
-            @click="open(item.id)"
-            >{{ item.name }}</Button
-          >
-        </div>
-        <p v-if="!settings.length" class="hint">{{ t('desktop.noSettings') }}</p>
-      </template>
     </aside>
   </div>
 </template>
@@ -1166,10 +1056,6 @@ onUnmounted(() => {
   flex: 0 0 auto;
   font-size: 12px;
   color: var(--text-soft);
-}
-
-.sidebar-head__new {
-  flex: 0 0 auto;
 }
 
 .desktop-sidebar h2 {
@@ -1355,6 +1241,13 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.expert-nav-label {
+  margin: 10px 8px 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-mute);
+}
+
 .desktop-sidebar .nav.child {
   display: flex;
   flex-direction: column;
@@ -1477,25 +1370,6 @@ onUnmounted(() => {
 .sidebar-storage__count {
   font-size: 11px;
   color: var(--eap-text-color-secondary);
-}
-
-.settings-search {
-  width: 100%;
-}
-
-.settings-group {
-  display: grid;
-  gap: 2px;
-  margin-top: 10px;
-}
-
-.settings-group__label {
-  padding: 0 10px;
-  margin: 0 0 2px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-mute);
-  letter-spacing: 0.04em;
 }
 
 .preview-tree-project {

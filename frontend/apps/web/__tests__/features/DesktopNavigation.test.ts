@@ -132,7 +132,7 @@ const pages = [
       'sidebar-tools',
       'sidebar-storage-card',
     ])
-    expect(sidebar.querySelector('[data-testid="sidebar-head-new"]')).not.toBeNull()
+    expect(sidebar.querySelector('[data-testid="sidebar-head-new"]')).toBeNull()
     expect(
       sidebar.querySelector('[data-testid="new-project"]')?.closest('.sidebar-section-head'),
     ).not.toBeNull()
@@ -169,12 +169,13 @@ const pages = [
     await nextTick()
     const primary = root.querySelectorAll<HTMLButtonElement>('.activity-bar button')
     expect(primary).toHaveLength(5)
-    expect(primary[4]!.getAttribute('aria-current')).toBe('page')
-    const child = [...root.querySelectorAll<HTMLButtonElement>('.desktop-sidebar button')].find(
-      (button) => button.textContent?.includes('Skills'),
-    )
-    expect(child).toBeDefined()
-    child!.click()
+    expect(primary[4]!.getAttribute('aria-current')).toBeNull()
+    expect(
+      [...root.querySelectorAll<HTMLButtonElement>('.desktop-sidebar button')].some((button) =>
+        button.textContent?.includes('Skills'),
+      ),
+    ).toBe(false)
+    primary[4]!.click()
     expect(navigate).toHaveBeenCalledWith('skills')
   })
   it('blocks code handoff when the saved-version catalog cannot be read', async () => {
@@ -202,9 +203,9 @@ const pages = [
     app.use(i18n).mount(root)
     await nextTick()
     ;(
-      root.querySelector(
-        '[data-testid="scene-open-detail"][data-scene-id="prototype-to-code"]',
-      ) as HTMLButtonElement
+      root
+        .querySelector('[data-testid="scene-open-detail"][data-scene-id="prototype-to-code"]')
+        ?.querySelector('button') as HTMLButtonElement
     ).click()
     await nextTick()
     ;(root.querySelector('[data-testid="scene-enter-workflow"]') as HTMLButtonElement).click()
@@ -228,13 +229,18 @@ const pages = [
     expect(buttons.length).toBe(5)
     ;(buttons[4] as HTMLButtonElement).click()
     await nextTick()
-    expect(selected.at(-1)).toBe('settings')
-    expect(root.querySelector('.desktop-sidebar')?.textContent).toContain('plugins')
+    expect(selected.at(-1)).toBe('model-settings')
+    expect(root.querySelector('.desktop-sidebar')?.textContent).not.toContain('plugins')
+    expect(root.querySelector('.settings-search')).toBeNull()
+    expect(root.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+    expect(root.querySelector('[data-testid="project-tree"]')).not.toBeNull()
     ;(buttons[2] as HTMLButtonElement).click()
     await nextTick()
     expect(selected.at(-1)).toBe('scenes')
-    expect(root.querySelector('[data-testid="project-tree"]')).not.toBeNull()
-    expect(root.querySelector('[data-testid="new-chat"]')).not.toBeNull()
+    expect(root.querySelector('[data-testid="open-scenedesigner"]')).not.toBeNull()
+    expect(root.querySelector('[data-testid="project-tree"]')).toBeNull()
+    expect(root.querySelector('[data-testid="new-chat"]')).toBeNull()
+    expect(root.querySelector('[data-testid="sidebar-tools"]')).toBeNull()
     expect(root.querySelector('[data-testid="back-to-chat"]')).toBeNull()
     expect(root.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
     expect(root.querySelector('.desktop-sidebar')?.textContent).not.toMatch(
@@ -483,21 +489,23 @@ const pages = [
     )
     expect(navigate).not.toHaveBeenCalled()
   })
-  it('keeps the settings header as a settings title without a workspace switcher', async () => {
+  it('keeps the workspace sidebar when the active view is a settings section', async () => {
     root = document.createElement('div')
     document.body.append(root)
     app = createApp({
       render: () =>
         h(DesktopNavigation, {
-          activeView: 'settings',
-          pages: [...pages, { id: 'settings', name: 'Settings' }],
+          activeView: 'model-settings',
+          pages,
         }),
     })
     app.use(i18n).mount(root)
     await nextTick()
     const head = root.querySelector('[data-testid="sidebar-head"]') as HTMLElement
-    expect(head.textContent).toMatch(/设置|Settings/)
-    expect(head.querySelector('[data-testid="workspace-switcher"]')).toBeNull()
+    expect(head.querySelector('[data-testid="workspace-switcher"]')).not.toBeNull()
+    expect(root.querySelector('.settings-search')).toBeNull()
+    expect(root.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+    expect(root.querySelector('[data-testid="project-tree"]')).not.toBeNull()
   })
   it('seeds a journal draft from the free section and filters the project tree', async () => {
     workbench.selectedProjectId = 'local-eap'
@@ -710,9 +718,9 @@ const pages = [
     app.use(i18n).mount(root)
     await nextTick()
     ;(
-      root.querySelector(
-        '[data-testid="scene-open-detail"][data-scene-id="prototype-to-code"]',
-      ) as HTMLButtonElement
+      root
+        .querySelector('[data-testid="scene-open-detail"][data-scene-id="prototype-to-code"]')
+        ?.querySelector('button') as HTMLButtonElement
     ).click()
     await nextTick()
     ;(root.querySelector('[data-testid="scene-enter-workflow"]') as HTMLButtonElement).click()
@@ -934,18 +942,22 @@ describe('source-surface return through the real App navigation', () => {
     workbench.workMode = mode
     workbench.origin = origin
     await mountSource('model-settings')
-    await click('[data-testid="back-to-source-session"]')
+    expect(shellRoot.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+    ;(shellRoot.querySelector('[data-testid="settings-dialog-close"]') as HTMLButtonElement).click()
+    await settle()
     expect(window.location.hash).toBe(`#${target}`)
     expectSourceIntact(mode)
   })
 
-  it('returns from a direct catalog entry without creating a missing session', async () => {
+  it('opens expert management from a catalog hash without creating a session', async () => {
     chatBinding.value = null
     workbench.origin = ''
     workbench.workMode = 'work'
     await mountSource('expert-catalog')
-    await click('[data-testid="back-to-source-session"]')
-    expect(window.location.hash).toBe('#work')
+    expect(window.location.hash).toBe('#experts')
+    expect(shellRoot.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+    expect(shellRoot.querySelector('[data-testid="expert-roles-nav"]')).toBeNull()
+    expect(shellRoot.querySelector('[data-testid="expert-catalog"]')).toBeNull()
     expect(chatBinding.value).toBeNull()
     expect(workbench.pendingNewChat).toBe(false)
     expect(workbench.selectedProjectId).toBe('local-eap')
@@ -961,65 +973,62 @@ describe('source-surface return through the real App navigation', () => {
     ['board', 'code'],
     ['board', 'work'],
   ] as const)(
-    'returns to the actual %s source in %s mode, not an invented new chat',
+    'opens expert management from %s in %s mode without a return-to-session path',
     async (source, mode) => {
       workbench.workMode = mode
       await mountSource(source)
+      const origin = workbench.origin
       await click('.activity-bar button:nth-child(4)')
-      expect(workbench.origin).toBe(source)
-      await click('.activity-bar button:nth-child(5)')
-      expect(workbench.origin).toBe(source)
-      await click('[data-testid="back-to-source-session"]')
-      expect(window.location.hash).toBe(`#${source}`)
-      expectSourceIntact(mode)
+      expect(window.location.hash).toBe('#experts')
+      expect(workbench.origin).toBe(origin)
       expect(shellRoot.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+      expect(shellRoot.querySelector('[data-testid="expert-roles-nav"]')).toBeNull()
+      await click('.activity-bar button:nth-child(5)')
+      expect(workbench.origin).toBe(origin)
+      expect(shellRoot.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+      expectSourceIntact(mode)
     },
   )
 
   it('keeps the Work source stable across settings children and returns without resetting it', async () => {
     await mountSource()
     await click('.activity-bar button:nth-child(5)')
-    expect(window.location.hash).toBe('#settings')
-    expect(workbench.origin).toBe('work')
-    expect(shellRoot.querySelector('[data-testid="project-tree"]')).toBeNull()
-    const rules = [...shellRoot.querySelectorAll<HTMLButtonElement>('.desktop-sidebar button')].find(
+    expect(window.location.hash).toBe('#model-settings')
+    expect(workbench.workMode).toBe('work')
+    expect(shellRoot.querySelector('[data-testid="project-tree"]')).not.toBeNull()
+    expect(shellRoot.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+    const dialog = shellRoot.querySelector('[data-testid="settings-dialog"]') as HTMLDialogElement
+    expect(dialog.open).toBe(true)
+    const rules = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(
       (button) => button.textContent === '规则库',
     )
     expect(rules).toBeDefined()
     rules!.click()
     await nextTick()
     expect(window.location.hash).toBe('#rules')
-    expect(workbench.origin).toBe('work')
-    expect(shellRoot.querySelector('.settings-search')).not.toBeNull()
-    expect(shellRoot.querySelectorAll('[data-testid="back-to-source-session"]')).toHaveLength(1)
-    await click('[data-testid="back-to-source-session"]')
+    expect(shellRoot.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+    ;(dialog.querySelector('[data-testid="settings-dialog-close"]') as HTMLButtonElement).click()
+    await nextTick()
     expect(window.location.hash).toBe('#work')
     expectSourceIntact()
     await click('.activity-bar button:nth-child(5)')
     expect(window.location.hash).toBe('#rules')
-    expect(workbench.origin).toBe('work')
+    expect(workbench.workMode).toBe('work')
+    expect(workbench.origin).toBe('chat')
   })
 
-  it('returns from the expert catalog to the existing Work session after selection', async () => {
+  it('keeps the Work session intact while expert management stays a configuration area', async () => {
     await mountSource()
     await click('.activity-bar button:nth-child(4)')
     expect(window.location.hash).toBe('#experts')
-    await click('[data-testid="expert-roles-nav"]')
-    expect(window.location.hash).toBe('#expert-catalog')
-    expect(workbench.origin).toBe('work')
+    expect(workbench.origin).toBe('chat')
     expect(shellRoot.querySelector('[data-testid="project-tree"]')).toBeNull()
-    await click('[data-testid="expert-add"]')
-    expect(currentExtras().experts).toHaveLength(1)
-    expect(window.location.hash).toBe('#expert-catalog')
+    expect(shellRoot.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+    expect(shellRoot.querySelector('[data-testid="expert-roles-nav"]')).toBeNull()
+    expect(shellRoot.querySelector('[data-testid="expert-list-nav"]')).not.toBeNull()
+    expect(shellRoot.querySelector('[data-testid="expert-catalog"]')).toBeNull()
     expectSourceIntact()
-    expect(shellRoot.querySelectorAll('[data-testid="back-to-source-session"]')).toHaveLength(1)
-    await click('[data-testid="back-to-source-session"]')
-    expect(window.location.hash).toBe('#work')
-    expect(
-      shellRoot.querySelector('.activity-bar button:nth-child(2)')?.getAttribute('aria-current'),
-    ).toBe('page')
-    expectSourceIntact()
-    expect(currentExtras().experts).toHaveLength(1)
+    expect(currentExtras().experts).toHaveLength(0)
   })
 })
 
@@ -1094,17 +1103,27 @@ describe('prototype area deep links through the real App', () => {
     for (let i = 0; i < 8; i++) await nextTick()
   }
 
-  it('opens the settings area on #settings instead of falling back to code', async () => {
+  it('opens the settings dialog on #settings over the code workspace', async () => {
     await mountSource('settings')
-    expect(shellRoot.querySelector('.settings-search')).not.toBeNull()
+    const dialog = shellRoot.querySelector('[data-testid="settings-dialog"]') as HTMLDialogElement
+    expect(dialog.open).toBe(true)
+    expect(dialog.querySelector('.settings-search')).not.toBeNull()
+    expect(shellRoot.querySelector('[data-testid="back-to-source-session"]')).toBeNull()
+    expect(shellRoot.querySelector('[data-testid="project-tree"]')).not.toBeNull()
+    expect(
+      shellRoot.querySelector('.activity-bar button:nth-child(1)')?.getAttribute('aria-current'),
+    ).toBe('page')
     expect(
       shellRoot.querySelector('.activity-bar button:nth-child(5)')?.getAttribute('aria-current'),
-    ).toBe('page')
+    ).toBeNull()
   })
 
   it('opens the code area on #code', async () => {
     await mountSource('code')
-    expect(shellRoot.querySelector('.settings-search')).toBeNull()
+    expect(
+      (shellRoot.querySelector('[data-testid="settings-dialog"]') as HTMLDialogElement).open,
+    ).toBe(false)
+    expect(shellRoot.querySelector('.desktop-sidebar .settings-search')).toBeNull()
     expect(
       shellRoot.querySelector('.activity-bar button:nth-child(1)')?.getAttribute('aria-current'),
     ).toBe('page')

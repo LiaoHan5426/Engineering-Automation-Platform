@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 import * as ReactDOMClient from 'react-dom/client'
 import * as JsxRuntime from 'react/jsx-runtime'
+import { createPluginUi } from './client/pluginUi'
 
 type ModuleFactory = (require: (id: string) => unknown) => unknown
 
@@ -21,103 +22,27 @@ declare global {
   }
 }
 
-function stubUiPrimitives(): Record<string, unknown> {
-  const cache = new Map<string, unknown>()
-  return new Proxy(
-    { __esModule: true },
-    {
-      get(_target, prop) {
-        if (prop === '__esModule') return true
-        if (prop === 'default') return _target
-        if (typeof prop !== 'string') return undefined
-        if (cache.has(prop)) return cache.get(prop)
-        if (prop.startsWith('use')) {
-          const hook = () => undefined
-          cache.set(prop, hook)
-          return hook
-        }
-        if (prop === 'writeClipboard') {
-          const fn = async (text: string) => {
-            try {
-              await navigator.clipboard.writeText(text)
-            } catch {
-              /* ignore */
-            }
-          }
-          cache.set(prop, fn)
-          return fn
-        }
-        if (prop === 'classifyFileType' || prop === 'fileSizeText') {
-          const fn = (value: unknown) => String(value ?? '')
-          cache.set(prop, fn)
-          return fn
-        }
-        // FileTypeIcon is the guide/file-tree folder glyph — a blank stub
-        // reads as "host forgot the icon", so draw a minimal folder shape.
-        if (prop === 'FileTypeIcon') {
-          const FileTypeIcon = (props: { size?: number; kind?: string; className?: string }) => {
-            const size = typeof props.size === 'number' ? props.size : 16
-            return React.createElement(
-              'svg',
-              {
-                width: size,
-                height: size,
-                viewBox: '0 0 16 16',
-                fill: 'currentColor',
-                'aria-hidden': true,
-                'data-eap-ui-stub': 'FileTypeIcon',
-                'data-kind': props.kind,
-                className: props.className,
-              },
-              React.createElement('path', {
-                d: 'M1.5 3.5A1.5 1.5 0 0 1 3 2h3.2c.4 0 .77.2 1 .5L8 3h5a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 13 13H3a1.5 1.5 0 0 1-1.5-1.5v-8Z',
-              }),
-            )
-          }
-          cache.set(prop, FileTypeIcon)
-          return FileTypeIcon
-        }
-        const Comp = React.forwardRef(function EapUiStub(
-          props: Record<string, unknown>,
-          ref: React.Ref<HTMLDivElement>,
-        ) {
-          return React.createElement(
-            'div',
-            {
-              ref,
-              'data-eap-ui-stub': prop,
-              className: typeof props.className === 'string' ? props.className : undefined,
-            },
-            props.children as React.ReactNode,
-          )
-        })
-        Comp.displayName = `EapUiStub(${prop})`
-        cache.set(prop, Comp)
-        return Comp
-      },
-    },
-  ) as Record<string, unknown>
+const pluginUi = createPluginUi()
+
+/** Resolve one module id inside a plugin client bundle. */
+export function pluginRequire(id: string, filesBaseUrl = ''): unknown {
+  if (id === 'react') return React
+  if (id === 'react/jsx-runtime') return JsxRuntime
+  if (id === 'react-dom') return ReactDOM
+  if (id === 'react-dom/client') return ReactDOMClient
+  if (id === '@deepseek-ai/dsh-client-ui-primitives') return pluginUi
+  if (id.startsWith('.') || id.startsWith('/')) {
+    throw new Error(`RELATIVE_REQUIRE_UNSUPPORTED:${id}@${filesBaseUrl}`)
+  }
+  throw new Error(`MODULE_NOT_PROVIDED:${id}`)
 }
 
-const uiPrimitives = stubUiPrimitives()
-
 function createRequire(filesBaseUrl: string) {
-  return (id: string): unknown => {
-    if (id === 'react') return React
-    if (id === 'react/jsx-runtime') return JsxRuntime
-    if (id === 'react-dom') return ReactDOM
-    if (id === 'react-dom/client') return ReactDOMClient
-    if (id === '@deepseek-ai/dsh-client-ui-primitives') return uiPrimitives
-    // Relative requires inside the bundle should not escape to Host logic in-browser.
-    if (id.startsWith('.') || id.startsWith('/')) {
-      throw new Error(`RELATIVE_REQUIRE_UNSUPPORTED:${id}@${filesBaseUrl}`)
-    }
-    throw new Error(`MODULE_NOT_PROVIDED:${id}`)
-  }
+  return (id: string): unknown => pluginRequire(id, filesBaseUrl)
 }
 
 /**
- * Install DSH `__ModuleLoader__` so packaged `./client` scripts can register.
+ * Install `__ModuleLoader__` so packaged `./client` scripts can register.
  * Forbidden: executing Host/Agent code from these factories beyond UI apply().
  */
 export function ensureModuleLoader(): Map<string, LoaderRegistration> {

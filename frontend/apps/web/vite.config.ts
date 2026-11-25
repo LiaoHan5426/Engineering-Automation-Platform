@@ -2,12 +2,10 @@ import { defineConfig, loadEnv } from 'vite-plus'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { VueMcp } from 'vite-plugin-vue-mcp'
-import { dshViteAliasList } from '../../packages/plugin-runtime/src/dsh/viteAlias.ts'
 
 /**
- * No @vitejs/plugin-vue-jsx: dsh-personal RightbarSeat is .tsx with h()+setup-return
- * render; vue-jsx empties that render and yields data-slot-error on rightbar.session.
- * React better-sidebar JSX uses Vite esbuild automatic runtime (react/jsx-runtime).
+ * No @vitejs/plugin-vue-jsx. React plugin JSX uses Vite esbuild automatic runtime
+ * (react/jsx-runtime). The shell slot hosts are Vue `h()` functions.
  */
 
 export default defineConfig(({ command, mode }) => {
@@ -40,7 +38,6 @@ export default defineConfig(({ command, mode }) => {
         : []),
     ],
     resolve: {
-      alias: dshViteAliasList,
       dedupe: ['vue', 'react', 'react-dom'],
     },
     define: {

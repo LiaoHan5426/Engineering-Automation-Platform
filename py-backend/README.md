@@ -47,8 +47,16 @@ pytest -q
 ## Contract subset
 
 Compatible with `@eap/runtime-client` Chat paths under `/api/ai/…`
-(open / messages SSE / graph / cancel / connections). Point the Vue app base URL at
-`http://127.0.0.1:8080/api` for live wiring (**frontend accept: unverified** until done).
+(open / messages SSE / graph / cancel / connections) and the shell catalogs
+(`/capabilities`, `/databases`, `/experts`, `/tasks`, `/stats`, `/knowledge`,
+`/rule-packs`, `/skills`, `/scenarios`, `/mcp-servers`). Point the Vue app base URL at
+`http://127.0.0.1:8080/api` for live wiring (**frontend accept: verified 2026-11-25** — non-mock Vue, shell boot six keys, Chat `toolMode=none` one real SSE round; MCP protocol, edit/regenerate, board/SQL out of scope).
+
+Each chat turn binds catalogs in one order before the model call: enabled rule
+packs, enabled skills, knowledge excerpts plus the builtin tool observation,
+then MCP tools that are enabled and trusted. A registered MCP tool is not a
+completed call (`probe.verified` stays false). Decision:
+`docs/decisions/py-backend-agent-architecture.md`.
 
 Default data directory: `py-backend/.eap/` (gitignored via root `.eap/`). Override with `EAP_DATA_ROOT`.
 

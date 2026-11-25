@@ -93,16 +93,15 @@ function toggleExpert(id: string) {
       >
         <span><IconLayers /></span><strong>{{ item.name }}</strong
         ><small>{{ item.summary }}</small>
-        <small v-if="pending(item).length" class="scene-dep-note"
-          >{{ t('desktop.pendingDependencyCheck') }} ·
-          {{ pending(item).slice(0, 3).join('、') }}</small
-        >
+        <small v-if="item.status !== 'disabled' && pending(item).length" class="scene-dep-note">{{
+          t('desktop.pendingDependencyCheck')
+        }}</small>
         <i v-if="extras.scenarioId === item.id" aria-hidden="true"><IconCheck /></i>
       </Button>
     </div>
     <div class="welcome-section-head">
       <h2>{{ t('preview.experts') }}</h2>
-      <a href="#expert-catalog">{{ t('preview.manageExperts') }} →</a>
+      <a href="#experts">{{ t('preview.manageExperts') }} →</a>
     </div>
     <Input
       v-model="expertSearch"

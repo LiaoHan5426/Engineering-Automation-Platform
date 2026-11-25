@@ -482,17 +482,6 @@ onMounted(() => {
         <h1>{{ t('desktop.scenes') }}</h1>
         <p>{{ t('desktop.scenarioIntro') }}</p>
       </div>
-      <Button
-        size="sm"
-        variant="link"
-        type="button"
-        class="scene-back-chat"
-        data-testid="back-to-chat-from-scenes"
-        @click="
-          emit('navigate', workbench.origin || (workbench.workMode === 'work' ? 'work' : 'chat'))
-        "
-        >{{ t('desktop.backToChat') }}</Button
-      >
     </header>
     <ScenarioComposition
       v-if="activeScenario.workflow === 'prototype-to-code' && sceneView !== 'list'"
@@ -541,6 +530,7 @@ onMounted(() => {
         <li v-for="scene in scenarios" :key="scene.id">
           <ActionCard
             class="scene-card"
+            data-testid="scene-open-detail"
             :label="scene.name"
             :data-scene-id="scene.id"
             @activate="openSceneDetail(scene.id)"
@@ -557,16 +547,6 @@ onMounted(() => {
                 variant="link"
                 type="button"
                 class="scene-link"
-                data-testid="scene-open-detail"
-                :data-scene-id="scene.id"
-                @click="openSceneDetail(scene.id)"
-                >{{ t('desktop.sceneOpenDetailShort') }}</Button
-              >
-              <Button
-                size="sm"
-                variant="link"
-                type="button"
-                class="scene-link"
                 data-testid="scene-copy"
                 :data-scene-id="scene.id"
                 :title="t('preview.copyScene')"
@@ -576,7 +556,7 @@ onMounted(() => {
                     copyScenario()
                   }
                 "
-                >{{ t('desktop.sceneCopyShort') }}</Button
+                >{{ t('desktop.sceneCopyShort') }}<span class="sr-only"> {{ scene.name }}</span></Button
               >
               <Button
                 size="sm"
@@ -587,7 +567,7 @@ onMounted(() => {
                 data-testid="scene-delete"
                 :data-scene-id="scene.id"
                 @click="removeCustomScene(scene.id)"
-                >{{ t('desktop.sceneDelete') }}</Button
+                >{{ t('desktop.sceneDelete') }}<span class="sr-only"> {{ scene.name }}</span></Button
               >
               <Button
                 size="sm"
@@ -599,7 +579,7 @@ onMounted(() => {
                 :data-scene-id="scene.id"
                 disabled
                 :title="t('desktop.sceneDeleteOff')"
-                >{{ t('desktop.sceneDelete') }}</Button
+                >{{ t('desktop.sceneDelete') }}<span class="sr-only"> {{ scene.name }}</span></Button
               >
             </template>
           </ActionCard>
@@ -827,7 +807,7 @@ onMounted(() => {
                 type="button"
                 size="sm"
                 @click="located = item.name"
-                >{{ t('desktop.locateDep') }}</Button
+                >{{ t('desktop.locateDep') }}<span class="sr-only"> {{ item.name }}</span></Button
               >
               <p v-if="located === item.name" class="dep-where">{{ item.where }}</p>
             </li>

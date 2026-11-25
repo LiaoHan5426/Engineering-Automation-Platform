@@ -19,9 +19,11 @@ Development pace on the Java full-stack was too slow for a usable daily Chat pat
 
 ## Deferred
 
-Edit/regenerate branching, full CT-01 DB event append-only, board/code proposals, MCP, knowledge FTS, Postgres, managed-tool installer, LangGraph default loop, deleting the Java reactor.
+Edit/regenerate branching, full CT-01 DB event append-only, board/code proposals, MCP protocol calls (`tools/list` / `tools/call`), knowledge FTS, Postgres, managed-tool installer, LangGraph default loop, deleting the Java reactor.
 
 **Update (2026-11-24):** L2 DSH plugin host (install/UI contributions with control on server) is accepted in [`py-backend-plugin-host-l2.md`](py-backend-plugin-host-l2.md); that slice supersedes “no plugins” for this track only.
+
+**Update (2026-11-25):** Shell catalog registration and the chat turn binder are accepted in [`py-backend-agent-architecture.md`](py-backend-agent-architecture.md). That slice does not adopt LangGraph and does not treat a declared MCP tool as a completed call.
 
 ## Acceptance (this slice)
 
@@ -29,7 +31,7 @@ Edit/regenerate branching, full CT-01 DB event append-only, board/code proposals
 - `POST /api/ai/conversations`, SSE `…/messages`, `GET …/graph`, `POST …/cancel`, connections list/create.
 - Offline/test mode may inject a fixed reply; real model uses `EAP_MODEL_*` or stored connection secret.
 - `toolMode=git_status` emits a structured `tool` SSE event via argv `git`.
-- Frontend live accept against this port remains **unverified** until explicitly wired.
+- Frontend live accept (2026-11-25): non-mock Vue → `127.0.0.1:8080`; shell boot six keys pass; Chat `toolMode=none` real-model one SSE round pass. Does not cover MCP protocol, edit/regenerate, or board/SQL.
 
 ## References
 

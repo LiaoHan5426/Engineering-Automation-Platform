@@ -22,6 +22,7 @@ import {
   Folder,
   RefreshCw,
   LoaderCircle,
+  PanelRight,
 } from '@lucide/vue'
 import { defineComponent, h, mergeProps, type Component, type PropType } from 'vue'
 
@@ -98,3 +99,4 @@ export const IconFile = /* @__PURE__ */ wrapIcon('IconFile', File)
 export const IconFolder = /* @__PURE__ */ wrapIcon('IconFolder', Folder)
 export const IconRefreshCw = /* @__PURE__ */ wrapIcon('IconRefreshCw', RefreshCw)
 export const IconLoaderCircle = /* @__PURE__ */ wrapIcon('IconLoaderCircle', LoaderCircle)
+export const IconPanelRight = /* @__PURE__ */ wrapIcon('IconPanelRight', PanelRight)

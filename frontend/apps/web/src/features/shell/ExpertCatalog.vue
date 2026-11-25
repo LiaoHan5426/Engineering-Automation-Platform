@@ -56,15 +56,10 @@ function add(id: string) {
       >
     </header>
     <div class="toolbar">
-      <Input
-        v-model="query"
-        type="search"
-        :aria-label="t('desktop.expertSearch')"
-        :placeholder="t('desktop.expertSearch')"
-      />
-      <Button size="sm" variant="chip" type="button" :aria-pressed="!mine" @click="mine = false">{{
-        t('desktop.expertsAll')
-      }}</Button>
+      <label class="expert-search">
+        <span>{{ t('desktop.expertSearch') }}</span>
+        <Input v-model="query" type="search" :placeholder="t('desktop.expertSearch')" />
+      </label>
       <Button size="sm" variant="chip" type="button" @click="emit('navigate', 'experts')">{{
         t('desktop.manageExperts')
       }}</Button>
@@ -161,7 +156,15 @@ p {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: center;
+  align-items: end;
+}
+.expert-search {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 160px;
+  color: var(--text-soft);
+  font-size: 12px;
 }
 .category-chips {
   display: flex;

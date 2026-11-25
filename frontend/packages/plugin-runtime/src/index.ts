@@ -1,7 +1,7 @@
 /**
- * @eap/plugin-runtime — Cordis Client island (real dsh-personal packages).
+ * @eap/plugin-runtime — Cordis Client island.
  *
- * Production: bootCordisClient → ui-renderer SlotRegistry + ui-sidebar-right.apply.
+ * Production: bootCordisClient → the shell slot registry. The shell owns the seats.
  * Host/Agent/install stay on py-backend. No EAP profile.
  */
 

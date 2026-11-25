@@ -37,6 +37,7 @@ describe('L2 DSH plugin host (control on server)', () => {
       name: 'dsh-better-sidebar',
       version: '0.31.1',
       description: 'Better Sidebar',
+      installSpec: 'dsh-better-sidebar',
       broken: false,
       clientEntry: 'lib/client.js',
       clientUrl: '/api/plugins/dsh-better-sidebar/files/lib/client.js',
@@ -85,6 +86,39 @@ describe('L2 DSH plugin host (control on server)', () => {
     ) as HTMLButtonElement).click()
     await vi.waitFor(() => {
       expect(disable).toHaveBeenCalledWith('dsh-better-sidebar')
+    })
+    await vi.waitFor(() => {
+      const button = document.querySelector(
+        '[data-testid="dsh-plugin-update-dsh-better-sidebar"]',
+      ) as HTMLButtonElement
+      expect(button.disabled).toBe(false)
+    })
+    const update = vi.spyOn(runtimeApi.plugins, 'update').mockResolvedValue({ ...base, enabled: false })
+    const uninstall = vi
+      .spyOn(runtimeApi.plugins, 'uninstall')
+      .mockResolvedValue({ name: 'dsh-better-sidebar', removed: true })
+    ;(document.querySelector(
+      '[data-testid="dsh-plugin-update-dsh-better-sidebar"]',
+    ) as HTMLButtonElement).click()
+    await vi.waitFor(() => {
+      expect(update).toHaveBeenCalledExactlyOnceWith('dsh-better-sidebar')
+    })
+    await vi.waitFor(() => {
+      const button = document.querySelector(
+        '[data-testid="dsh-plugin-uninstall-dsh-better-sidebar"]',
+      ) as HTMLButtonElement
+      expect(button.disabled).toBe(false)
+    })
+    ;(document.querySelector(
+      '[data-testid="dsh-plugin-uninstall-dsh-better-sidebar"]',
+    ) as HTMLButtonElement).click()
+    await vi.waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).toBeTruthy()
+    })
+    const confirm = document.querySelector('.eap-confirm__actions button') as HTMLButtonElement
+    confirm.click()
+    await vi.waitFor(() => {
+      expect(uninstall).toHaveBeenCalledExactlyOnceWith('dsh-better-sidebar')
     })
   })
 

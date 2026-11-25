@@ -13,6 +13,8 @@ export type PluginInstallItem = {
   clientUrl: string
   filesBaseUrl: string
   hostApiBase: string
+  /** Spec used to install or update: package name, git address, or absolute path. */
+  installSpec?: string
   /** Always py-backend — Cordis island must not claim Host authority. */
   controlPlane: 'py-backend'
 }
@@ -56,9 +58,9 @@ export function createPluginApi(client: RequestClient) {
     plugins: {
       list: (signal?: AbortSignal) =>
         client.get<{ items: PluginInstallItem[] }>('/plugins', { signal }).then((r) => r.data),
-      install: (sourcePath: string, signal?: AbortSignal) =>
+      install: (spec: string, signal?: AbortSignal) =>
         client
-          .post<PluginInstallItem>('/plugins/install', { sourcePath }, { signal })
+          .post<PluginInstallItem>('/plugins/install', { spec }, { signal })
           .then((r) => r.data),
       enable: (name: string, signal?: AbortSignal) =>
         client
@@ -67,6 +69,18 @@ export function createPluginApi(client: RequestClient) {
       disable: (name: string, signal?: AbortSignal) =>
         client
           .post<PluginInstallItem>(`/plugins/${encodeURIComponent(name)}/disable`, {}, { signal })
+          .then((r) => r.data),
+      update: (name: string, signal?: AbortSignal) =>
+        client
+          .post<PluginInstallItem>(`/plugins/${encodeURIComponent(name)}/update`, {}, { signal })
+          .then((r) => r.data),
+      uninstall: (name: string, signal?: AbortSignal) =>
+        client
+          .post<{ name: string; removed: boolean }>(
+            `/plugins/${encodeURIComponent(name)}/uninstall`,
+            {},
+            { signal },
+          )
           .then((r) => r.data),
       contributions: (signal?: AbortSignal) =>
         client.get<PluginContributions>('/plugins/contributions', { signal }).then((r) => {

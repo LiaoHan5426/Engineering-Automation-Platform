@@ -20,7 +20,6 @@ import {
   IconPaperclip,
   IconLayers,
   IconTriangleAlert,
-  Icon,
 } from '@eap/ui'
 import {
   AiToolMode,
@@ -363,38 +362,6 @@ function chooseEffort(effort: TaskContext['reasoning']) {
 const effortLabel = computed(() =>
   shownEffort.value === 'default' ? t('task.modelDefault') : t('task.' + shownEffort.value),
 )
-/** Prototype selection axes: read-only mirror of the real composer state, not a second control. */
-const selectionAxes = computed(() => {
-  const references = props.context.files.length + (props.context.prototypeVersionId ? 1 : 0)
-  const execution =
-    workbench.executionMode === 'plan'
-      ? t('composerUi.axisPlan')
-      : workbench.executionMode === 'agent'
-        ? t('composerUi.axisAgent')
-        : t('composerUi.axisChat')
-  return [
-    {
-      key: 'references',
-      label: t('composerUi.axisReferences', { count: references }),
-      tone: 'info' as const,
-    },
-    { key: 'execution', label: execution, tone: 'info' as const },
-    {
-      key: 'approval',
-      label:
-        props.context.approval === 'read_only'
-          ? t('composerUi.axisReadOnly')
-          : t('composerUi.axisApprove'),
-      tone: props.context.approval === 'read_only' ? ('info' as const) : ('warning' as const),
-    },
-    {
-      key: 'model',
-      label: props.modelLabel || t('modelUi.pending'),
-      tone: 'info' as const,
-    },
-    { key: 'effort', label: effortLabel.value, tone: 'info' as const },
-  ]
-})
 const contextCount = computed(() => ({
   files: props.context.files.length,
   limit: FILE_CAP,
@@ -410,7 +377,7 @@ function chooseExpert(id: string) {
 }
 function manageExperts() {
   hidePopups()
-  if (typeof location !== 'undefined') location.hash = 'expert-catalog'
+  if (typeof location !== 'undefined') location.hash = 'experts'
 }
 async function loadVersions() {
   if (versionsBusy.value) return
@@ -487,22 +454,6 @@ async function loadVersions() {
     <Feedback v-if="knowledgeRemoved" tone="info" data-testid="knowledge-removed">{{
       t('knowledgeContext.removed')
     }}</Feedback>
-    <div class="composer-scope" data-testid="composer-scope">
-      <label>
-        <span class="sr-only">{{ t('desktop.composerScope') }}</span>
-        <Select
-          data-testid="composer-scope-select"
-          :disabled="disabled"
-          :model-value="scopeProjectId ?? ''"
-          @change="changeScopeProject(($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">{{ t('desktop.composerScopeFree') }}</option>
-          <option v-for="project in localProjects.projects" :key="project.id" :value="project.id">
-            {{ projectLabel(project.id) }}
-          </option>
-        </Select>
-      </label>
-    </div>
     <div v-if="hasExtraChips" class="context-chips">
       <Tag
         v-if="context.knowledgeExpertRef"
@@ -590,10 +541,7 @@ async function loadVersions() {
         >{{ t('desktop.collab') }}：{{ expert.name }}</Tag
       >
     </div>
-    <Collapse
-      v-if="context.mode === 'code'"
-      :open="workbench.executionMode !== 'plan' && !context.taskRef"
-    >
+    <Collapse v-if="context.mode === 'code'">
       <template #summary
         >{{ t('generation.target') }} ·
         {{ context.targetPath || t('generation.targetPlaceholder') }}</template
@@ -639,20 +587,29 @@ async function loadVersions() {
         >{{ t('generation.removeTask') }}</Button
       >
     </div>
-    <div class="selection-axes" data-testid="composer-selection-axes">
-      <Tag
-        v-for="axis in selectionAxes"
-        :key="axis.key"
-        effect="plain"
-        size="sm"
-        :type="axis.tone"
-        :data-testid="'composer-axis-' + axis.key"
-        >{{ axis.label }}</Tag
-      >
-    </div>
     <slot name="draft" />
     <div class="task-context" data-testid="task-context">
       <div class="context-toolbar">
+        <div class="composer-scope" data-testid="composer-scope">
+          <label>
+            <span class="sr-only">{{ t('desktop.composerScope') }}</span>
+            <Select
+              data-testid="composer-scope-select"
+              :disabled="disabled"
+              :model-value="scopeProjectId ?? ''"
+              @change="changeScopeProject(($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">{{ t('desktop.composerScopeFree') }}</option>
+              <option
+                v-for="project in localProjects.projects"
+                :key="project.id"
+                :value="project.id"
+              >
+                {{ projectLabel(project.id) }}
+              </option>
+            </Select>
+          </label>
+        </div>
         <Button
           variant="secondary"
           type="button"
@@ -834,11 +791,11 @@ async function loadVersions() {
         <span
           class="context-meter"
           data-testid="context-meter"
-          role="img"
-          :aria-label="t('desktop.contextMeterHint', contextCount)"
           :title="t('desktop.contextMeterHint', contextCount)"
         >
-          <Icon name="info" :size="22" />
+          <span class="context-meter__count" aria-hidden="true"
+            >{{ contextCount.files }}/{{ contextCount.limit }}</span
+          >
           <span class="sr-only">{{ t('desktop.contextMeter', contextCount) }}</span>
         </span>
         <div class="composer-submit-controls">
@@ -1187,14 +1144,16 @@ async function loadVersions() {
 
 .composer-scope {
   display: flex;
-  gap: 10px;
+  flex: 0 1 9rem;
+  gap: 8px;
   align-items: center;
-  justify-content: space-between;
-  padding: 2px 2px 0;
+  min-inline-size: 0;
+  padding: 0;
 }
 
 .composer-scope :deep(.eap-select) {
-  max-width: min(280px, 70vw);
+  max-inline-size: 100%;
+  min-inline-size: 0;
 }
 
 .sr-only {
@@ -1208,34 +1167,29 @@ async function loadVersions() {
   clip: rect(0, 0, 0, 0);
 }
 
-.selection-axes {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  min-height: 26px;
-  padding: 2px 2px 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.selection-axes::-webkit-scrollbar {
-  display: none;
-}
-
-.selection-axes :deep(.eap-tag) {
-  flex: 0 0 auto;
-  max-width: 220px;
-}
-
 .task-context {
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .context-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
+}
+
+.context-toolbar > :deep(button),
+.composer-scope :deep(select) {
+  min-block-size: 2rem;
+}
+
+@media (pointer: coarse) {
+  .context-toolbar > :deep(button),
+  .composer-scope :deep(select),
+  .composer-submit-controls > :deep(button) {
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+  }
 }
 
 .context-toolbar > .bar-picker {
@@ -1275,9 +1229,9 @@ async function loadVersions() {
 }
 
 .composer-status {
-  margin-top: 8px;
+  margin-top: 2px;
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.4;
   color: var(--text-mute);
 }
 
@@ -1368,11 +1322,17 @@ async function loadVersions() {
 }
 
 .context-toolbar > .context-meter {
-  flex: 0 0 32px;
-  width: 32px;
-  min-width: 32px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 2.75rem;
   height: 32px;
-  padding: 4px;
+  padding: 0 8px;
+  color: var(--text-mute);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .model-menu {

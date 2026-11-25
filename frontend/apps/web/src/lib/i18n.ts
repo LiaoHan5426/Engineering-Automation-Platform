@@ -8,7 +8,6 @@ import { toolExecutionMessages } from './toolExecutionMessages'
 import { expertWorkspaceMessages } from './expertWorkspaceMessages'
 import { workDocumentMessages } from './workDocumentMessages'
 import { sceneDesignerMessages } from './sceneDesignerMessages'
-import { settingsCenterMessages } from './settingsCenterMessages'
 import { interactionPatternsMessages } from './interactionPatternsMessages'
 import { knowledgeContextMessages } from './knowledgeContextMessages'
 import { contextBudgetMessages } from './contextBudgetMessages'
@@ -46,7 +45,6 @@ export const i18n = createI18n({
       expertWorkspace: expertWorkspaceMessages['zh-CN'],
       workDocument: workDocumentMessages['zh-CN'],
       sceneDesigner: sceneDesignerMessages['zh-CN'],
-      settingsCenter: settingsCenterMessages['zh-CN'],
       patterns: interactionPatternsMessages['zh-CN'],
       knowledgeContext: knowledgeContextMessages['zh-CN'],
       contextBudget: contextBudgetMessages['zh-CN'],
@@ -348,9 +346,19 @@ export const i18n = createI18n({
         dshTitle: 'DSH 插件（服务端权威）',
         dshHint:
           '安装与启停由 py-backend 权威管理。Cordis 岛只渲染 Client UI；Host API / Agent / 工具不在浏览器执行。',
-        dshSourcePlaceholder: '本机 DSH 包目录（如 dsh-better-sidebar）',
-        dshInstall: '安装到服务端',
-        dshEmpty: '尚未安装 DSH 插件。安装并启用后，侧栏 Client UI 会出现在壳层。',
+        dshSpecLabel: '安装来源',
+        dshSpecHelp: '填写 npm 包名或 git 地址。服务端会识别并安装，并记住该来源以便更新。',
+        dshSourcePlaceholder: '例如 dsh-better-sidebar 或 https://github.com/org/repo.git',
+        dshInstall: '安装',
+        dshUpdate: '更新',
+        dshUpdateMissing: '没有记录安装来源，请重新填写包名或 git 地址安装',
+        dshUninstall: '卸载',
+        dshUninstallTitle: '卸载 {name}',
+        dshUninstallConfirm: '卸载',
+        dshUninstallImpact: '从服务端删除 {name} {version}，已启用的界面会一起消失。',
+        dshUninstallSpec: '安装来源：{spec}',
+        dshInstalled: '已安装插件',
+        dshEmpty: '尚未安装插件。填写包名或 git 地址后安装，启用后界面会出现在壳层。',
         hiddenTitle: '插件入口已隐藏',
         hiddenBody:
           '已有实例配置仍留在本机，这里不能新建操作。对话记录不会因为这份配置而在后端重启后恢复。',
@@ -411,7 +419,6 @@ export const i18n = createI18n({
       expertWorkspace: expertWorkspaceMessages['en-US'],
       workDocument: workDocumentMessages['en-US'],
       sceneDesigner: sceneDesignerMessages['en-US'],
-      settingsCenter: settingsCenterMessages['en-US'],
       patterns: interactionPatternsMessages['en-US'],
       knowledgeContext: knowledgeContextMessages['en-US'],
       contextBudget: contextBudgetMessages['en-US'],
@@ -744,9 +751,19 @@ export const i18n = createI18n({
         dshTitle: 'DSH plugins (server authority)',
         dshHint:
           'Install and enable are owned by py-backend. The Cordis island only renders Client UI; Host API / Agent / tools never run in the browser.',
-        dshSourcePlaceholder: 'Local DSH package directory (e.g. dsh-better-sidebar)',
-        dshInstall: 'Install on server',
-        dshEmpty: 'No DSH plugins installed. After install + enable, the Client UI appears in the shell.',
+        dshSpecLabel: 'Install source',
+        dshSpecHelp: 'Enter an npm package name or a git address. The server classifies it, installs it, and keeps the source for updates.',
+        dshSourcePlaceholder: 'e.g. dsh-better-sidebar or https://github.com/org/repo.git',
+        dshInstall: 'Install',
+        dshUpdate: 'Update',
+        dshUpdateMissing: 'No install source is recorded. Install again with a package name or git address.',
+        dshUninstall: 'Uninstall',
+        dshUninstallTitle: 'Uninstall {name}',
+        dshUninstallConfirm: 'Uninstall',
+        dshUninstallImpact: 'Remove {name} {version} from the server. Its enabled UI goes with it.',
+        dshUninstallSpec: 'Install source: {spec}',
+        dshInstalled: 'Installed plugins',
+        dshEmpty: 'No plugins installed. Enter a package name or git address, then enable it to show its UI.',
         hiddenTitle: 'Plugin entry hidden',
         hiddenBody:
           'Saved instance configuration remains on this browser. New operations are unavailable here. Chat transcripts are not restored after a backend restart.',

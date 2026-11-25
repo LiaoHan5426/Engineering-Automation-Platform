@@ -1,12 +1,10 @@
 /**
- * @deprecated Fake applyUiSlots/dockkit order does not match dsh-personal.
- * Production uses bootCordisClient (PLATFORM libs + ui-sidebar-right.apply).
+ * @deprecated Fake applyUiSlots/dockkit order is not the shell.
+ * Production uses bootCordisClient and the shell slot registry.
+ * No dsh client UI package is applied.
  */
 
-export const CLIENT_PACKAGE_APPLY = [
-  { name: 'ui-renderer', note: 'Cordis apply → slots' },
-  { name: 'ui-sidebar-right', note: 'Cordis apply → RightbarSeat' },
-] as const
+export const CLIENT_PACKAGE_APPLY = [] as const
 
 export function assembleClientPackages(): () => void {
   console.warn(

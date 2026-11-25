@@ -93,10 +93,10 @@ async function mount() {
 
 async function openSelectedDetail() {
   const id = workbench.selectedScenario
-  const open = root!.querySelector(
+  const card = root!.querySelector(
     `[data-testid=scene-open-detail][data-scene-id="${id}"]`,
-  ) as HTMLButtonElement | null
-  open?.click()
+  )
+  ;(card?.querySelector('button') as HTMLButtonElement | null)?.click()
   await nextTick()
 }
 
@@ -253,16 +253,11 @@ it('opens copied scenes for editing and keeps at least one supported work mode',
   expect(scenarios.find((item) => item.id === 'prototype-to-code')!.modes).toEqual(['code', 'work'])
 })
 
-it('returns to the originating Work conversation instead of changing to Code', async () => {
-  const original = workbench.origin
-  workbench.origin = 'work'
-  try {
-    const navigated = await mount()
-    ;(root!.querySelector('[data-testid="back-to-chat-from-scenes"]') as HTMLButtonElement).click()
-    expect(navigated).toEqual(['work'])
-  } finally {
-    workbench.origin = original
-  }
+it('does not offer a return-to-conversation control on the scene catalog', async () => {
+  const navigated = await mount()
+  expect(root!.querySelector('[data-testid="back-to-chat-from-scenes"]')).toBeNull()
+  expect(root!.textContent).not.toMatch(/返回对话|Back to chat/)
+  expect(navigated).toEqual([])
 })
 
 it('locates repository dependencies in sources rather than unrelated model settings', async () => {
@@ -311,9 +306,9 @@ it('locates a missing dependency and applies the scene without installing or wid
   ;(root!.querySelector('[data-testid=scene-tab-local]') as HTMLButtonElement).click()
   await nextTick()
   const openDetail = [...root!.querySelectorAll('[data-testid=scene-open-detail]')].find((item) =>
-    item.closest('li')?.textContent?.includes('代码审阅'),
-  ) as HTMLButtonElement
-  openDetail.click()
+    item.textContent?.includes('代码审阅'),
+  )
+  ;(openDetail?.querySelector('button') as HTMLButtonElement).click()
   await nextTick()
   expect(root!.querySelector('[data-testid=scene-detail-view]')).not.toBeNull()
   expect(root!.querySelector('[data-testid=preset-save-off]')?.tagName).toBe('SPAN')
@@ -350,7 +345,7 @@ it('locates a missing dependency and applies the scene without installing or wid
   await nextTick()
   expect(root!.querySelector('[data-testid=scene-basic-fields]')).not.toBeNull()
   const locate = [...root!.querySelectorAll('button')].find(
-    (item) => item.textContent === '查看位置',
+    (item) => item.textContent?.startsWith('查看位置'),
   )
   locate!.click()
   await nextTick()
@@ -386,7 +381,7 @@ it('keeps a globally disabled scene from being applied', async () => {
   await nextTick()
   expect(currentExtras().scenarioId).toBeNull()
   const locate = [...root!.querySelectorAll('button')].find(
-    (item) => item.textContent === '查看位置',
+    (item) => item.textContent?.startsWith('查看位置'),
   )
   locate!.click()
   await nextTick()

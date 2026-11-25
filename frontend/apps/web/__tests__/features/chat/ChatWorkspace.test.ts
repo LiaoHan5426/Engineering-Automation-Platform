@@ -884,6 +884,7 @@ describe('ChatWorkspace / toolbar', () => {
     workbench.sessionPanels = {}
     workbench.sessionExtras = {}
     chatBinding.value = null
+    document.getElementById('eap-cordis-sidebar-right')?.remove()
   })
 
   async function mount() {
@@ -967,6 +968,31 @@ describe('ChatWorkspace / toolbar', () => {
     await click('close-terminal')
     expect(workbench.panel).toBeNull()
     expect(draft.value).toBe('Keep this unsent draft')
+  })
+
+  it('puts the expand control in the conversation tools when the right column is seated', async () => {
+    const column = document.createElement('aside')
+    column.id = 'eap-cordis-sidebar-right'
+    column.setAttribute('data-sidebar-right-seat', '')
+    column.setAttribute('data-collapsed', '')
+    document.body.append(column)
+    await mount()
+    const tools = host!.querySelector('.session-tools')
+    const button = tools?.querySelector<HTMLButtonElement>(
+      '[data-testid="toggle-layout-sidebar-right"]',
+    )
+    expect(button).not.toBeNull()
+    expect(button!.getAttribute('aria-label')).toBe(i18n.global.t('desktop.openRightSidebar'))
+    expect(button!.hasAttribute('data-sidebar-right-expand')).toBe(true)
+    expect(button!.hasAttribute('data-sidebar-right-toggle')).toBe(false)
+    expect(button!.querySelector('svg')).not.toBeNull()
+    button!.click()
+    await nextTick()
+    expect(column.hasAttribute('data-collapsed')).toBe(false)
+    expect(button!.hasAttribute('data-sidebar-right-expand')).toBe(false)
+    expect(button!.hasAttribute('data-sidebar-right-toggle')).toBe(true)
+    expect(button!.getAttribute('aria-label')).toBe(i18n.global.t('desktop.closeRightSidebar'))
+    column.remove()
   })
 
 })

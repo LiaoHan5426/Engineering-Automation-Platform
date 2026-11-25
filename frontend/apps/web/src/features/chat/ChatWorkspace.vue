@@ -21,10 +21,12 @@ import {
   Drawer,
 } from '@eap/ui'
 import { type AiConnectionState } from '@eap/runtime-client'
-import { IconEllipsis, Icon } from '@eap/ui'
+import { IconEllipsis, Icon, IconPanelRight } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
+import { subscribeRuntimeLiveness } from '../../lib/runtimeLiveness'
 import { createChatSession } from './chatSession'
 import { isDraftSubmitKey } from './draftKeys'
+import { installToolbarFallback } from './toolbarKeys'
 import TurnContextDetails from './TurnContextDetails.vue'
 import TaskMemoryPanel from './TaskMemoryPanel.vue'
 import ExecutionLogDialog from './ExecutionLogDialog.vue'
@@ -737,10 +739,35 @@ watchEffect(() => {
 function flushHiddenHistory() {
   if (document.visibilityState === 'hidden') session.flushPersistence()
 }
+/** Layout column `#eap-cordis-sidebar-right`. The conversation header owns the expand control. */
+const sidebarRightSeated = ref(false)
+const sidebarRightCollapsed = ref(false)
+let sidebarRightObserver: MutationObserver | undefined
+
+function syncSidebarRight() {
+  const column = document.getElementById('eap-cordis-sidebar-right')
+  sidebarRightSeated.value = !!column?.hasAttribute('data-sidebar-right-seat')
+  sidebarRightCollapsed.value = !!column?.hasAttribute('data-collapsed')
+}
+
+function setSidebarRightCollapsed(collapsed: boolean) {
+  const column = document.getElementById('eap-cordis-sidebar-right')
+  if (!column?.hasAttribute('data-sidebar-right-seat')) return
+  if (collapsed) column.setAttribute('data-collapsed', '')
+  else column.removeAttribute('data-collapsed')
+  syncSidebarRight()
+}
+
+let releaseToolbar: (() => void) | null = null
+let stopRuntimeLiveness: (() => void) | undefined
+const sessionToolbar = ref<HTMLElement | null>(null)
 onUnmounted(() => {
+  releaseToolbar?.()
+  stopRuntimeLiveness?.()
   session.flushPersistence()
   window.removeEventListener('pagehide', session.flushPersistence)
   document.removeEventListener('visibilitychange', flushHiddenHistory)
+  sidebarRightObserver?.disconnect()
   if (chatBinding.value?.activeId === session.conversationId.value) chatBinding.value = null
 })
 function useScene(id: string) {
@@ -927,8 +954,27 @@ const stateKey: Record<AiConnectionState, string> = {
 }
 
 onMounted(async () => {
+  if (sessionToolbar.value) releaseToolbar = installToolbarFallback(sessionToolbar.value)
   window.addEventListener('pagehide', session.flushPersistence)
   document.addEventListener('visibilitychange', flushHiddenHistory)
+  const column = document.getElementById('eap-cordis-sidebar-right')
+  if (column) {
+    sidebarRightObserver = new MutationObserver(syncSidebarRight)
+    sidebarRightObserver.observe(column, {
+      attributes: true,
+      attributeFilter: ['data-sidebar-right-seat', 'data-collapsed', 'hidden'],
+    })
+  }
+  syncSidebarRight()
+  stopRuntimeLiveness = subscribeRuntimeLiveness((event) => {
+    if (event.lost) session.markUnreachable()
+    if (event.recovered) {
+      void session.refreshStatus()
+      void session.refreshConnections().catch(() => {
+        /* the list already on screen stays until the next recovery */
+      })
+    }
+  })
   await Promise.all([
     session.refreshStatus(),
     session.refreshConnections().catch((error) => {
@@ -949,7 +995,11 @@ onMounted(async () => {
         <div v-if="session.phase.value === 'loading'" class="session-status">
           <p class="hint">{{ t('chat.loading') }}</p>
         </div>
-        <div v-else-if="session.phase.value === 'offline'" class="session-status">
+        <div
+          v-else-if="session.phase.value === 'offline'"
+          class="session-status session-status--notice"
+          role="status"
+        >
           <p class="hint">{{ t('chat.offline') }}</p>
         </div>
         <div v-else class="session-status">
@@ -978,7 +1028,13 @@ onMounted(async () => {
             {{ displayWorkspacePath }}
           </p>
         </div>
-        <div class="session-tools">
+        <div
+          ref="sessionToolbar"
+          class="session-tools"
+          role="toolbar"
+          focusgroup="toolbar wrap"
+          :aria-label="t('desktop.sessionTools')"
+        >
           <Button
             size="sm"
             variant="ghost"
@@ -990,47 +1046,54 @@ onMounted(async () => {
             @click="sendTask"
             >{{ t('desktop.retryShort') }}</Button
           >
-          <Button
-            size="sm"
-            variant="ghost"
-            type="button"
-            class="shell-tool"
-            data-testid="open-summary"
-            :aria-pressed="workbench.panel === 'summary'"
-            @click="choosePanel('summary')"
-            >{{ t('desktop.summary') }}</Button
+          <div
+            class="session-tools__group"
+            role="group"
+            :aria-label="t('desktop.sessionPanels')"
           >
-          <Button
-            size="sm"
-            variant="ghost"
-            type="button"
-            class="shell-tool"
-            data-testid="open-terminal"
-            :aria-pressed="workbench.panel === 'terminal'"
-            :title="t('desktop.terminalDockHint')"
-            @click="choosePanel('terminal')"
-            >{{ t('desktop.terminal') }}</Button
-          >
-          <Button
-            size="sm"
-            variant="ghost"
-            type="button"
-            class="shell-tool"
-            data-testid="open-changes"
-            :aria-pressed="workbench.panel === 'changes'"
-            @click="choosePanel('changes')"
-            >{{ t('desktop.changes') }}</Button
-          >
-          <Button
-            size="sm"
-            variant="ghost"
-            type="button"
-            class="shell-tool"
-            data-testid="open-files"
-            :aria-pressed="workbench.panel === 'files'"
-            @click="choosePanel('files')"
-            >{{ t('desktop.sources') }}</Button
-          >
+            <Button
+              size="sm"
+              variant="ghost"
+              type="button"
+              class="shell-tool"
+              data-testid="open-summary"
+              :aria-pressed="workbench.panel === 'summary'"
+              @click="choosePanel('summary')"
+              >{{ t('desktop.summary') }}</Button
+            >
+            <Button
+              size="sm"
+              variant="ghost"
+              type="button"
+              class="shell-tool"
+              data-testid="open-terminal"
+              :aria-pressed="workbench.panel === 'terminal'"
+              :title="t('desktop.terminalDockHint')"
+              @click="choosePanel('terminal')"
+              >{{ t('desktop.terminal') }}</Button
+            >
+            <Button
+              size="sm"
+              variant="ghost"
+              type="button"
+              class="shell-tool"
+              data-testid="open-changes"
+              :aria-pressed="workbench.panel === 'changes'"
+              @click="choosePanel('changes')"
+              >{{ t('desktop.changes') }}</Button
+            >
+            <Button
+              size="sm"
+              variant="ghost"
+              type="button"
+              class="shell-tool"
+              data-testid="open-files"
+              :aria-pressed="workbench.panel === 'files'"
+              @click="choosePanel('files')"
+              >{{ t('desktop.sources') }}</Button
+            >
+          </div>
+          <span class="session-tools__sep" role="separator" aria-orientation="vertical"></span>
           <DropdownMenu
             v-model:open="moreOpen"
             :label="t('desktop.moreActions')"
@@ -1069,6 +1132,29 @@ onMounted(async () => {
               ><IconEllipsis
             /></Button>
           </DropdownMenu>
+          <Button
+            v-if="sidebarRightSeated"
+            variant="icon"
+            type="button"
+            class="layout-sidebar-toggle"
+            data-testid="toggle-layout-sidebar-right"
+            :active="!sidebarRightCollapsed"
+            :aria-expanded="!sidebarRightCollapsed"
+            aria-controls="eap-cordis-sidebar-right"
+            :aria-label="
+              sidebarRightCollapsed
+                ? t('desktop.openRightSidebar')
+                : t('desktop.closeRightSidebar')
+            "
+            v-bind="
+              sidebarRightCollapsed
+                ? { 'data-sidebar-right-expand': '' }
+                : { 'data-sidebar-right-toggle': '' }
+            "
+            @click="setSidebarRightCollapsed(!sidebarRightCollapsed)"
+          >
+            <IconPanelRight />
+          </Button>
         </div>
       </div>
       <Button
@@ -1800,7 +1886,7 @@ onMounted(async () => {
                           : 'chat.draft',
                     )
                   "
-                  rows="3"
+                  rows="2"
                   @keydown="draftKeydown"
                   @input="growDraft"
                   :disabled="
@@ -2142,8 +2228,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
-  padding: 8px 24px 12px;
+  gap: 0;
+  padding: 4px 24px 6px;
   margin: 0;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
@@ -2161,6 +2247,17 @@ onMounted(async () => {
   min-width: 0;
   flex: 1 1 auto;
 }
+.session-status--notice .hint {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--warn-text, var(--text));
+  background: var(--warn-bg, var(--surface-2));
+  border-radius: 6px;
+}
 .session-tools {
   display: flex;
   align-items: center;
@@ -2168,8 +2265,29 @@ onMounted(async () => {
   margin-left: auto;
   flex: 0 0 auto;
 }
+.session-tools__group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.session-tools__sep {
+  align-self: stretch;
+  margin-block: 6px;
+  border-inline-start: 1px solid var(--border);
+}
 .session-tools .shell-tool {
   white-space: nowrap;
+  min-block-size: 2rem;
+  min-inline-size: 2rem;
+}
+.session-tools .shell-tool:is([aria-pressed='true']) {
+  box-shadow: inset 0 0 0 1px var(--eap-color-primary);
+}
+@media (pointer: coarse) {
+  .session-tools .shell-tool {
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+  }
 }
 @media (max-width: 760px) {
   .live-utilities {
@@ -2295,9 +2413,10 @@ onMounted(async () => {
   display: block;
   gap: 0;
   flex: 0 0 auto;
-  max-height: min(55%, 440px);
+  max-block-size: min(34dvh, 280px);
   overflow: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .chat-composer:has(textarea.composer-draft:disabled) textarea,
 .chat-composer:has(textarea.composer-draft:disabled) :deep(.context-toolbar) {
@@ -2306,9 +2425,10 @@ onMounted(async () => {
 .chat-composer textarea {
   border: 0;
   background: transparent;
-  min-height: 70px;
-  padding: 6px 3px;
-  font-size: 13px;
+  min-block-size: 2.75rem;
+  padding: 4px 2px;
+  font-size: 14px;
+  resize: vertical;
 }
 .chat-composer textarea.composer-draft:focus {
   outline: none;

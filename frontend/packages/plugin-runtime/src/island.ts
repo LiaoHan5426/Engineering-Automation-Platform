@@ -1,7 +1,7 @@
 /**
  * Cordis Client UI island — presentation only.
  *
- * Boots real dsh-personal Cordis packages (ui-renderer + ui-sidebar-right.apply),
+ * Boots the shell slot registry. dsh client UI packages are not applied.
  * then loads plugin `./client`. Host remotes → py-backend.
  * Forbidden: install/enable, Agent loop, forging Host success, EAP profile.
  */

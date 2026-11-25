@@ -1,64 +1,30 @@
 /**
- * Cordis Client boot for EAP — real dsh-personal packages, no hand-rolled seat.
+ * Cordis Client boot for EAP.
  *
- * Mirrors SlotTestRuntime / apply.client.spec peers:
- * Context → SlotRegistry + Vue renderer → declare rightbar → ui-sidebar-right.apply
- * → mount rightbar into #eap-cordis-sidebar-right.
+ * Shell context → shell slot registry → shell declares the seat catalog
+ * → mount root into the shell outlet.
  *
+ * The context and slot registry live in this package. Cordis, ui-renderer, and
+ * ui-sidebar-right are not loaded.
  * Host remotes (session/settings/workspaceFiles) → py-backend only.
  * No EAP profile.
  */
 
-import { Context } from '@deepseek-ai/cordis'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { MenuRegistry } from '@deepseek-ai/dsh-client-ui-context-menu/src/client/registry.ts'
-import { createContextMenuBindings } from '@deepseek-ai/dsh-client-ui-context-menu/src/client/trigger.ts'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/src/client/registry.ts'
-import { createVueSlotRenderer } from '@deepseek-ai/dsh-client-ui-renderer/src/client/vue/slots.ts'
-import {
-  apply as applySidebarRight,
-  inject as sidebarRightInject,
-} from '@deepseek-ai/dsh-client-ui-sidebar-right/src/client/index.ts'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { createApp, defineComponent, Fragment, h, type App } from 'vue'
+import { createApp, nextTick, type App } from 'vue'
+import { installLayoutSlotFacade } from './layoutFacade'
+import { retainLayoutRegions } from './layoutRegions'
 import { createHostProxiedRemote, type HostFetch } from './hostRemotes'
 import { installReactSlotBridge } from './reactSlotBridge'
+import { installShellLayout } from './shellFrame'
+import { createShellContext } from './shellContext'
+import { createEapSlotRegistry } from './slotRegistry'
 import type { ClientContext } from './types'
 
 const COLUMN_ID = 'eap-cordis-sidebar-right'
-const SESSION = 'eap' as SessionId
 
 export type CordisBootHandle = {
   ctx: ClientContext
   dispose: () => void
-}
-
-function createMinimalSessions() {
-  const listSnap = {
-    items: [{ id: SESSION, cwd: '/' }],
-    byId: { [SESSION]: { id: SESSION, cwd: '/', title: 'EAP' } },
-    archivedSessionIds: [] as string[],
-  }
-  const list = {
-    getSnapshot: () => listSnap,
-    subscribe: (_fn: () => void) => () => {},
-  }
-  return {
-    list,
-    retain(sessionId: SessionId, _opts?: unknown) {
-      const reference = {
-        sessionId,
-        ready: Promise.resolve(),
-        release: () => {},
-        source: 'sidebarView' as const,
-      }
-      return reference
-    },
-    retainInfo: (_id: SessionId) => ({
-      getSnapshot: () => ({ counts: {} }),
-      subscribe: () => () => {},
-    }),
-  }
 }
 
 function createMinimalLocale() {
@@ -109,7 +75,7 @@ function ensureColumn(): HTMLElement {
   if (!el) {
     el = document.createElement('aside')
     el.id = COLUMN_ID
-    el.className = 'workspace-inspector eap-dsh-rightbar'
+    el.className = 'eap-dsh-rightbar'
     el.setAttribute('data-testid', 'cordis-sidebar-right-column')
     const body = document.querySelector<HTMLElement>('.app .body')
     if (body) body.appendChild(el)
@@ -120,42 +86,27 @@ function ensureColumn(): HTMLElement {
   return el
 }
 
+/** Marks that the layout right column is seated. It does not open the workspace inspector. */
 function applyShellLayout(open: boolean) {
-  const app = document.querySelector('.app')
-  const body = document.querySelector('.app .body')
-  if (open) {
-    app?.classList.add('app--inspector')
-    body?.classList.add('body--inspector')
-    document.documentElement.setAttribute('data-sidebar-right-open', '')
-  } else {
-    app?.classList.remove('app--inspector')
-    body?.classList.remove('body--inspector')
-    document.documentElement.removeAttribute('data-sidebar-right-open')
-  }
-  document
-    .querySelectorAll(`.workspace-inspector:not([data-sidebar-right-seat]):not(#${COLUMN_ID})`)
-    .forEach((node) => {
-      ;(node as HTMLElement).style.display = open ? 'none' : ''
-    })
+  if (open) document.documentElement.setAttribute('data-sidebar-right-open', '')
+  else document.documentElement.removeAttribute('data-sidebar-right-open')
 }
 
 /**
- * Boot real Cordis Client packages and mount ui-sidebar-right into the Vue column.
+ * Boot the slot registry and mount the shell layout into the Vue outlets.
  */
 export async function bootCordisClient(options: {
   hostApiBase: string
   fetchHost: HostFetch
 }): Promise<CordisBootHandle> {
-  const ctx = new Context()
+  const ctx = createShellContext()
+  const releaseContext = ctx.dispose.bind(ctx)
   const disposers: Array<() => void> = []
 
-  // 1) Real SlotRegistry (ui-renderer) + Vue slot renderer
-  const slotsFiber = ctx.plugin(SlotRegistry)
-  await slotsFiber.await()
-  const slots = ctx.get('slots') as InstanceType<typeof SlotRegistry>
-  const vueRenderer = createVueSlotRenderer()
-  slots.install(vueRenderer)
-  disposers.push(installReactSlotBridge(slots as never))
+  const slots = createEapSlotRegistry()
+  ctx.provide('slots', slots as never)
+  disposers.push(installReactSlotBridge(slots))
+  installLayoutSlotFacade(slots)
 
   // 2) Host remotes (DSH namespaces) → py-backend
   const remote = createHostProxiedRemote(options.fetchHost)
@@ -164,155 +115,32 @@ export async function bootCordisClient(options: {
   ctx.provide('remote.settings', remote.settings as never)
   ctx.provide('remote.workspaceFiles', (remote as { workspaceFiles: unknown }).workspaceFiles as never)
 
-  // 3) Inject peers required by ui-sidebar-right.apply
-  const sessions = createMinimalSessions()
-  ctx.provide('sessions', sessions as never)
-
-  const currentSession = createSnapshotStore<{ key: SessionId | undefined }>({ key: SESSION })
-  ctx.provide('uiSession', { adapter: { current: currentSession } } as never)
-
-  const panelInfo = createSnapshotStore<{ activePanelId: string | null }>({ activePanelId: null })
-  const layout = {
-    openRightbar: (track: boolean, _fullscreen?: boolean) => {
-      applyShellLayout(true)
-      document.documentElement.setAttribute('data-sidebar-right-track', track ? '1' : '0')
-    },
-    closeRightbar: () => {
-      applyShellLayout(false)
-    },
-    panelInfo,
-  }
-  ctx.provide('layout', layout as never)
-
   const locale = createMinimalLocale()
   ctx.provide('locale', locale as never)
-  slots.installLocale(locale as never)
 
-  const shortcutCatalog = createSnapshotStore<readonly unknown[]>([])
-  ctx.provide('shortcuts', {
-    runtime: 'web',
-    register: () => () => {},
-    catalog: shortcutCatalog,
-    closeWindow: async () => {},
-  } as never)
-
-  ctx.provide('resources', {
-    pin: (_address: string, _signal: AbortSignal) => {},
-  } as never)
-
-  const menus = new MenuRegistry(() => {})
-  disposers.push(() => menus.dispose())
-  const activeMenu = createSnapshotStore<unknown>(undefined)
-  ctx.provide('contextMenus', {
-    register: menus.register.bind(menus),
-    open: () => {},
-    active: activeMenu,
-  } as never)
-
-  // Minimal remoteAccess so session-scoped hooks do not throw
-  ctx.provide('remoteAccess', {
-    source: () => ({ getSnapshot: () => ({ allowed: true }), subscribe: () => () => {} }),
-  } as never)
-
-  // Session scope adapter (passthrough SessionProvider)
-  slots.installScope('session', {
-    current: createSnapshotStore({
-      key: SESSION as string,
-      props: { sessionId: SESSION },
-      ctx,
-    }),
-    bindingSource: (target: { sessionId?: SessionId } | undefined) => {
-      const key = (target && 'sessionId' in (target as object)
-        ? (target as { sessionId: SessionId }).sessionId
-        : SESSION) as string
-      return createSnapshotStore({
-        key,
-        props: { sessionId: key },
-        ctx,
-      })
-    },
-    renderArea: (binding, props) => {
-      if (binding.key === undefined) return props.empty?.() ?? null
-      return props.children
-    },
-  } as never)
-
-  // RightbarSeat reads GlobalStandardProps.useContextMenu (normally installed by
-  // ui-context-menu.apply via provideRoot). Stub bindings keep the seat alive
-  // without the full menu overlay roster.
-  const menuBindings = createContextMenuBindings(() => {}, () => true)
-  slots.provideRoot({
-    hooks: {
-      panelInfo,
-      sessions: sessions.list,
-    },
-    props: {
-      useContextMenu: () => menuBindings,
-    },
-  })
-
-  // 4) Declare frame holes occupied by ui-sidebar-right
-  const ownerCell = {
-    rightbar: {
-      width: 380,
-      viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1440,
-      canShow: true,
-    },
+  // 2) Declare the catalog tree. The shell owns every seat, including the right column.
+  const releaseRegions = retainLayoutRegions()
+  disposers.push(releaseRegions)
+  const rightbarOwner = {
+    width: 380,
+    viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1440,
+    canShow: true,
   }
-  const AutoFrame = defineComponent({
-    name: 'EapCordisRightbarFrame',
-    props: ['renderSlot', 'SessionProvider'],
-    setup(props) {
-      return () => {
-        const renderSlot = props.renderSlot as (
-          key: string,
-          owner: object,
-          opts?: object,
-        ) => unknown
-        return h(Fragment, null, [renderSlot('rightbar', ownerCell.rightbar)])
-      }
-    },
-  })
+  disposers.push(installShellLayout(slots as never, rightbarOwner))
 
-  const disposeRoot = slots.register(
-    {
-      name: 'root',
-      children: {
-        rightbar: { kind: 'single', scope: 'root' },
-        'conversation.session.header.corner': { kind: 'single', scope: 'session' },
-        'shell.overlay': { kind: 'list', scope: 'root' },
-        'contextMenu.icon': { kind: 'keyed', scope: 'root' },
-        'contextMenu.content': { kind: 'keyed', scope: 'root' },
-      },
-    } as never,
-    AutoFrame as never,
-  )
-  disposers.push(disposeRoot)
-
-  // 5) Real ui-sidebar-right apply
-  const missing = sidebarRightInject.filter((name) => ctx.get(name) === undefined)
-  if (missing.length) {
-    throw new Error(`ui-sidebar-right inject missing: ${missing.join(', ')}`)
-  }
-  const sidebarFiber = ctx.plugin({
-    inject: [...sidebarRightInject],
-    apply: applySidebarRight,
-  })
-  await sidebarFiber.await()
-
-  // Select session so RightbarRoot has a view
-  currentSession.set({ key: SESSION })
-
-  // 6) Mount root → rightbar into Vue column
+  // 3) Mount root. The right column is the sidebar-right outlet.
   const column = ensureColumn()
   applyShellLayout(true)
+  const shell = document.getElementById('eap-dsh-region-shell')
+  if (!shell) throw new Error('missing layout outlet shell')
   let vueApp: App | null = createApp({
     name: 'EapCordisMount',
     setup() {
       return () => slots.renderSlot('root', {})
     },
   })
-  vueApp.mount(column)
+  vueApp.mount(shell)
+  await nextTick()
   disposers.push(() => {
     vueApp?.unmount()
     vueApp = null
@@ -322,13 +150,7 @@ export async function bootCordisClient(options: {
     applyShellLayout(false)
   })
 
-  // Expand + open guide so GuideBody mounts (docked bodies stay off while collapsed).
-  const sidebarRight = ctx.get('sidebarRight') as
-    | { openTab?: (kind: string) => void }
-    | undefined
-  sidebarRight?.openTab?.('guide')
-
-  // Provide non-fiber helpers better-sidebar may read via ctx.get / property access.
+  // Provide non-fiber helpers a plugin may read via ctx.get / property access.
   ctx.provide('connection', { state: 'connected' } as never)
   ctx.provide('modules', {
     import: async () => {
@@ -337,10 +159,9 @@ export async function bootCordisClient(options: {
   } as never)
 
   return {
-    // Cordis Context is the ClientContext; services come from provide/get.
-    ctx: ctx as unknown as ClientContext,
+    ctx,
     dispose() {
-      void sidebarFiber.dispose()
+      releaseContext()
       while (disposers.length) {
         try {
           disposers.pop()?.()

@@ -6,7 +6,7 @@
 export { bootCordisClient } from './boot'
 export type { ClientContext, SlotEntry } from './types'
 
-/** @deprecated Production path uses bootCordisClient (real Cordis + ui-sidebar-right.apply). */
+/** @deprecated Production path uses bootCordisClient. The shell declares the seats. */
 export async function createClientContext(options: {
   hostApiBase: string
   fetchHost: (method: string, body?: Record<string, unknown>) => Promise<unknown>

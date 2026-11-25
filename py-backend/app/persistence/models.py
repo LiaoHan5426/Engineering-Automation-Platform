@@ -17,6 +17,8 @@ class ConversationRow(SQLModel, table=True):
     memory: str = Field(default="")
     connection_id: str | None = Field(default=None)
     model: str | None = Field(default=None)
+    model_history_floor: int = Field(default=0)
+    working_memory_json: str = Field(default="")
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -75,5 +77,26 @@ class PluginInstallRow(SQLModel, table=True):
     install_path: str
     client_entry: str = Field(default="")
     package_json: str = Field(default="")
+    install_spec: str = Field(default="")
     installed_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
+
+
+class GitExecutionRow(SQLModel, table=True):
+    """One finished argv git observation. Not a second chat execution."""
+
+    __tablename__ = "git_execution"
+
+    id: str = Field(primary_key=True)
+    request_id: str = Field(index=True)
+    operation: str = Field(index=True)
+    status: str
+    workspace_path: str = Field(default="")
+    executable: str = Field(default="")
+    command_json: str = Field(default="[]")
+    exit_code: int | None = Field(default=None)
+    stdout: str = Field(default="")
+    stderr: str = Field(default="")
+    truncated: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=utc_now)
+    finished_at: datetime | None = Field(default=None)

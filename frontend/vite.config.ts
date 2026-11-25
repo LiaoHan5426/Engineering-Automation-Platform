@@ -1,11 +1,9 @@
 import { defineConfig } from 'vite-plus'
 import vue from '@vitejs/plugin-vue'
-import { dshViteAliasList } from './packages/plugin-runtime/src/dsh/viteAlias.ts'
 
 export default defineConfig({
   plugins: [vue()],
   resolve: {
-    alias: dshViteAliasList,
     dedupe: ['vue', 'react', 'react-dom'],
   },
   test: {

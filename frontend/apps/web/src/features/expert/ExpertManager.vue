@@ -177,7 +177,7 @@ onDeactivated(() => {
     <header v-if="!editingPage" class="manager-toolbar">
       <div>
         <Button
-          v-if="route.page !== 'list'"
+          v-if="route.page !== 'list' && !(route.page === 'tasks' && !route.expertId)"
           variant="link"
           data-testid="expert-back"
           @click="back"
@@ -186,6 +186,13 @@ onDeactivated(() => {
         <h1 tabindex="-1">
           {{ ['task', 'review'].includes(route.page) ? subtitle : selected?.name || subtitle }}
         </h1>
+        <p v-if="route.page === 'list'" class="expert-count">
+          {{
+            t('expertWorkspace.enabledCount', {
+              count: visible.filter((item) => states[item.id]?.enabled).length,
+            })
+          }}
+        </p>
         <p v-if="selected && !['task', 'review'].includes(route.page)">
           {{ agent ? t('expertWorkspace.agent') : t('expertWorkspace.workflow') }} ·
           {{
@@ -195,9 +202,6 @@ onDeactivated(() => {
       </div>
       <div class="expert-actions">
         <template v-if="route.page === 'list'">
-          <Button data-testid="expert-all-tasks" @click="navigate({ page: 'tasks' })">{{
-            t('expertWorkspace.allTasks')
-          }}</Button>
           <Button
             data-testid="expert-new-workflow"
             @click="navigate({ page: 'new', mode: 'workflow' })"
@@ -226,28 +230,15 @@ onDeactivated(() => {
         >
       </div>
     </header>
-    <Feedback v-if="error && !editingPage" tone="error"
+    <Feedback v-if="error && !editingPage && !taskPage" tone="error"
       >{{ error }} <Button @click="refresh">{{ t('expertAgent.refresh') }}</Button></Feedback
     >
     <p v-if="loading" role="status">{{ t('expertAgent.loading') }}</p>
     <template v-if="route.page === 'list'">
-      <div class="expert-gallery-head">
-        <div>
-          <h2>{{ t('expertWorkspace.list') }}</h2>
-          <p>
-            {{
-              t('expertWorkspace.enabledCount', {
-                count: visible.filter((item) => states[item.id]?.enabled).length,
-              })
-            }}
-          </p>
-        </div>
-      </div>
-      <Input
-        v-model="filter"
-        :aria-label="t('expertWorkspace.search')"
-        :placeholder="t('expertWorkspace.search')"
-      />
+      <label class="expert-search">
+        <span>{{ t('expertWorkspace.search') }}</span>
+        <Input v-model="filter" :placeholder="t('expertWorkspace.search')" />
+      </label>
       <div class="expert-cards">
         <ActionCard
           v-for="item in visible"
@@ -372,17 +363,15 @@ onDeactivated(() => {
   gap: 8px;
 }
 
-.expert-gallery-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-.expert-gallery-head h2 {
-  margin: 0;
-}
-.expert-gallery-head p {
+.expert-count {
   margin: 4px 0 0;
+  color: var(--eap-text-color-secondary);
+  font-size: 12px;
+}
+
+.expert-search {
+  display: grid;
+  gap: 4px;
   color: var(--eap-text-color-secondary);
   font-size: 12px;
 }

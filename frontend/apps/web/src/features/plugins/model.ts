@@ -88,14 +88,15 @@ export function contributionHash(instanceId: BuilderInstanceId): string {
 
 /**
  * The Ardot five-entry shell names its areas #code / #work / #scenes /
- * #experts / #settings, but some areas have no same-named view: the code area
- * lands on the chat workspace and the settings area on the model catalog.
- * Resolve area hashes to a canonical view so a deep link or refresh reaches
- * the same place the corresponding activity-bar entry opens. The settings area
- * is a full center; individual catalog pages remain available through it.
+ * #experts / #settings. Code lands on the chat workspace. Settings is the
+ * desktop settings list, so #settings opens the model catalog instead of a
+ * second settings shell.
  */
 const AREA_LANDING: Readonly<Record<string, string>> = {
   code: 'chat',
+  settings: 'model-settings',
+  // Conversation roles are chosen in chat. This hash is the expert manager.
+  'expert-catalog': 'experts',
 }
 export function resolveAreaView(id: string): string {
   return AREA_LANDING[id] ?? id

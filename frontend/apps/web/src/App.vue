@@ -15,7 +15,6 @@ const DatabaseManager = defineAsyncComponent(
 )
 const RuleManager = defineAsyncComponent(() => import('./features/rule/RuleManager.vue'))
 const ModelSettings = defineAsyncComponent(() => import('./features/settings/ModelSettings.vue'))
-const SettingsCenter = defineAsyncComponent(() => import('./features/settings/SettingsCenter.vue'))
 const InteractionPatterns = defineAsyncComponent(
   () => import('./features/shell/InteractionPatterns.vue'),
 )
@@ -26,8 +25,8 @@ const AppearanceSettings = defineAsyncComponent(
 const PluginCenter = defineAsyncComponent(() => import('./features/plugins/PluginCenter.vue'))
 const ScenarioWorkspace = defineAsyncComponent(() => import('./features/ScenarioWorkspace.vue'))
 const ProjectBoard = defineAsyncComponent(() => import('./features/shell/ProjectBoard.vue'))
-const ExpertCatalog = defineAsyncComponent(() => import('./features/shell/ExpertCatalog.vue'))
 import DesktopNavigation from './features/DesktopNavigation.vue'
+import { isSettingsView, settingsGroups } from './features/settings/catalog'
 import {
   chatBinding,
   projectLabel,
@@ -38,14 +37,12 @@ import {
 import ChatWorkspace from './features/chat/ChatWorkspace.vue'
 import WorkDocumentWorkspace from './features/work/WorkDocumentWorkspace.vue'
 import SceneDesigner from './features/work/SceneDesigner.vue'
-import WorkspaceInspector from './features/shell/WorkspaceInspector.vue'
-import { type InspectorSnapshot } from './features/shell/inspectorTabs'
-import type { InspectorArea } from './lib/inspectorMessages'
 import PluginSlot from './features/plugins/PluginSlot.vue'
 import CordisIslandHost from './features/plugins/CordisIslandHost.vue'
 import { createPluginHost } from './features/plugins/host'
 import { isKnownHash, resolveAreaView } from './features/plugins/model'
 import { i18n } from './lib/i18n'
+import { subscribeRuntimeLiveness } from './lib/runtimeLiveness'
 import {
   runtimeApi,
   type CapabilityItem,
@@ -67,6 +64,7 @@ import {
   Select,
   Textarea,
   Collapse,
+  IconPanelRight,
 } from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage, statusLabel } from './lib/presentation'
@@ -75,13 +73,6 @@ import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from '.
 
 /** Existing views remain available through the five-entry desktop shell. */
 const shellPages = [
-  {
-    id: 'settings',
-    name: i18n.global.t('settingsCenter.title'),
-    icon: '⚙',
-    group: '设置',
-    hint: i18n.global.t('settingsCenter.breadcrumb'),
-  },
   {
     id: 'skills',
     name: i18n.global.t('skill.title'),
@@ -134,6 +125,13 @@ const shellPages = [
     group: '设置',
     hint: '运行时实际注册的确定性工具',
   },
+  {
+    id: 'patterns',
+    name: i18n.global.t('patterns.title'),
+    icon: '▣',
+    group: '设置',
+    hint: i18n.global.t('patterns.desc'),
+  },
 ]
 const pluginHost = createPluginHost()
 const cordisIslandRefresh = ref(0)
@@ -160,34 +158,72 @@ function guardWorkspaceLeave(view: string, onDiscard: () => void) {
     view === 'model-settings' ? modelSettings.value : view === 'board' ? projectBoard.value : null
   return target?.guardLeave?.(onDiscard) ?? true
 }
+if (rawHashView === 'expert-catalog' && typeof window !== 'undefined') {
+  window.history.replaceState(null, '', '#experts')
+  acceptedHash = '#experts'
+}
 if (activeView.value === 'work') {
   workbench.workMode = 'work'
   activeView.value = 'chat'
+} else if (activeView.value === 'settings') {
+  activeView.value = 'model-settings'
 } else if (hashView === 'chat') workbench.workMode = 'code'
+/** Workspace under the settings dialog. A settings hash never replaces it. */
+const surfaceView = ref(isSettingsView(activeView.value) ? 'chat' : activeView.value)
+const settingsOpen = computed(() => isSettingsView(activeView.value))
+const workspaceView = computed(() => (settingsOpen.value ? surfaceView.value : activeView.value))
+const settingsDialog = ref<HTMLDialogElement | null>(null)
+const settingsQuery = ref('')
+const settingsDialogGroups = computed(() => {
+  const needle = settingsQuery.value.trim().toLowerCase()
+  return settingsGroups
+    .map((group) => ({
+      id: group.id,
+      label: i18n.global.t(group.labelKey),
+      items: pages.value.filter(
+        (page) =>
+          (group.ids as readonly string[]).includes(page.id) &&
+          (!needle || page.name.toLowerCase().includes(needle) || page.id.includes(needle)),
+      ),
+    }))
+    .filter((group) => group.items.length > 0)
+})
+function syncSettingsDialog() {
+  const dialog = settingsDialog.value
+  if (!dialog) return
+  if (settingsOpen.value) {
+    if (!dialog.open) dialog.showModal()
+  } else if (dialog.open) dialog.close()
+}
+function closeSettings() {
+  if (!settingsOpen.value) return
+  activeView.value = surfaceView.value
+}
 const narrow = ref(false)
 /**
- * Prototype boards 01–18: the 380px inspector is docked only on wide screens.
- * Below 1100px it becomes an explicit drawer, independent of the 760px sidebar
- * drawer (`narrow`), otherwise the main surface would be squeezed to nothing.
+ * The layout sidebar docks only when navigation, a usable main track, and the
+ * 380px column all fit. Below that it overlays as a drawer so the main surface
+ * keeps its width. The mount node stays `#eap-cordis-sidebar-right`.
  */
-const inspectorDrawer = ref(false)
+const sidebarRightOverlay = ref(false)
 const shellTitle = computed(() => {
-  if (activeView.value === 'chat') {
+  const view = workspaceView.value
+  if (view === 'chat') {
     const binding = chatBinding.value
     return binding?.activeId
       ? binding.history.find((item) => item.id === binding.activeId)?.title ||
           i18n.global.t('desktop.freeChat')
       : i18n.global.t('desktop.newChat')
   }
-  if (activeView.value === 'board') return i18n.global.t('desktop.board')
-  if (activeView.value === 'patterns') return i18n.global.t('patterns.title')
-  if (activeView.value === 'expert-catalog') return i18n.global.t('expertWorkspace.roles')
-  if (activeView.value === 'experts') return i18n.global.t('desktop.experts')
-  if (activeView.value === 'scenes') return i18n.global.t('desktop.scenes')
-  return currentView.value.name
+  if (view === 'board') return i18n.global.t('desktop.board')
+  if (view === 'patterns') return i18n.global.t('patterns.title')
+  if (view === 'expert-catalog') return i18n.global.t('expertWorkspace.roles')
+  if (view === 'experts') return i18n.global.t('desktop.experts')
+  if (view === 'scenes') return i18n.global.t('desktop.scenes')
+  return pages.value.find((item) => item.id === view)?.name ?? pluginHost.describe(view).name
 })
 const chatContextLabel = computed(() => {
-  if (activeView.value !== 'chat') return ''
+  if (workspaceView.value !== 'chat') return ''
   const id = chatBinding.value?.activeId
   return (
     projectLabel(id ? sessionProjectId(id) : workbench.selectedProjectId) ||
@@ -201,15 +237,16 @@ const currentView = computed(
 )
 /** Prototype top bar: a title plus a breadcrumb that says where the surface sits. */
 const shellBreadcrumb = computed(() => {
-  if (activeView.value === 'chat') return chatContextLabel.value
-  const name = currentView.value?.name ?? ''
-  if (['scenes', 'builder-alpha', 'builder-beta'].includes(activeView.value))
+  const view = workspaceView.value
+  if (view === 'chat') return chatContextLabel.value
+  const name = pages.value.find((item) => item.id === view)?.name ?? pluginHost.describe(view).name
+  if (['scenes', 'builder-alpha', 'builder-beta'].includes(view))
     return `EAP / ${i18n.global.t('desktop.scenes')} / ${name}`
-  if (['experts', 'expert-catalog'].includes(activeView.value))
+  if (['experts', 'expert-catalog'].includes(view))
     return `EAP / ${i18n.global.t('desktop.experts')} / ${name}`
-  if (activeView.value === 'board') return `EAP / ${i18n.global.t('desktop.board')}`
-  if (activeView.value === 'patterns') return i18n.global.t('patterns.breadcrumb')
-  if (activeView.value === 'sql') return name
+  if (view === 'board') return `EAP / ${i18n.global.t('desktop.board')}`
+  if (view === 'patterns') return i18n.global.t('patterns.breadcrumb')
+  if (view === 'sql') return name
   return `EAP / ${i18n.global.t('desktop.settings')} / ${name}`
 })
 
@@ -266,10 +303,21 @@ watch(activeView, (value, previous) => {
     activeView.value = 'chat'
     return
   }
+  if (value === 'settings') {
+    activeView.value = 'model-settings'
+    return
+  }
+  if (!isSettingsView(value)) surfaceView.value = value
   inspectorOpen.value = false
-  if (previous && taskViews.has(previous) && !taskViews.has(value))
+  if (
+    previous &&
+    taskViews.has(previous) &&
+    !taskViews.has(value) &&
+    !isSettingsView(value) &&
+    value !== 'experts'
+  )
     workbench.origin = previous === 'chat' && workbench.workMode === 'work' ? 'work' : previous
-  if (!taskViews.has(value)) workbench.panel = null
+  if (!isSettingsView(value) && !taskViews.has(value)) workbench.panel = null
   if (
     typeof location !== 'undefined' &&
     !(value === 'experts' && location.hash.startsWith('#experts?')) &&
@@ -277,6 +325,7 @@ watch(activeView, (value, previous) => {
   )
     location.hash = value === 'chat' && workbench.workMode === 'work' ? 'work' : value
   if (typeof location !== 'undefined') acceptedHash = location.hash
+  syncSettingsDialog()
 })
 function hashChange() {
   const requestedHash = location.hash
@@ -312,12 +361,18 @@ function hashChange() {
   }
   if (isKnownHash(id)) {
     activeView.value = id
+    if (requestedHash.slice(1).split('?')[0] === 'expert-catalog') {
+      window.history.replaceState(null, '', '#experts')
+      acceptedHash = '#experts'
+      return
+    }
     acceptedHash = requestedHash
   }
 }
 function onShellKey(event: KeyboardEvent) {
-  if (event.key === 'Escape' && inspectorDrawer.value && workspaceInspectorOpen.value) {
-    workspaceInspectorOpen.value = false
+  if (settingsOpen.value) return
+  if (event.key === 'Escape' && sidebarRightCoversContent.value) {
+    setSidebarRightCollapsed(true)
     return
   }
   if (event.key === 'Escape' && narrow.value) workbench.sidebarOpen = false
@@ -342,72 +397,35 @@ const pluginSlot = ref<{ guardLeave: (id: string) => boolean }>()
 const expertEditing = ref(false)
 const editorSurface = computed(
   () =>
-    (activeView.value === 'experts' && expertEditing.value) ||
-    (['builder-alpha', 'builder-beta'].includes(activeView.value) &&
+    (workspaceView.value === 'experts' && expertEditing.value) ||
+    (['builder-alpha', 'builder-beta'].includes(workspaceView.value) &&
       pluginHost.builderContributionVisible.value),
 )
 const expertCount = ref(0)
 const capabilityManager = ref<{ refresh: () => Promise<void> } | null>(null)
 const inspectorOpen = ref(false)
-/** Prototype boards 01–06: a docked read-only inspector is part of every area. */
-const workspaceInspectorOpen = ref(true)
-const inspectorArea = computed<InspectorArea>(() => {
-  const view = activeView.value
-  if (view === 'work' || (view === 'chat' && workbench.workMode === 'work')) return 'work'
-  if (view === 'scenes' || view === 'builder-alpha' || view === 'builder-beta') return 'scenes'
-  if (view === 'experts' || view === 'expert-catalog') return 'experts'
-  if (
-    [
-      'settings',
-      'patterns',
-      'model-settings',
-      'knowledge',
-      'rules',
-      'databases',
-      'skills',
-      'capabilities',
-      'plugins',
-      'appearance',
-    ].includes(view)
-  )
-    return 'settings'
-  return 'code'
-})
-const inspectorSnapshot = computed<InspectorSnapshot>(() => {
-  const binding = chatBinding.value
-  return {
-    references: binding?.references ?? [],
-    localFiles: binding?.localFiles ?? [],
-    proposalFiles: binding?.proposalFiles ?? [],
-    appliedFiles: binding?.appliedFiles ?? [],
-    proposalDiffs: binding?.proposal?.files.map((file) => ({
-      path: file.path,
-      before: file.before,
-      content: file.content,
-      baseHash: file.baseHash,
-    })),
-    memory: binding?.memory ?? '',
-    workspaceLabel: binding?.workspaceLabel || chatContextLabel.value || '',
-    model: binding?.model ?? '',
-    connectionName: binding?.connectionName ?? '',
-    verification: binding?.verification ?? '',
-    verificationChecks: binding?.verificationChecks,
-    runtimeStatus: runtimeStatus.value,
-    title: shellTitle.value,
-    contextLabel: currentView.value.name,
-  }
-})
-const workspaceInspectorVisible = computed(
-  () =>
-    workspaceInspectorOpen.value &&
-    !editorSurface.value &&
-    activeView.value !== 'sql' &&
-    !['builder-alpha', 'builder-beta'].includes(activeView.value),
+/** Layout column `#eap-cordis-sidebar-right`. */
+const sidebarRightSeated = ref(false)
+const sidebarRightCollapsed = ref(false)
+let sidebarRightObserver: MutationObserver | undefined
+
+function syncSidebarRight() {
+  const column = document.getElementById('eap-cordis-sidebar-right')
+  sidebarRightSeated.value = !!column?.hasAttribute('data-sidebar-right-seat')
+  sidebarRightCollapsed.value = !!column?.hasAttribute('data-collapsed')
+}
+
+function setSidebarRightCollapsed(collapsed: boolean) {
+  const column = document.getElementById('eap-cordis-sidebar-right')
+  if (!column?.hasAttribute('data-sidebar-right-seat')) return
+  if (collapsed) column.setAttribute('data-collapsed', '')
+  else column.removeAttribute('data-collapsed')
+  syncSidebarRight()
+}
+/** Overlay drawer: the column covers the page instead of taking a grid track. */
+const sidebarRightCoversContent = computed(
+  () => sidebarRightOverlay.value && sidebarRightSeated.value && !sidebarRightCollapsed.value,
 )
-// A drawer must not cover the page on first paint; the docked desktop panel can.
-watch(inspectorDrawer, (drawer) => {
-  if (drawer) workspaceInspectorOpen.value = false
-})
 const expertManager = ref<{
   refresh: () => Promise<void>
   guardLeave: () => boolean
@@ -1086,7 +1104,9 @@ function selectFinding(finding: SqlFinding) {
 }
 
 let detachInspectorQuery: (() => void) | undefined
+let stopRuntimeLiveness: (() => void) | undefined
 onMounted(() => {
+  syncSettingsDialog()
   window.addEventListener('hashchange', hashChange)
   window.addEventListener('keydown', onShellKey)
   const query = window.matchMedia('(max-width: 760px)')
@@ -1096,19 +1116,31 @@ onMounted(() => {
   }
   apply()
   query.addEventListener('change', apply)
-  const inspectorQuery = window.matchMedia('(max-width: 1100px)')
+  const inspectorQuery = window.matchMedia('(max-width: 1320px)')
   const applyInspector = () => {
-    inspectorDrawer.value = inspectorQuery.matches
+    sidebarRightOverlay.value = inspectorQuery.matches
   }
   applyInspector()
   inspectorQuery.addEventListener('change', applyInspector)
   detachInspectorQuery = () => inspectorQuery.removeEventListener('change', applyInspector)
+  const column = document.getElementById('eap-cordis-sidebar-right')
+  if (column) {
+    sidebarRightObserver = new MutationObserver(syncSidebarRight)
+    sidebarRightObserver.observe(column, { attributes: true, attributeFilter: ['data-sidebar-right-seat', 'data-collapsed', 'hidden'] })
+  }
+  syncSidebarRight()
   void refresh()
+  stopRuntimeLiveness = subscribeRuntimeLiveness((event) => {
+    runtimeStatus.value = event.online ? '已连接' : '未连接'
+    if (event.recovered) void refresh()
+  })
 })
 onUnmounted(() => {
+  stopRuntimeLiveness?.()
   window.removeEventListener('hashchange', hashChange)
   window.removeEventListener('keydown', onShellKey)
   detachInspectorQuery?.()
+  sidebarRightObserver?.disconnect()
 })
 </script>
 
@@ -1116,12 +1148,10 @@ onUnmounted(() => {
   <div
     class="app"
     :class="{
-      'app--analysis': activeView === 'sql',
-      'app--inspector': workspaceInspectorVisible && !inspectorDrawer,
-      'app--workdoc': activeView === 'workdoc',
-      'app--scenedesigner': activeView === 'scenedesigner',
-      'app--settings': activeView === 'settings',
-      'app--patterns': activeView === 'patterns',
+      'app--analysis': workspaceView === 'sql',
+      'app--workdoc': workspaceView === 'workdoc',
+      'app--scenedesigner': workspaceView === 'scenedesigner',
+      'app--patterns': workspaceView === 'patterns',
       'drawer-open': narrow && workbench.sidebarOpen,
     }"
   >
@@ -1141,8 +1171,8 @@ onUnmounted(() => {
             : i18n.global.t('desktop.openSidebar')
         }}</Button
       >
-      <div v-if="activeView === 'sql'" class="brand" aria-label="工程自动化平台"><b>EAP</b></div>
-      <div v-if="activeView === 'sql'" class="menu-wrap">
+      <div v-if="workspaceView === 'sql'" class="brand" aria-label="工程自动化平台"><b>EAP</b></div>
+      <div v-if="workspaceView === 'sql'" class="menu-wrap">
         <Button
           size="sm"
           variant="ghost"
@@ -1212,20 +1242,31 @@ onUnmounted(() => {
         <i class="dot" />{{ `运行时${runtimeStatus}` }}
       </span>
       <Button
-        variant="secondary"
-        v-if="activeView !== 'sql' && !editorSurface"
-        :aria-expanded="workspaceInspectorOpen"
-        aria-controls="workspace-inspector-panel"
-        :aria-label="workspaceInspectorOpen ? '收起检查器' : '展开检查器'"
-        @click="workspaceInspectorOpen = !workspaceInspectorOpen"
-        class="workspace-inspector-toggle"
-        data-testid="toggle-workspace-inspector"
+        v-if="sidebarRightSeated && (activeView !== 'chat' || sidebarRightCoversContent)"
+        variant="icon"
+        type="button"
+        class="layout-sidebar-toggle"
+        data-testid="toggle-layout-sidebar-right"
+        :active="!sidebarRightCollapsed"
+        :aria-expanded="!sidebarRightCollapsed"
+        aria-controls="eap-cordis-sidebar-right"
+        :aria-label="
+          sidebarRightCollapsed
+            ? i18n.global.t('desktop.openRightSidebar')
+            : i18n.global.t('desktop.closeRightSidebar')
+        "
+        v-bind="
+          sidebarRightCollapsed
+            ? { 'data-sidebar-right-expand': '' }
+            : { 'data-sidebar-right-toggle': '' }
+        "
+        @click="setSidebarRightCollapsed(!sidebarRightCollapsed)"
       >
-        检查器
+        <IconPanelRight />
       </Button>
       <Button
         variant="secondary"
-        v-if="activeView === 'sql'"
+        v-if="workspaceView === 'sql'"
         :aria-expanded="inspectorOpen"
         aria-controls="context-details"
         @click="inspectorOpen = !inspectorOpen"
@@ -1235,7 +1276,7 @@ onUnmounted(() => {
       </Button>
       <Button
         variant="secondary"
-        v-if="activeView === 'sql'"
+        v-if="workspaceView === 'sql'"
         class="sql-top-secondary"
         :disabled="refreshing"
         @click="refresh()"
@@ -1243,7 +1284,7 @@ onUnmounted(() => {
         {{ refreshing ? '刷新中…' : '刷新' }}
       </Button>
       <Button
-        v-if="activeView === 'sql'"
+        v-if="workspaceView === 'sql'"
         variant="primary"
         class="sql-top-primary"
         :disabled="sqlBusy"
@@ -1265,38 +1306,29 @@ onUnmounted(() => {
     <div
       class="body"
       :class="{
-        'body--chat': activeView === 'chat',
-        'body--sql': activeView === 'sql',
+        'body--chat': workspaceView === 'chat',
+        'body--sql': workspaceView === 'sql',
         'body--editor': editorSurface,
-        'body--inspector': workspaceInspectorVisible && !inspectorDrawer,
-        'body--workdoc': activeView === 'workdoc',
-        'body--scenedesigner': activeView === 'scenedesigner',
-        'body--settings': activeView === 'settings',
-        'body--patterns': activeView === 'patterns',
+        'body--workdoc': workspaceView === 'workdoc',
+        'body--scenedesigner': workspaceView === 'scenedesigner',
+        'body--patterns': workspaceView === 'patterns',
       }"
     >
-      <InteractionPatterns
-        v-if="activeView === 'patterns'"
-        class="patterns-surface"
-        @navigate="activeView = $event"
-      />
-      <SettingsCenter
-        v-else-if="activeView === 'settings'"
-        class="settings-center-surface"
-        @navigate="activeView = $event"
-      />
       <WorkDocumentWorkspace
-        v-else-if="activeView === 'workdoc'"
+        v-if="workspaceView === 'workdoc'"
         class="workdoc-surface"
+        :inert="sidebarRightCoversContent || undefined"
         @navigate="activeView = $event"
       />
       <SceneDesigner
-        v-else-if="activeView === 'scenedesigner'"
+        v-else-if="workspaceView === 'scenedesigner'"
         class="workdoc-surface"
+        :inert="sidebarRightCoversContent || undefined"
         @navigate="activeView = $event"
       />
       <DesktopNavigation
         v-show="!editorSurface"
+        :inert="sidebarRightCoversContent || undefined"
         :can-navigate="
           () => activeView !== 'experts' || !expertManager || expertManager.guardLeave()
         "
@@ -1315,7 +1347,7 @@ onUnmounted(() => {
         @click="workbench.sidebarOpen = false"
       ></Button>
 
-      <main class="workbench">
+      <main class="workbench" :inert="sidebarRightCoversContent || undefined">
         <Feedback
           tone="error"
           v-if="
@@ -1341,16 +1373,16 @@ onUnmounted(() => {
           2026-10-15 任务不再是独立页面——一次分析的输入与它的过程/结论，本来就是同一件事的两半。
         -->
         <ScenarioWorkspace
-          v-if="activeView === 'scenes'"
+          v-if="workspaceView === 'scenes'"
           :plugin-host="pluginHost"
           @navigate="activeView = $event"
         />
         <ProjectBoard
           ref="projectBoard"
-          v-else-if="activeView === 'board' && pluginHost.boardContributionVisible.value"
+          v-else-if="workspaceView === 'board' && pluginHost.boardContributionVisible.value"
         />
         <section
-          v-else-if="activeView === 'board' && !pluginHost.boardContributionVisible.value"
+          v-else-if="workspaceView === 'board' && !pluginHost.boardContributionVisible.value"
           class="view"
           data-testid="board-contribution-disabled"
         >
@@ -1359,12 +1391,8 @@ onUnmounted(() => {
             <p>{{ i18n.global.t('plugin.hiddenBody') }}</p>
           </div>
         </section>
-        <ExpertCatalog
-          v-else-if="activeView === 'expert-catalog'"
-          @navigate="activeView = $event"
-        />
         <section
-          v-else-if="activeView === 'sql'"
+          v-else-if="workspaceView === 'sql'"
           class="view work-page analysis-workspace"
           data-testid="sql-workbench"
         >
@@ -2029,21 +2057,11 @@ onUnmounted(() => {
           </Collapse>
         </section>
 
-        <AppearanceSettings v-else-if="activeView === 'appearance'" />
-        <ModelSettings ref="modelSettings" v-else-if="activeView === 'model-settings'" />
-        <PluginCenter
-          v-else-if="activeView === 'plugins'"
-          :host="pluginHost"
-          @dsh-changed="onDshPluginsChanged"
-        />
-
-        <!-- MANAGERS -->
         <KeepAlive>
-          <SkillManager v-if="activeView === 'skills'" />
           <ExpertManager
             ref="expertManager"
             @editing="expertEditing = $event"
-            v-else-if="activeView === 'experts'"
+            v-if="workspaceView === 'experts'"
             @saved="refresh(false)"
             @run="
               ($event) => {
@@ -2052,74 +2070,142 @@ onUnmounted(() => {
               }
             "
           />
-          <KnowledgeManager
-            ref="knowledgeManager"
-            v-else-if="activeView === 'knowledge'"
-            @saved="refresh(false)"
-          />
-          <DatabaseManager
-            ref="databaseManager"
-            v-else-if="activeView === 'databases'"
-            @saved="refresh(false)"
-          />
-          <RuleManager
-            ref="ruleManager"
-            v-else-if="activeView === 'rules'"
-            @saved="refresh(false)"
-          />
-          <CapabilityManager
-            ref="capabilityManager"
-            v-else-if="activeView === 'capabilities'"
-            @saved="refresh(false)"
-          />
         </KeepAlive>
         <PluginSlot
           ref="pluginSlot"
-          :view-id="activeView"
+          :view-id="workspaceView"
           :host="pluginHost"
           :chat-view="ChatWorkspace"
         />
       </main>
 
-      <!-- Prototype: docked read-only inspector, one tab set per activity area. -->
-      <Button
-        variant="backdrop"
-        v-if="workspaceInspectorVisible && inspectorDrawer"
-        type="button"
-        class="workspace-inspector-backdrop"
-        data-testid="workspace-inspector-backdrop"
-        aria-label="收起检查器"
-        @click="workspaceInspectorOpen = false"
-      ></Button>
-      <WorkspaceInspector
-        v-if="workspaceInspectorVisible"
-        id="workspace-inspector-panel"
-        :area="inspectorArea"
-        :snapshot="inspectorSnapshot"
-        :narrow="inspectorDrawer"
-        open
-        @close="workspaceInspectorOpen = false"
-      />
+      <!-- Layout outlets. Empty hosts add no box; v-show keeps the tree mounted. -->
+      <div class="eap-dsh-regions">
+        <div id="eap-dsh-region-shell" data-dsh-region="shell" />
+        <div id="eap-dsh-region-sidebar-leading" data-dsh-region="sidebar-leading" />
+        <div
+          id="eap-dsh-region-conversation"
+          data-dsh-region="conversation"
+          v-show="workspaceView === 'chat'"
+        />
+        <dialog
+          id="eap-dsh-region-settings"
+          ref="settingsDialog"
+          data-dsh-region="settings"
+          class="settings-dialog"
+          aria-labelledby="settings-dialog-title"
+          data-testid="settings-dialog"
+          @cancel.prevent="closeSettings"
+        >
+          <div class="settings-dialog__bar">
+            <h1 id="settings-dialog-title">{{ i18n.global.t('desktop.settings') }}</h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              autofocus
+              data-testid="settings-dialog-close"
+              @click="closeSettings"
+            >
+              {{ i18n.global.t('composerUi.close') }}
+            </Button>
+          </div>
+          <div class="settings-dialog__body">
+            <nav class="settings-dialog__nav" :aria-label="i18n.global.t('desktop.settings')">
+              <Input
+                v-model="settingsQuery"
+                class="settings-search"
+                type="search"
+                :aria-label="i18n.global.t('desktop.settingsSearch')"
+                :placeholder="i18n.global.t('desktop.settingsSearch')"
+              />
+              <div v-for="group in settingsDialogGroups" :key="group.id" class="settings-group">
+                <p class="settings-group__label">{{ group.label }}</p>
+                <Button
+                  v-for="item in group.items"
+                  :key="item.id"
+                  variant="navigation"
+                  type="button"
+                  class="nav"
+                  :active="activeView === item.id"
+                  :aria-current="activeView === item.id ? 'page' : undefined"
+                  @click="activeView = item.id"
+                  >{{ item.name }}</Button
+                >
+              </div>
+            </nav>
+            <div class="settings-dialog__page">
+          <AppearanceSettings v-if="activeView === 'appearance'" />
+          <ModelSettings ref="modelSettings" v-else-if="activeView === 'model-settings'" />
+          <PluginCenter
+            v-else-if="activeView === 'plugins'"
+            :host="pluginHost"
+            @dsh-changed="onDshPluginsChanged"
+          />
+          <KeepAlive>
+            <SkillManager v-if="activeView === 'skills'" />
+            <KnowledgeManager
+              ref="knowledgeManager"
+              v-else-if="activeView === 'knowledge'"
+              @saved="refresh(false)"
+            />
+            <DatabaseManager
+              ref="databaseManager"
+              v-else-if="activeView === 'databases'"
+              @saved="refresh(false)"
+            />
+            <RuleManager
+              ref="ruleManager"
+              v-else-if="activeView === 'rules'"
+              @saved="refresh(false)"
+            />
+            <CapabilityManager
+              ref="capabilityManager"
+              v-else-if="activeView === 'capabilities'"
+              @saved="refresh(false)"
+            />
+          </KeepAlive>
+          <InteractionPatterns
+            v-if="activeView === 'patterns'"
+            class="patterns-surface"
+            @navigate="activeView = $event"
+          />
+            </div>
+          </div>
+        </dialog>
+      </div>
 
-      <!-- Cordis ui-sidebar-right column mount (guide/tabs rendered by Client seat). -->
+      <!-- Layout outlet sidebar-right. The node stays put for plugin injection. -->
+      <Button
+        v-if="sidebarRightCoversContent"
+        variant="backdrop"
+        type="button"
+        class="layout-sidebar-backdrop"
+        data-testid="layout-sidebar-right-backdrop"
+        :aria-label="i18n.global.t('desktop.closeRightSidebar')"
+        @click="setSidebarRightCollapsed(true)"
+      />
       <aside
         id="eap-cordis-sidebar-right"
-        class="workspace-inspector eap-dsh-rightbar"
+        class="eap-dsh-rightbar"
+        data-dsh-region="sidebar-right"
         data-testid="cordis-sidebar-right-column"
-        hidden
-        aria-label="Cordis right sidebar"
+        :hidden="!sidebarRightSeated"
+        :role="sidebarRightCoversContent ? 'dialog' : undefined"
+        :aria-modal="sidebarRightCoversContent ? 'true' : undefined"
+        :aria-label="i18n.global.t('desktop.rightSidebar')"
       />
 
       <!-- INSPECTOR -->
       <Button
         variant="backdrop"
-        v-if="inspectorOpen && activeView === 'sql'"
+        v-if="inspectorOpen && workspaceView === 'sql'"
         class="inspector-backdrop"
         aria-label="关闭上下文详情"
         @click="inspectorOpen = false"
       ></Button>
       <aside
-        v-if="activeView === 'sql'"
+        v-if="workspaceView === 'sql'"
         id="context-details"
         class="inspector"
         :class="{ 'inspector--open': inspectorOpen }"
@@ -2133,7 +2219,7 @@ onUnmounted(() => {
         </div>
         <p class="hint">{{ inspector.hint }}</p>
 
-        <template v-if="activeView === 'sql'">
+        <template v-if="workspaceView === 'sql'">
           <p v-if="!selectedFinding" class="hint">尚未选择发现：点击上方结果中的任意一条。</p>
           <div v-else class="inspector-card">
             <span class="sev" :class="selectedFinding.severity">{{
@@ -2185,7 +2271,7 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <template v-if="activeView === 'sql' && sqlResult && inspector.pipeline">
+        <template v-if="workspaceView === 'sql' && sqlResult && inspector.pipeline">
           <h2>当前任务的流水线走向</h2>
           <div class="pipeline pipeline--stack">
             <div class="stage done">
@@ -2216,7 +2302,7 @@ onUnmounted(() => {
       </aside>
     </div>
 
-    <footer v-if="activeView === 'sql'" class="statusbar">
+    <footer v-if="workspaceView === 'sql'" class="statusbar">
       <span
         >状态：<b>{{ runtimeStatus }}</b></span
       >

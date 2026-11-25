@@ -8,7 +8,7 @@ afterEach(() => {
 })
 
 describe('ensureDshCenterAnchor', () => {
-  it('installs #root main.conversation measurement host only', () => {
+  it('installs the conversation outlet as the measurement box', () => {
     const main = document.createElement('div')
     main.className = 'body--chat'
     const col = document.createElement('div')
@@ -32,11 +32,11 @@ describe('ensureDshCenterAnchor', () => {
     document.body.appendChild(main)
 
     const release = ensureDshCenterAnchor()
-    const root = document.getElementById('root')
-    expect(root).toBeTruthy()
-    expect(root?.querySelector('[data-slot="main.conversation"]')).toBeTruthy()
-    expect(document.getElementById('eap-dsh-dock-clearance')).toBeNull()
-    release()
+    expect(document.querySelector('[data-dsh-region="conversation"]')).toBeTruthy()
     expect(document.getElementById('root')).toBeNull()
+    expect(document.querySelector('[data-slot="main.conversation"]')).toBeNull()
+    expect(document.querySelector('[data-slot="dsh-layout-main.conversation"]')).toBeNull()
+    release()
+    expect(document.querySelector('[data-dsh-region="conversation"]')).toBeNull()
   })
 })

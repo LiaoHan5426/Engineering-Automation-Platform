@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
 from sqlmodel import Session, select
 
 from app.persistence.models import ChatMessageRow, ConversationRow
+from app.services.working_memory import apply_edit, snapshot_from_json
 
 
 class MessageStore:
@@ -34,6 +36,32 @@ class MessageStore:
     def get_conversation(self, conversation_id: str) -> ConversationRow | None:
         return self._session.get(ConversationRow, conversation_id)
 
+    def model_history(self, conversation_id: str) -> dict[str, int] | None:
+        row = self.get_conversation(conversation_id)
+        if row is None:
+            return None
+        floor = row.model_history_floor
+        messages = list(
+            self._session.exec(
+                select(ChatMessageRow).where(ChatMessageRow.conversation_id == conversation_id)
+            ).all()
+        )
+        visible = [item for item in messages if item.sequence > floor]
+        return {"messages": len(visible), "chars": sum(len(item.content) for item in visible)}
+
+    def clear_model_history(self, conversation_id: str) -> bool:
+        row = self.get_conversation(conversation_id)
+        if row is None:
+            return False
+        messages = list(
+            self._session.exec(
+                select(ChatMessageRow).where(ChatMessageRow.conversation_id == conversation_id)
+            ).all()
+        )
+        row.model_history_floor = max((item.sequence for item in messages), default=0)
+        self._session.add(row)
+        return True
+
     def to_conversation(self, row: ConversationRow) -> dict[str, Any]:
         return {
             "conversationId": row.id,
@@ -41,8 +69,18 @@ class MessageStore:
             "memory": row.memory,
             "connectionId": row.connection_id,
             "model": row.model,
-            "workingMemory": None,
+            "workingMemory": snapshot_from_json(row.working_memory_json),
         }
+
+    def put_working_memory(self, conversation_id: str, body: dict[str, Any]) -> dict[str, Any] | None:
+        row = self.get_conversation(conversation_id)
+        if row is None:
+            return None
+        current = snapshot_from_json(row.working_memory_json)
+        updated = apply_edit(current, body)
+        row.working_memory_json = json.dumps(updated, ensure_ascii=False)
+        self._session.add(row)
+        return updated
 
     def tip(self, conversation_id: str) -> ChatMessageRow | None:
         rows = self._session.exec(
