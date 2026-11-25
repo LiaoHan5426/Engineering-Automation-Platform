@@ -213,6 +213,21 @@ const pendingAnswerKey = computed(() => {
   const key = turns.length - 1
   return turns[key]?.role === 'assistant' && turns[key - 1]?.role === 'user' ? key : null
 })
+function turnIsRunning(turn: ChatTurn) {
+  return turn.status === ChatExecutionStatus.RUNNING
+}
+function turnHasSteps(turn: ChatTurn, live: boolean) {
+  return (
+    (live && turnIsRunning(turn)) ||
+    turn.toolEvents.length > 0 ||
+    !!turn.knowledgeContext ||
+    !!turn.skillContext
+  )
+}
+/** Force-open while this live turn is streaming; leave uncontrolled afterward so the user can collapse. */
+function turnStepOpen(turn: ChatTurn, live: boolean): true | undefined {
+  return live && turnIsRunning(turn) ? true : undefined
+}
 const hasOlderTurns = computed(() => shownTurns.value < session.turns.value.length)
 watch(
   () => session.turns.value.length,
@@ -419,22 +434,6 @@ function choosePanel(id: 'summary' | 'changes' | 'files' | 'terminal') {
   moreOpen.value = false
   rememberPanel(session.conversationId.value, workbench.panel === id ? null : id)
 }
-const canRibbonRetry = computed(() => {
-  const failure = session.failure.value
-  if (
-    session.expired.value ||
-    session.sessionUnavailable.value ||
-    session.graphLoading.value ||
-    session.graphError.value ||
-    session.checkingConversation.value ||
-    session.reconnecting.value
-  )
-    return false
-  if (failure !== 'failed' && failure !== 'kept' && failure !== 'not-configured') return false
-  if (session.sending.value || !session.draft.value.trim()) return false
-  if (workbench.executionMode === 'agent' && !agentReady.value) return false
-  return true
-})
 function closePanel() {
   rememberPanel(session.conversationId.value, null)
 }
@@ -498,6 +497,12 @@ function statusTone() {
   const state = session.status.value?.state
   return state === 'available' ? 'success' : state === 'error' ? 'danger' : 'warning'
 }
+/** Ready-enough states do not need a connection badge in the chat chrome. */
+const showConnectionBadge = computed(() => {
+  if (session.expired.value || archived.value) return true
+  const state = session.status.value?.state
+  return state === 'not_configured' || state === 'error' || state === 'disabled' || !state
+})
 async function removeConversation() {
   if (!deleteId.value) return
   deleting.value = true
@@ -1004,6 +1009,7 @@ onMounted(async () => {
         </div>
         <div v-else class="session-status">
           <Badge
+            v-if="showConnectionBadge"
             :tone="statusTone()"
             :label="t(stateKey[session.status.value?.state ?? 'disabled'])"
           />
@@ -1035,17 +1041,6 @@ onMounted(async () => {
           focusgroup="toolbar wrap"
           :aria-label="t('desktop.sessionTools')"
         >
-          <Button
-            size="sm"
-            variant="ghost"
-            type="button"
-            class="shell-tool"
-            data-testid="ribbon-retry"
-            :disabled="!canRibbonRetry"
-            :title="canRibbonRetry ? t('desktop.retrySend') : t('desktop.retryIdleHint')"
-            @click="sendTask"
-            >{{ t('desktop.retryShort') }}</Button
-          >
           <div
             class="session-tools__group"
             role="group"
@@ -1101,9 +1096,17 @@ onMounted(async () => {
             @select="
               (id) => {
                 if (id === 'export') exportingChat = true
+                if (id === 'model-context') modelHistoryOpen = true
               }
             "
             :items="[
+              {
+                id: 'model-context',
+                label: t('desktop.moreModelContext'),
+                disabled: !session.conversationId.value || session.sending.value,
+                description: t('desktop.moreModelContextHint'),
+                testId: 'open-model-history',
+              },
               {
                 id: 'export',
                 label: t('desktop.moreExport'),
@@ -1157,14 +1160,6 @@ onMounted(async () => {
           </Button>
         </div>
       </div>
-      <Button
-        v-if="session.conversationId.value"
-        size="sm"
-        :disabled="session.sending.value"
-        data-testid="open-model-history"
-        @click="modelHistoryOpen = true"
-        >{{ t('contextBudget.historyTitle') }}</Button
-      >
       <ExecutionLogDialog
         v-if="executionLog"
         :conversation-id="executionLog.conversationId"
@@ -1402,146 +1397,230 @@ onMounted(async () => {
               :aria-label="turn.role === 'user' ? t('chat.speakerYou') : t('chat.speakerModel')"
               :class="turn.role === 'user' ? 'turn-user' : 'turn-assistant'"
             >
-              <RichText
-                v-if="turn.text && turn.role === 'assistant'"
-                class="turn-answer"
-                :source="turn.text"
-                :copy-label="t('chat.copyCode')"
-                :copied-label="t('chat.copiedCode')"
-                :streaming-label="
-                  turn.status === ChatExecutionStatus.RUNNING ? t('chat.streamingAnswer') : ''
-                "
-              />
-              <p v-else-if="turn.text" class="turn-text">{{ turn.text }}</p>
-              <div
-                v-if="turn.nodeId && session.messageVersions(turn.nodeId).length > 1"
-                class="turn-version"
-                data-testid="message-versions"
-              >
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  :aria-label="t('chat.previousVersion')"
-                  :disabled="
-                    session.sending.value ||
-                    session.graphLoading.value ||
-                    session.messageVersions(turn.nodeId)[0]?.id === turn.nodeId
-                  "
-                  @click="changeMessageVersion(turn, -1)"
-                  >‹</Button
-                >
-                <span
-                  >{{
-                    session.messageVersions(turn.nodeId).findIndex((n) => n.id === turn.nodeId) + 1
-                  }}
-                  / {{ session.messageVersions(turn.nodeId).length }}</span
-                >
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  :aria-label="t('chat.nextVersion')"
-                  :disabled="
-                    session.sending.value ||
-                    session.graphLoading.value ||
-                    session.messageVersions(turn.nodeId).at(-1)?.id === turn.nodeId
-                  "
-                  @click="changeMessageVersion(turn, 1)"
-                  >›</Button
-                >
-              </div>
-              <Button
-                v-if="
-                  turn.role === 'user' &&
-                  turn.nodeId &&
-                  !session.sending.value &&
-                  !session.browsingHistory.value
-                "
-                size="sm"
-                variant="ghost"
-                data-testid="question-edit"
-                @click="editQuestion(turn)"
-                >{{ t('chat.editQuestion') }}</Button
-              >
-              <p v-if="!turn.text && turn.role === 'assistant'">
-                {{
-                  t(
-                    key === pendingAnswerKey && turn.status === ChatExecutionStatus.RUNNING
-                      ? 'chat.waitingForAnswer'
-                      : 'chat.noAnswer',
-                  )
-                }}
-              </p>
-              <Button
-                v-if="
-                  workbench.workMode === 'work' &&
-                  turn.role === 'assistant' &&
-                  turn.text &&
-                  !session.sending.value
-                "
-                size="sm"
-                data-testid="work-document-open"
-                @click="documentSource = { key: String(key), turn }"
-                >{{ t('desktop.workDocumentTitle') }}</Button
-              >
-              <Button
-                v-if="
-                  turn.role === 'assistant' && turn.text && !turn.error && !session.sending.value
-                "
-                size="sm"
-                data-testid="answer-create-task"
-                @click="taskFromAnswer(turn)"
-                >{{ t('desktop.taskFromAnswer') }}</Button
-              >
-              <Button
-                v-if="
-                  turn.role === 'assistant' &&
-                  turn.planningTask &&
-                  turn.text &&
-                  !turn.error &&
-                  !session.sending.value
-                "
-                size="sm"
-                data-testid="task-plan-open"
-                @click="taskPlan = turn"
-                >{{ t('desktop.taskPlanTitle') }}</Button
-              >
-              <Button
-                v-if="turn.role === 'assistant' && turn.text && !session.sending.value"
-                size="sm"
-                variant="ghost"
-                data-testid="answer-regenerate"
-                @click="regenerateAnswer(key)"
-                >{{ t('chat.regenerate') }}</Button
-              >
-              <Button
-                v-if="turn.role === 'assistant' && turn.executionId && session.conversationId.value"
-                size="sm"
-                variant="ghost"
-                data-testid="open-execution-log"
-                @click="
-                  executionLog = {
-                    conversationId: session.conversationId.value!,
-                    executionId: turn.executionId!,
-                  }
-                "
-                >{{ t('executionLog.title') }}</Button
-              >
-              <p v-if="turn.error">
-                {{
-                  turn.errorLanguage === locale && turn.errorMessage
-                    ? turn.errorMessage
-                    : t('presentation.failure')
-                }}
-                <code>{{ turn.error }}</code>
-              </p>
-              <p v-if="turn.artifactError">
-                {{ t('chat.artifactFailed') }}：{{ turn.artifactError }}
-              </p>
-              <section
-                v-if="turn.proposal"
-                class="code-proposal write-request"
-                data-testid="code-proposal"
-              >
+              <template v-if="turn.role === 'assistant'">
+                <div class="turn-node" data-testid="assistant-turn-node">
+                  <div
+                    v-if="turnHasSteps(turn, key === pendingAnswerKey)"
+                    class="turn-steps"
+                    data-testid="turn-steps"
+                  >
+                    <p class="turn-steps__label">{{ t('chat.toolSteps') }}</p>
+                    <Collapse
+                      v-if="
+                        key === pendingAnswerKey &&
+                        turnIsRunning(turn) &&
+                        !turn.text &&
+                        !turn.toolEvents.length &&
+                        !turn.knowledgeContext &&
+                        !turn.skillContext
+                      "
+                      class="turn-step turn-step--streaming"
+                      :open="true"
+                      data-testid="turn-streaming-step"
+                    >
+                      <template #summary>{{ t('chat.streamingAnswer') }}</template>
+                      <p class="hint">{{ t('chat.waitingForAnswer') }}</p>
+                    </Collapse>
+                    <Collapse
+                      v-for="event in turn.toolEvents"
+                      :key="event.sequence"
+                      class="turn-step"
+                      :open="turnStepOpen(turn, key === pendingAnswerKey)"
+                      data-testid="turn-tool-step"
+                    >
+                      <template #summary>
+                        {{
+                          t('chat.toolStep', {
+                            code: event.code || t('chat.toolStepFallback'),
+                          })
+                        }}
+                      </template>
+                      <p class="hint">#{{ event.sequence }} · {{ event.code }}</p>
+                    </Collapse>
+                    <Collapse
+                      v-if="turn.knowledgeContext"
+                      data-testid="turn-knowledge"
+                      class="turn-step"
+                      :open="turnStepOpen(turn, key === pendingAnswerKey)"
+                    >
+                      <template #summary>
+                        {{ t('chat.knowledgeStep') }} · {{ turn.knowledgeContext.expertRef.id }} ·
+                        r{{ turn.knowledgeContext.expertRef.revision }}
+                      </template>
+                      <p>{{ t('knowledgeContext.provided') }}</p>
+                      <p>{{ t('knowledgeContext.excerpts') }}</p>
+                      <p v-if="turn.knowledgeContext.status === 'no_matches'">
+                        {{ t('knowledgeContext.no_matches') }}
+                      </p>
+                      <ul>
+                        <li
+                          v-for="reference in turn.knowledgeContext.references"
+                          :key="reference.id"
+                        >
+                          <strong
+                            >{{ reference.id }} · {{ reference.source }} ·
+                            {{ reference.knowledgeBase }}</strong
+                          >
+                          <p>
+                            {{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} ·
+                            {{ reference.documentId }}
+                          </p>
+                          <pre>{{ reference.excerpt }}</pre>
+                        </li>
+                      </ul>
+                    </Collapse>
+                    <Collapse
+                      v-if="turn.skillContext"
+                      data-testid="turn-skill"
+                      class="turn-step"
+                      :open="turnStepOpen(turn, key === pendingAnswerKey)"
+                    >
+                      <template #summary>
+                        {{ t('chat.skillStep') }} · {{ turn.skillContext.skillRef.id }} ·
+                        {{ turn.skillContext.skillRef.version }} · r{{
+                          turn.skillContext.skillRef.stateRevision
+                        }}
+                      </template>
+                      <p>{{ t('skill.evidence') }}</p>
+                      <code>{{ turn.skillContext.skillRef.digest }}</code>
+                      <pre>{{ turn.skillContext.instructions }}</pre>
+                      <div v-for="resource in turn.skillContext.resources" :key="resource.path">
+                        <strong>{{ resource.path }}</strong>
+                        <pre>{{ resource.content }}</pre>
+                      </div>
+                      <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
+                    </Collapse>
+                  </div>
+                  <div class="turn-body" data-testid="turn-body">
+                    <RichText
+                      v-if="turn.text"
+                      class="turn-answer"
+                      :source="turn.text"
+                      :copy-label="t('chat.copyCode')"
+                      :copied-label="t('chat.copiedCode')"
+                      :streaming-label="
+                        turnIsRunning(turn) ? t('chat.streamingAnswer') : ''
+                      "
+                    />
+                    <p v-else>
+                      {{
+                        t(
+                          key === pendingAnswerKey && turnIsRunning(turn)
+                            ? 'chat.waitingForAnswer'
+                            : 'chat.noAnswer',
+                        )
+                      }}
+                    </p>
+                    <div
+                      v-if="turn.nodeId && session.messageVersions(turn.nodeId).length > 1"
+                      class="turn-version"
+                      data-testid="message-versions"
+                    >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        :aria-label="t('chat.previousVersion')"
+                        :disabled="
+                          session.sending.value ||
+                          session.graphLoading.value ||
+                          session.messageVersions(turn.nodeId)[0]?.id === turn.nodeId
+                        "
+                        @click="changeMessageVersion(turn, -1)"
+                        >‹</Button
+                      >
+                      <span
+                        >{{
+                          session
+                            .messageVersions(turn.nodeId)
+                            .findIndex((n) => n.id === turn.nodeId) + 1
+                        }}
+                        / {{ session.messageVersions(turn.nodeId).length }}</span
+                      >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        :aria-label="t('chat.nextVersion')"
+                        :disabled="
+                          session.sending.value ||
+                          session.graphLoading.value ||
+                          session.messageVersions(turn.nodeId).at(-1)?.id === turn.nodeId
+                        "
+                        @click="changeMessageVersion(turn, 1)"
+                        >›</Button
+                      >
+                    </div>
+                    <p v-if="turn.error">
+                      {{
+                        turn.errorLanguage === locale && turn.errorMessage
+                          ? turn.errorMessage
+                          : t('presentation.failure')
+                      }}
+                      <code>{{ turn.error }}</code>
+                    </p>
+                    <p v-if="turn.artifactError">
+                      {{ t('chat.artifactFailed') }}：{{ turn.artifactError }}
+                    </p>
+                  </div>
+                  <div
+                    v-if="
+                      (turn.text && !session.sending.value) ||
+                      (turn.executionId && session.conversationId.value)
+                    "
+                    class="turn-actions"
+                    role="toolbar"
+                    :aria-label="t('chat.turnActions')"
+                    data-testid="turn-actions"
+                  >
+                    <Button
+                      v-if="workbench.workMode === 'work' && turn.text && !session.sending.value"
+                      size="sm"
+                      data-testid="work-document-open"
+                      @click="documentSource = { key: String(key), turn }"
+                      >{{ t('desktop.workDocumentTitle') }}</Button
+                    >
+                    <Button
+                      v-if="turn.text && !turn.error && !session.sending.value"
+                      size="sm"
+                      data-testid="answer-create-task"
+                      @click="taskFromAnswer(turn)"
+                      >{{ t('desktop.taskFromAnswer') }}</Button
+                    >
+                    <Button
+                      v-if="
+                        turn.planningTask && turn.text && !turn.error && !session.sending.value
+                      "
+                      size="sm"
+                      data-testid="task-plan-open"
+                      @click="taskPlan = turn"
+                      >{{ t('desktop.taskPlanTitle') }}</Button
+                    >
+                    <Button
+                      v-if="turn.text && !session.sending.value"
+                      size="sm"
+                      variant="ghost"
+                      data-testid="answer-regenerate"
+                      @click="regenerateAnswer(key)"
+                      >{{ t('chat.regenerate') }}</Button
+                    >
+                    <Button
+                      v-if="turn.executionId && session.conversationId.value"
+                      size="sm"
+                      variant="ghost"
+                      data-testid="open-execution-log"
+                      @click="
+                        executionLog = {
+                          conversationId: session.conversationId.value!,
+                          executionId: turn.executionId!,
+                        }
+                      "
+                      >{{ t('executionLog.title') }}</Button
+                    >
+                  </div>
+                  <section
+                    v-if="turn.proposal"
+                    class="code-proposal write-request"
+                    data-testid="code-proposal"
+                  >
                 <h3>{{ t('desktop.writeRequest', { count: turn.proposal.files.length }) }}</h3>
                 <GenerationBaseline :generation="turn.proposal.generation" />
                 <p v-if="!refused[turn.proposal.id]" class="hint" data-testid="turn-pending">
@@ -1641,66 +1720,67 @@ onMounted(async () => {
                   {{ t('task.written') }}
                   {{ applied[turn.proposal.id]?.join('、') }}
                 </p>
-              </section>
-              <ul v-if="turn.toolEvents.length">
-                <li v-for="event in turn.toolEvents" :key="event.sequence">
-                  {{ event.sequence }}. {{ event.code }}
-                </li>
-              </ul>
-              <section v-if="turn.knowledgeContext" data-testid="turn-knowledge">
-                <h3>
-                  {{ t('knowledgeContext.title') }} · {{ turn.knowledgeContext.expertRef.id }} · r{{
-                    turn.knowledgeContext.expertRef.revision
-                  }}
-                </h3>
-                <p>
-                  {{ t('knowledgeContext.provided') }}
-                </p>
-                <p>{{ t('knowledgeContext.excerpts') }}</p>
-                <p v-if="turn.knowledgeContext.status === 'no_matches'">
-                  {{ t('knowledgeContext.no_matches') }}
-                </p>
-                <ul>
-                  <li v-for="reference in turn.knowledgeContext.references" :key="reference.id">
-                    <strong
-                      >{{ reference.id }} · {{ reference.source }} ·
-                      {{ reference.knowledgeBase }}</strong
-                    >
-                    <p>
-                      {{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} ·
-                      {{ reference.documentId }}
-                    </p>
-                    <pre>{{ reference.excerpt }}</pre>
-                  </li>
-                </ul>
-              </section>
-              <section v-if="turn.skillContext" data-testid="turn-skill">
-                <h3>
-                  {{ t('skill.title') }} · {{ turn.skillContext.skillRef.id }} ·
-                  {{ turn.skillContext.skillRef.version }} · r{{
-                    turn.skillContext.skillRef.stateRevision
-                  }}
-                </h3>
-                <p>{{ t('skill.evidence') }}</p>
-
-                <code>{{ turn.skillContext.skillRef.digest }}</code>
-                <pre>{{ turn.skillContext.instructions }}</pre>
-                <div v-for="resource in turn.skillContext.resources" :key="resource.path">
-                  <strong>{{ resource.path }}</strong>
-                  <pre>{{ resource.content }}</pre>
+                  </section>
+                  <TurnContextDetails :budget="turn.contextBudget" :artifacts="turn.artifacts" />
+                  <Feedback
+                    v-if="
+                      turn.knowledgeMemoryCleared &&
+                      !turn.contextMemoryCleared &&
+                      !session.contextMemoryCleared.value
+                    "
+                    tone="info"
+                    >{{ t('knowledgeContext.cleared') }}</Feedback
+                  >
                 </div>
-                <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
-              </section>
-              <TurnContextDetails :budget="turn.contextBudget" :artifacts="turn.artifacts" />
-              <Feedback
-                v-if="
-                  turn.knowledgeMemoryCleared &&
-                  !turn.contextMemoryCleared &&
-                  !session.contextMemoryCleared.value
-                "
-                tone="info"
-                >{{ t('knowledgeContext.cleared') }}</Feedback
-              >
+              </template>
+              <template v-else>
+                <p v-if="turn.text" class="turn-text">{{ turn.text }}</p>
+                <div
+                  v-if="turn.nodeId && session.messageVersions(turn.nodeId).length > 1"
+                  class="turn-version"
+                  data-testid="message-versions"
+                >
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    :aria-label="t('chat.previousVersion')"
+                    :disabled="
+                      session.sending.value ||
+                      session.graphLoading.value ||
+                      session.messageVersions(turn.nodeId)[0]?.id === turn.nodeId
+                    "
+                    @click="changeMessageVersion(turn, -1)"
+                    >‹</Button
+                  >
+                  <span
+                    >{{
+                      session.messageVersions(turn.nodeId).findIndex((n) => n.id === turn.nodeId) +
+                      1
+                    }}
+                    / {{ session.messageVersions(turn.nodeId).length }}</span
+                  >
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    :aria-label="t('chat.nextVersion')"
+                    :disabled="
+                      session.sending.value ||
+                      session.graphLoading.value ||
+                      session.messageVersions(turn.nodeId).at(-1)?.id === turn.nodeId
+                    "
+                    @click="changeMessageVersion(turn, 1)"
+                    >›</Button
+                  >
+                </div>
+                <Button
+                  v-if="turn.nodeId && !session.sending.value && !session.browsingHistory.value"
+                  size="sm"
+                  variant="ghost"
+                  data-testid="question-edit"
+                  @click="editQuestion(turn)"
+                  >{{ t('chat.editQuestion') }}</Button
+                >
+              </template>
             </li>
           </ol>
 
@@ -2439,6 +2519,72 @@ onMounted(async () => {
   gap: 24px;
   max-width: none;
 }
+.turn-node {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.turn-steps {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.turn-steps__label {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--text-soft);
+}
+.turn-step {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  padding-inline: 10px;
+}
+.turn-step :deep(.eap-collapse__summary) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-soft);
+  list-style: none;
+}
+.turn-step :deep(.eap-collapse__summary)::-webkit-details-marker {
+  display: none;
+}
+.turn-step :deep(.eap-collapse__summary)::marker {
+  content: none;
+}
+.turn-step :deep(.eap-collapse__summary)::before {
+  content: '▸';
+  color: var(--text-mute);
+  font-size: 10px;
+}
+.turn-step[open] :deep(.eap-collapse__summary)::before {
+  content: '▾';
+}
+.turn-body {
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.turn-body .turn-answer {
+  line-height: 1.8;
+  font-size: 14px;
+  color: var(--text);
+}
+.turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .chat-log > li.turn-user,
 .chat-log > li.turn-assistant {
   min-width: 0;
@@ -2447,20 +2593,19 @@ onMounted(async () => {
   font-size: 11px;
   color: var(--text-soft);
 }
-.chat-log > li > p {
+.chat-log > li > p,
+.chat-log > li .turn-text {
   line-height: 1.9;
   font-size: 14px;
-}
-.chat-log > li > .turn-answer {
-  line-height: 1.8;
-  font-size: 14px;
-  color: var(--text);
 }
 /* Answers carry tables and code: they need the column, not intrinsic text width.
    User drafts keep content sizing and stay right-aligned. */
 .chat-log > li.turn-assistant {
   width: 100%;
   justify-self: stretch;
+  border: 0;
+  background: transparent;
+  padding: 0;
 }
 .jump-latest-anchor {
   position: relative;

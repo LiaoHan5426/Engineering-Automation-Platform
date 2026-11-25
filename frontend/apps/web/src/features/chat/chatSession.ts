@@ -1253,6 +1253,15 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
             const turn = { ...next[assistantIndex]! }
             if (event.executionId) turn.executionId = event.executionId
             if (event.type === 'answer.delta') turn.text = (turn.text || '') + (event.text || '')
+            if (event.type === 'tool') {
+              turn.toolEvents = [
+                ...turn.toolEvents,
+                {
+                  sequence: event.sequence,
+                  code: event.code || event.text,
+                },
+              ]
+            }
             if (event.status) turn.status = event.status
             if (event.type === 'error') turn.error = event.code || event.text || turn.error
             next[assistantIndex] = turn
@@ -1271,6 +1280,11 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
           status: result.status,
           error: result.error,
           executionId: result.executionId || assistant.executionId,
+          knowledgeContext: result.knowledgeContext ?? assistant.knowledgeContext,
+          skillContext: result.skillContext ?? assistant.skillContext,
+          toolEvents: result.toolEvents?.length
+            ? result.toolEvents
+            : (assistant.toolEvents ?? []),
         }
         transcripts.value = { ...transcripts.value, [id]: turns }
       }

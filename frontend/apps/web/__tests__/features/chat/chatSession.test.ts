@@ -1550,3 +1550,74 @@ it('regenerates an answer from the user node and reads the sibling branch back',
   expect(graphReads).toBe(2)
   expect(session.turns.value[1].text).toBe('original answer')
 })
+
+it('accumulates tool SSE events while regenerating an answer', async () => {
+  const branch: ChatGraph = {
+    conversationId: 'c1',
+    path: [
+      {
+        id: 'c1-user',
+        parentId: null,
+        role: 'USER',
+        version: 1,
+        text: 'question',
+        sequence: 1,
+      },
+      {
+        id: 'c1-answer',
+        parentId: 'c1-user',
+        role: 'ASSISTANT',
+        version: 1,
+        text: 'old',
+        sequence: 2,
+      },
+    ],
+    all: [],
+  }
+  let finish!: (value: AiMessageResult) => void
+  const api: ChatApi = {
+    aiStatus: async () => status(),
+    openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+    sendAiMessage: async () => result(),
+    conversationGraph: async () => branch,
+    regenerateAiMessage: async (_id, _node, _text, _mode, _context, options) => {
+      options?.onEvent?.({
+        type: 'tool',
+        text: '',
+        status: 'RUNNING',
+        code: 'GIT_STATUS',
+        executionId: 'regen-exec',
+        sequence: 1,
+      })
+      options?.onEvent?.({
+        type: 'answer.delta',
+        text: 'new answer',
+        status: 'RUNNING',
+        code: '',
+        executionId: 'regen-exec',
+        sequence: 2,
+      })
+      return new Promise((resolve) => {
+        finish = resolve
+      })
+    },
+  }
+  const session = createChatSession(api)
+  await session.openConversation()
+  await session.loadGraph('c1')
+  const done = session.sendRegenerate('c1-user')
+  await Promise.resolve()
+  expect(session.turns.value.at(-1)).toMatchObject({
+    text: 'new answer',
+    status: 'RUNNING',
+    toolEvents: [{ sequence: 1, code: 'GIT_STATUS' }],
+  })
+  finish(
+    result({
+      answer: 'new answer',
+      executionId: 'regen-exec',
+      toolEvents: [{ sequence: 1, code: 'GIT_STATUS' }],
+    }),
+  )
+  expect(await done).toBe(true)
+})

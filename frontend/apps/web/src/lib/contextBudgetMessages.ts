@@ -1,6 +1,6 @@
 export const contextBudgetMessages = {
   'zh-CN': {
-    historyTitle: '模型历史',
+    historyTitle: '模型上下文',
     summaryGenerate: '生成历史摘要',
     summaryCancel: '请求取消摘要生成',
     summaryReview: '核对并编辑摘要',
@@ -36,7 +36,7 @@ export const contextBudgetMessages = {
     exceededDetail: '已用 {used} / 平台 {platform}（输出预留 {reserve}）。计量：{metering}。',
   },
   'en-US': {
-    historyTitle: 'Model history',
+    historyTitle: 'Model context',
     summaryGenerate: 'Generate history summary',
     summaryCancel: 'Request summary cancellation',
     summaryReview: 'Review and edit summary',

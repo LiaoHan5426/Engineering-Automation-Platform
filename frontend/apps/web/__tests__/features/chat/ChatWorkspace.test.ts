@@ -186,6 +186,76 @@ describe('ChatWorkspace / answerState', () => {
     expect(send).not.toHaveBeenCalled()
   })
 
+  it('renders tool/knowledge steps above the answer body with actions underneath', async () => {
+    await mount([
+      {
+        ...answer(ChatExecutionStatus.SUCCEEDED, 'Answer with tools'),
+        toolEvents: [{ sequence: 1, code: 'GIT_STATUS' }],
+        knowledgeContext: {
+          status: 'ok',
+          expertRef: { id: 'exp', revision: 2 },
+          references: [],
+        } as ChatTurn['knowledgeContext'],
+        executionId: 'exec-1',
+      },
+    ])
+    const node = host.querySelector('[data-testid=assistant-turn-node]')
+    expect(node).not.toBeNull()
+    const steps = node!.querySelector('[data-testid=turn-steps]')
+    const body = node!.querySelector('[data-testid=turn-body]')
+    const actions = node!.querySelector('[data-testid=turn-actions]')
+    expect(steps).not.toBeNull()
+    expect(body).not.toBeNull()
+    expect(actions).not.toBeNull()
+    expect(steps!.compareDocumentPosition(body!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(body!.compareDocumentPosition(actions!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const tool = steps!.querySelector('[data-testid=turn-tool-step]') as HTMLDetailsElement
+    const knowledge = steps!.querySelector('[data-testid=turn-knowledge]') as HTMLDetailsElement
+    expect(tool).not.toBeNull()
+    expect(knowledge).not.toBeNull()
+    expect(tool.open).toBe(false)
+    expect(body!.textContent).toContain('Answer with tools')
+    expect(actions!.querySelector('[data-testid=answer-regenerate]')).not.toBeNull()
+    expect(actions!.querySelector('[data-testid=open-execution-log]')).not.toBeNull()
+  })
+
+  it('keeps live streaming step open above an empty in-flight answer', async () => {
+    let stream!: NonNullable<Parameters<typeof runtimeApi.sendAiMessage>[4]>['onEvent']
+    const send = vi
+      .spyOn(runtimeApi, 'sendAiMessage')
+      .mockImplementation((_id, _text, _mode, _context, options) => {
+        stream = options!.onEvent
+        return new Promise(() => {})
+      })
+    await mount([])
+    ;(host.querySelector('[data-testid=send-message]') as HTMLButtonElement).click()
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+    await nextTick()
+    const streaming = host.querySelector(
+      '[data-testid=turn-streaming-step]',
+    ) as HTMLDetailsElement | null
+    expect(streaming).not.toBeNull()
+    expect(streaming!.open).toBe(true)
+    stream!({
+      sequence: 1,
+      executionId: 'execution',
+      type: 'tool',
+      text: '',
+      code: 'LIST_DIR',
+      status: ChatExecutionStatus.RUNNING,
+    })
+    await nextTick()
+    expect(host.querySelector('[data-testid=turn-streaming-step]')).toBeNull()
+    const tool = host.querySelector('[data-testid=turn-tool-step]') as HTMLDetailsElement
+    expect(tool).not.toBeNull()
+    expect(tool.open).toBe(true)
+    expect(
+      host.querySelector('[data-testid=turn-steps]')!.compareDocumentPosition(
+        host.querySelector('[data-testid=turn-body]')!,
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
 })
 
 describe('ChatWorkspace / knowledge', () => {
@@ -646,9 +716,7 @@ describe('ChatWorkspace / reconnect', () => {
       expect(host.querySelector('[data-testid="reconnect-session"]')).not.toBeNull(),
     )
     expect(host.querySelector('[data-testid="retry-send"]')).toBeNull()
-    expect((host.querySelector('[data-testid="ribbon-retry"]') as HTMLButtonElement).disabled).toBe(
-      true,
-    )
+    expect(host.querySelector('[data-testid="ribbon-retry"]')).toBeNull()
   })
 
   it('does not restore the old task context into a new selection when reconnect retry finishes in the background', async () => {

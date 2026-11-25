@@ -179,6 +179,8 @@ export const desktopMessages = {
       '请根据当前可见的会话与任务草稿，整理今天已完成和未完成的 AI 协作（只读总结，不执行命令、不写入仓库）。',
     sidebarFilter: '筛选分组或会话',
     moreActions: '更多',
+    moreModelContext: '管理模型上下文',
+    moreModelContextHint: '查看或清空实际发给模型的窗口；页面对话记录与草稿仍保留。',
     moreExport: '导出会话',
     workDocumentTitle: '编辑为文档',
     workDocumentSourceChanged:
@@ -794,6 +796,9 @@ export const desktopMessages = {
       'Summarize finished and unfinished AI collaboration from the visible sessions and task drafts (read-only; no commands or repository writes).',
     sidebarFilter: 'Filter groups or chats',
     moreActions: 'More',
+    moreModelContext: 'Manage model context',
+    moreModelContextHint:
+      'Inspect or clear the window sent to the model; on-screen chat and the draft stay.',
     moreExport: 'Export chat',
     workDocumentTitle: 'Edit as document',
     workDocumentSourceChanged:

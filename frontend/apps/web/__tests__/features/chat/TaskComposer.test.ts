@@ -300,11 +300,10 @@ describe('engineering task composer', () => {
   })
   it('changes expert and approval as actual context and disables unsupported reasoning', async () => {
     const context = await mount()
-    expect(element!.querySelector('[data-testid="composer-scope"]')).not.toBeNull()
-    expect(element!.querySelectorAll('.context-toolbar select')).toHaveLength(1)
+    expect(element!.querySelector('[data-testid="composer-scope"]')).toBeNull()
     expect(
-      element!.querySelector('.context-toolbar [data-testid="composer-scope-select"]'),
-    ).not.toBeNull()
+      element!.querySelector('[data-testid="composer-scope-select"]'),
+    ).toBeNull()
     ;(element!.querySelector('[data-testid="composer-add"]') as HTMLButtonElement).click()
     await nextTick()
     expect(element!.querySelector('[data-testid="composer-cat-files"]')).not.toBeNull()

@@ -34,15 +34,11 @@ import SkillSelector from './SkillSelector.vue'
 import { pendingScenarioDependencies } from '../shell/scenarioDependencies'
 import { identityAuthorized, runtimeIdentity } from '../shell/runtimeIdentity'
 import {
-  assignSessionProject,
   addExpert,
   currentExtras,
   expertCatalog,
-  localProjects,
-  projectLabel,
   removeExpert,
   scenarios,
-  sessionKey,
   setExecutionMode,
   workbench,
 } from '../shell/workbench'
@@ -185,13 +181,6 @@ const sceneMissingDeps = computed(() =>
     identityAuthorized(runtimeIdentity.value),
   ),
 )
-/** Session binding only — sidebar selection does not pretend the draft is bound. */
-const scopeProjectId = computed(() => currentExtras().projectId)
-function changeScopeProject(id: string) {
-  const next = id || null
-  workbench.selectedProjectId = next
-  assignSessionProject(sessionKey(), next)
-}
 const root = ref<HTMLElement | null>(null)
 const popupAnchor = shallowRef<HTMLElement | null>(null)
 function positionPopup(button: HTMLElement | null) {
@@ -590,26 +579,6 @@ async function loadVersions() {
     <slot name="draft" />
     <div class="task-context" data-testid="task-context">
       <div class="context-toolbar">
-        <div class="composer-scope" data-testid="composer-scope">
-          <label>
-            <span class="sr-only">{{ t('desktop.composerScope') }}</span>
-            <Select
-              data-testid="composer-scope-select"
-              :disabled="disabled"
-              :model-value="scopeProjectId ?? ''"
-              @change="changeScopeProject(($event.target as HTMLSelectElement).value)"
-            >
-              <option value="">{{ t('desktop.composerScopeFree') }}</option>
-              <option
-                v-for="project in localProjects.projects"
-                :key="project.id"
-                :value="project.id"
-              >
-                {{ projectLabel(project.id) }}
-              </option>
-            </Select>
-          </label>
-        </div>
         <Button
           variant="secondary"
           type="button"
@@ -630,7 +599,7 @@ async function loadVersions() {
           ><IconPlus
         /></Button>
         <Tag
-          v-if="activeScene"
+          v-if="activeScene && activeScene.id !== 'free-explore'"
           closable
           :type="sceneMissingDeps.length ? 'warning' : 'success'"
           data-testid="composer-scene-chip"
@@ -1142,20 +1111,6 @@ async function loadVersions() {
   overflow-wrap: anywhere;
 }
 
-.composer-scope {
-  display: flex;
-  flex: 0 1 9rem;
-  gap: 8px;
-  align-items: center;
-  min-inline-size: 0;
-  padding: 0;
-}
-
-.composer-scope :deep(.eap-select) {
-  max-inline-size: 100%;
-  min-inline-size: 0;
-}
-
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1178,14 +1133,12 @@ async function loadVersions() {
   align-items: center;
 }
 
-.context-toolbar > :deep(button),
-.composer-scope :deep(select) {
+.context-toolbar > :deep(button) {
   min-block-size: 2rem;
 }
 
 @media (pointer: coarse) {
   .context-toolbar > :deep(button),
-  .composer-scope :deep(select),
   .composer-submit-controls > :deep(button) {
     min-block-size: 2.75rem;
     min-inline-size: 2.75rem;
