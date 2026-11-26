@@ -10,6 +10,31 @@ from app.domain.errors import ChatErrorCode, LlmError
 from app.persistence.connections import ConnectionRecord
 
 
+async def list_model_catalog(endpoint: str, secret: str) -> list[dict[str, str]]:
+    url = endpoint.rstrip("/") + "/models"
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
+            async with client.stream("GET", url, headers={"Authorization": f"Bearer {secret}"}) as response:
+                response.raise_for_status()
+                body = bytearray()
+                async for chunk in response.aiter_bytes():
+                    if len(body) + len(chunk) > 1024 * 1024:
+                        raise ValueError("The model catalog exceeds the size limit.")
+                    body.extend(chunk)
+        payload = json.loads(body)
+    except (httpx.HTTPError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Could not read the provider model catalog.") from exc
+
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError("The provider returned an invalid model catalog.")
+    ids = dict.fromkeys(
+        row["id"] for row in rows
+        if isinstance(row, dict) and isinstance(row.get("id"), str) and row["id"].strip()
+    )
+    return [{"id": model_id} for model_id in ids]
+
+
 async def stream_chat_completion(
     connection: ConnectionRecord,
     messages: list[dict[str, str]],

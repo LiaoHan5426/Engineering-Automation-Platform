@@ -1,0 +1,30 @@
+/* The empty bottom dock does not always mount its own tab bar. */
+[class$="_bottomPanel"] {
+  --eap-dsh-dock-base: #ffffff;
+  --eap-dsh-dock-raised: #f3f3f4;
+  --eap-dsh-dock-border: #d1d1d3;
+  background-color: var(--eap-dsh-dock-base) !important;
+}
+[class$="_bottomPanel"] [class$="_tabBar"],
+[class$="_bottomPanel"] > :has(> button[aria-label]) {
+  background-color: var(--eap-dsh-dock-raised) !important;
+}
+[class*="_bottomPanel"] [class$="_paneCard"] {
+  border: 1px solid var(--eap-dsh-dock-border);
+  background-color: var(--eap-dsh-dock-raised) !important;
+}
+[class*="_bottomPanel"] [class$="_paneCard"]:is([title="文件"], [title="Files"], [title="任务管理"], [title="Task Management"]) svg {
+  color: var(--dsw-alias-label-warning, #eaa126);
+}
+[class*="_bottomPanel"] [class$="_paneCard"][title="Git"] svg {
+  color: var(--dsw-alias-label-success, #35be7c);
+}
+[class*="_bottomPanel"] [class$="_paneCard"]:is([title^="侧边对话"], [title^="Side Chat"]) svg {
+  color: var(--dsw-alias-label-accent, #74a9ff);
+}
+
+[data-ds-dark-theme] [class$="_bottomPanel"] {
+  --eap-dsh-dock-base: #151517;
+  --eap-dsh-dock-raised: #232325;
+  --eap-dsh-dock-border: #454548;
+}

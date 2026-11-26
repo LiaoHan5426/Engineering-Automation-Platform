@@ -9,6 +9,7 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.config import Settings
+from app.domain.plugin_errors import InstallFetchError
 from app.persistence.models import PluginInstallRow
 from app.infrastructure.plugins.dsh_package import DshPackageError, DshPackageInfo, read_dsh_package, safe_join
 
@@ -25,22 +26,31 @@ class PluginRegistry:
         self._engine = engine
         self._settings.ensure_layout()
 
-    def install_from_path(self, source: Path, *, spec: str) -> dict[str, Any]:
+    @property
+    def staging_root(self) -> Path:
+        return self._settings.plugins_root
+
+    def install_from_path(
+        self, source: Path, *, spec: str, enabled: bool | None = None, replace: bool = True,
+    ) -> dict[str, Any]:
         info = read_dsh_package(source)
+        if not replace and self.get(info.name) is not None:
+            raise InstallFetchError("PLUGIN_ALREADY_INSTALLED", "This plugin is already installed.")
         dest = self._settings.plugins_root / info.name / info.version
         if dest.exists():
             shutil.rmtree(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(source, dest)
         installed = read_dsh_package(dest)
-        enabled = False
+        requested_enabled = enabled
+        enabled = bool(requested_enabled)
         with Session(self._engine) as session:
             row = session.get(PluginInstallRow, installed.name)
             if row is None:
                 row = PluginInstallRow(
                     name=installed.name,
                     version=installed.version,
-                    enabled=False,
+                    enabled=enabled,
                     install_path=str(dest),
                     client_entry=installed.client_entry,
                     package_json=json.dumps(installed.package_json, ensure_ascii=False),
@@ -48,7 +58,8 @@ class PluginRegistry:
                 )
                 session.add(row)
             else:
-                enabled = row.enabled
+                enabled = row.enabled if requested_enabled is None else requested_enabled
+                row.enabled = enabled
                 row.version = installed.version
                 row.install_path = str(dest)
                 row.client_entry = installed.client_entry
@@ -156,6 +167,7 @@ class PluginRegistry:
                     "clientUrl": f"/api/plugins/{info.name}/files/{info.client_entry}?rev={artifact_revision}",
                     "filesBaseUrl": f"/api/plugins/{info.name}/files",
                     "inject": list(info.inject),
+                    **({"immediately": True} if info.package_json["dsh"]["client"].get("immediately") is True else {}),
                     "hostApiBase": f"/api/plugins/host/{info.name}",
                     # Control plane stays on server — island must call hostApiBase, never local Host.
                     "controlPlane": "py-backend",

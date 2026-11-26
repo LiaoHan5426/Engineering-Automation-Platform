@@ -115,7 +115,11 @@ export type PluginManagerPageProps = PropsRuntime<'main'> &
   > &
   PropsRenderFactories & InjectFace<ClientSyncFace> &
   InjectFace<PluginManagerFace & PluginHeaderLayoutFace> &
-  PropsStore<ReturnType<typeof createNavigationStore>>
+  PropsStore<ReturnType<typeof createNavigationStore>> & {
+    readonly explicitPluginConfiguration?: boolean
+    readonly deploymentBuiltins?: () => readonly OfficialItem[]
+    readonly unavailableBuiltinDescription?: () => string
+  }
 /** The page's slot renderer, narrowed to the configuration slots. */
 export interface ClientSyncFace {
  readonly hooks: { readonly clientSync: ObservableSnapshot<ClientEntryState> }
@@ -913,7 +917,7 @@ const CardHead = defineComponent(
   (props: {
     readonly title: string
     readonly t: Translate
-    readonly onOpen: () => void
+    readonly onOpen?: () => void
     readonly icon: VNodeChild
     readonly tags?: VNodeChild
     readonly description: VNodeChild
@@ -954,18 +958,15 @@ const CardHead = defineComponent(
                   class: css.titleRow,
                 },
                 [
-                  h(
-                    'button',
-                    {
+                  onOpen.value === undefined
+                    ? h('span', { class: css.cardTitle }, title.value)
+                    : h('button', {
                       type: 'button',
                       class: `${css.cardTitle} ${css.cardOpen}`,
                       'aria-label': t.value('openDetail', { name: title.value }),
-                      'aria-describedby':
-                        description.value === undefined ? undefined : descriptionId,
+                      'aria-describedby': description.value === undefined ? undefined : descriptionId,
                       onClick: onOpen.value,
-                    },
-                    [title.value],
-                  ),
+                    }, [title.value]),
                   tags.value,
                 ],
               ),
@@ -3579,8 +3580,9 @@ export const PluginManagerPage = defineComponent(
     const state = props.usePluginManager(snapshot => snapshot)
     const ledger = props.useConfigLedger(snapshot => snapshot)
     const clientSync = props.useClientSync(snapshot => snapshot)
-    const sectionsOf = (pkg: PackageView, row: PackageRow): readonly SettingsSectionItem[] => ledger.value.rows.has(rowConfigKey(pkg.name, row.rowId)) ? [] : ledger.value.sections.filter(section => section.module === row.moduleName)
+    const sectionsOf = (pkg: PackageView, row: PackageRow): readonly SettingsSectionItem[] => props.explicitPluginConfiguration || ledger.value.rows.has(rowConfigKey(pkg.name, row.rowId)) ? [] : ledger.value.sections.filter(section => section.module === row.moduleName)
     const bundleSections = (pkg: PackageView): readonly SettingsSectionItem[] => {
+      if (props.explicitPluginConfiguration) return []
       const rowModules = new Set(listed.value.flatMap(item => item.rows.map(row => row.moduleName)))
       return ledger.value.bundles.has(pkg.name) || rowModules.has(pkg.name) ? [] : ledger.value.sections.filter(section => section.module === pkg.name)
     }
@@ -3755,6 +3757,22 @@ export const PluginManagerPage = defineComponent(
           setView.value({ kind: 'item', id: item.id })
         },
       })
+    const builtinCards = (): VNodeChild[] => {
+      const items = ledger.value.items
+      const unavailable = (props.deploymentBuiltins?.() ?? [])
+        .filter(item => !items.some(configurable => configurable.id === item.id))
+      return [
+        ...items.map(basicItemCard),
+        ...unavailable.map(item => h('li', { key: item.id, class: css.card, 'data-plugin-item': item.id }, [
+          h(CardHead, {
+            title: item.label,
+            t: t.value,
+            icon: itemArtwork(item.id),
+            description: props.unavailableBuiltinDescription?.(),
+          }),
+        ])),
+      ]
+    }
     const renderGroup = (
       id: 'basic' | 'extensions' | 'bundles',
       heading: string,
@@ -4382,7 +4400,7 @@ export const PluginManagerPage = defineComponent(
                           renderGroup(
                             'basic',
                             t.value('basicTitle'),
-                            ledger.value.items.map(basicItemCard),
+                            builtinCards(),
                           ),
                           renderGroup(
                             'extensions',
@@ -4513,6 +4531,9 @@ export const PluginManagerPage = defineComponent(
   },
   {
     props: [
+      'explicitPluginConfiguration',
+      'deploymentBuiltins',
+      'unavailableBuiltinDescription',
       't',
       'ensure',
       'renderSlot',

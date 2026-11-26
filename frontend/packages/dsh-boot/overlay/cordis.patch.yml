@@ -10,3 +10,8 @@
 
 - id: ui-account-notifications
   disabled: true
+- insert:
+    - id: ui-settings-plugins
+      name: '@deepseek-ai/dsh-client-ui-settings-plugins'
+    - id: ui-settings-plugin-inventory
+      name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'

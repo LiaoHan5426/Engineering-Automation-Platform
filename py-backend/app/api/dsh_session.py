@@ -133,6 +133,7 @@ def list_sessions(frame: SessionListFrame, request: Request):
         item["projections"] = {"kind": "sequenced", **session_projection(item, cursor)}
         item.pop("connectionId")
         item.pop("model")
+        item.pop("firstUserMessage")
     return {
         "type": "server-response",
         "rpcId": frame.rpcId,
@@ -354,12 +355,13 @@ class SessionProjectionsFrame(BaseModel):
     payload: SessionProjectionsPayload
 
 
-def session_projection(conversation: dict, cursor: int) -> dict:
+def session_projection(conversation: dict, cursor: int, first_message: str | None = None) -> dict:
     provider, model = conversation["connectionId"], conversation["model"]
     selection = {"provider": provider, "model": model} if provider and model else None
+    title = " ".join((first_message or conversation.get("firstUserMessage") or "").split())[:80]
     return {
         "asOfSeq": cursor,
-        "values": {"modelSelection": {"next": selection, "lastUsed": None}},
+        "values": {"modelSelection": {"next": selection, "lastUsed": None}, **({"title": title} if title else {})},
     }
 
 
@@ -372,7 +374,7 @@ def session_projections(frame: SessionProjectionsFrame, request: Request):
     value = None
     if conversation is not None and history is not None:
         cursor = len(history_records(history[1])) - 1
-        value = {"kind": "sequenced", **session_projection(conversation, cursor)}
+        value = {"kind": "sequenced", **session_projection(conversation, cursor, history[1][0]["text"] if history[1] else None)}
     return {
         "type": "server-response",
         "rpcId": frame.rpcId,

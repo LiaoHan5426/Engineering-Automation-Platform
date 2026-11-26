@@ -62,7 +62,7 @@ def open_session(socket: WebSocket, command: SessionFollowRequest) -> dict | Non
             "cwd": str(socket.app.state.settings.workspace_root), "isSeeded": False,
         },
         **page,
-        "projections": session_projection(conversation, page["cursor"]),
+        "projections": session_projection(conversation, page["cursor"], messages[0]["text"] if messages else None),
     }
     if command.assistantStream:
         snapshot["assistantStream"] = {"revision": 0}
@@ -144,6 +144,15 @@ async def remote_mux(socket: WebSocket):
                   or stream_id in event_streams
                   or len(followers) + len(sessions) + len(event_streams) >= 16):
                 await stream_error(socket, stream_id, "gateway/bad-request", "Invalid stream operation.")
+            elif frame.get("endpoint") == "remoteAccess/follow":
+                event_streams.add(stream_id)
+                await stream_item(socket, stream_id, {
+                    "type": "baseline", "owner": False,
+                    "grants": [{"resource": {"kind": "global"}, "actions": [
+                        "settings/describe", "pluginManager/listBundles", "session/create",
+                        "pluginManager/setBundleEnabled", "pluginManager/removeBundle", "pluginManager/installBundle",
+                    ]}],
+                })
             elif frame.get("endpoint") == "$events":
                 event_streams.add(stream_id)
                 await stream_item(socket, stream_id, {

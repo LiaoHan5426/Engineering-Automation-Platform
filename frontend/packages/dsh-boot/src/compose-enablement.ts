@@ -24,6 +24,7 @@ export function mergeEnablement(
       id: client.name,
       url: client.clientUrl,
       rev: revFromNameUrl(client.name, client.clientUrl),
+      ...(client.immediately ? { immediately: true } : {}),
       ...(client.inject !== undefined && client.inject.length > 0
         ? { inject: [...client.inject] }
         : {}),

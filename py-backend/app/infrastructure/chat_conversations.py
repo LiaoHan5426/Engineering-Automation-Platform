@@ -54,7 +54,7 @@ class SqlChatConversations:
             )
             return [(row.id, row.created_at.replace(tzinfo=timezone.utc).isoformat()) for row in rows]
 
-    def session_summaries(self, workspace_id: str) -> list[tuple[str, int, int, str | None, str | None]]:
+    def session_summaries(self, workspace_id: str) -> list[tuple[str, int, int, str | None, str | None, str | None]]:
         last_message = (
             select(func.max(ChatMessageRow.created_at))
             .where(ChatMessageRow.conversation_id == ConversationRow.id)
@@ -67,9 +67,17 @@ class SqlChatConversations:
             .correlate(ConversationRow)
             .scalar_subquery()
         )
+        first_user_message = (
+            select(ChatMessageRow.content)
+            .where(ChatMessageRow.conversation_id == ConversationRow.id, ChatMessageRow.role == "USER")
+            .order_by(ChatMessageRow.sequence)
+            .limit(1)
+            .correlate(ConversationRow)
+            .scalar_subquery()
+        )
         with Session(self._engine) as session:
             rows = session.exec(
-                select(ConversationRow, last_message, message_count)
+                select(ConversationRow, last_message, message_count, first_user_message)
                 .where(ConversationRow.workspace_label == workspace_id)
                 .order_by(ConversationRow.created_at.desc(), ConversationRow.id)
             )
@@ -80,8 +88,9 @@ class SqlChatConversations:
                     count,
                     row.connection_id,
                     row.model,
+                    first,
                 )
-                for row, last, count in rows
+                for row, last, count, first in rows
             ]
 
     def get_conversation(self, conversation_id: str) -> dict[str, Any] | None:

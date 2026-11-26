@@ -93,6 +93,11 @@ def test_session_history_projects_committed_eap_messages(client: TestClient):
     command["maxMessages"] = 1
     tail = client.post("/api/session/events", json=frame).json()["result"]["value"]
     assert tail == {"cursor": 4, "records": page["records"][3:], "hasMore": True}
+    summaries = client.post("/api/session/list", json={
+        "type": "client-request", "rpcId": "title", "method": "session/list",
+        "payload": {"args": {"request": {}}},
+    }).json()["result"]["value"]["items"]
+    assert summaries[0]["projections"]["values"]["title"] == "hello"
 
 def test_session_follow_delivers_snapshot_and_committed_events(client: TestClient):
     session_id = client.post("/api/ai/conversations").json()["conversationId"]
@@ -225,3 +230,57 @@ def test_model_tool_round_uses_model_selected_path(monkeypatch):
     assert asyncio.run(read()) == ["done"]
     assert requests[0]["tools"][0]["function"]["name"] == "read_workspace_source"
     assert "tools" not in requests[1]
+
+def test_model_settings_can_create_and_edit_an_api_connection(client):
+    created = client.post("/api/ai/connections", json={
+        "name": "Local model",
+        "baseUrl": "http://127.0.0.1:9000/v1",
+        "defaultModel": "example-model",
+        "secret": "fixture-key",
+    })
+    assert created.status_code == 200
+    record = created.json()
+    assert record["defaultModel"] == "example-model"
+    assert record["secretPresent"]
+    assert "fixture-key" not in created.text
+
+    updated = client.post(f"/api/ai/connections/{record['id']}", json={
+        "wireApi": "responses",
+        "defaultModel": "updated-model",
+        "secret": "",
+    })
+    assert updated.status_code == 200
+    record = updated.json()
+    assert record["wireApi"] == "responses"
+    assert record["defaultModel"] == "updated-model"
+    assert record["secretPresent"]
+    assert "fixture-key" not in updated.text
+
+
+def test_native_model_settings_mutate_the_connection_store(client):
+    def rpc(method, args):
+        response = client.post(f"/api/{method}", json={
+            "type": "client-request", "rpcId": "model-settings", "method": method,
+            "payload": {"args": args},
+        })
+        assert response.status_code == 200
+        return response.json()["result"]
+
+    ns = "llm-pi-ai"
+    view = next(row for row in rpc("settings/describe", {})["value"]["namespaces"] if row["ns"] == ns)
+    draft = {
+        "ns": ns, "expectedRevision": view["revision"],
+        "ops": [{"op": "set", "path": ["providers", "fixture"],
+                 "value": {"baseURL": "https://example.test/v1", "api": "openai-completions",
+                           "models": [{"id": "fixture-model"}]}}],
+    }
+    assert rpc("settings/mutate", draft)["ok"]
+    assert rpc("settings/mutate", draft)["error"]["code"] == "settings/conflict"
+    assert rpc("credentials/set", {"ref": "FIXTURE_API_KEY", "value": "fixture-key"})["ok"]
+    assert not rpc("credentials/set", {"ref": "OTHER_API_KEY", "value": "fixture-key"})["ok"]
+    rows = client.get("/api/ai/connections").json()["items"]
+    assert next(row for row in rows if row["id"] == "fixture")["defaultModel"] == "fixture-model"
+    flags = rpc("credentials/describe", {"refs": ["FIXTURE_API_KEY"]})["value"]
+    assert flags["FIXTURE_API_KEY"]["configured"] is True
+    assert flags["FIXTURE_API_KEY"]["source"] == "file"
+    assert "fixture-key" not in str(flags)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -93,6 +94,11 @@ class ConnectionStore:
             encoding="utf-8",
         )
 
+    def edit_records(self, edit: Callable[[list[ConnectionRecord]], None]) -> None:
+        items = self._load()
+        edit(items)
+        self._save(items)
+
     def list_public(self) -> dict[str, Any]:
         items = self._load()
         effective = next((i.id for i in items if i.default_selected and i.enabled), None)
@@ -169,6 +175,8 @@ class ConnectionStore:
             record.base_url = str(body["baseUrl"]).strip().rstrip("/") or record.base_url
         if "secret" in body and body["secret"] is not None and str(body["secret"]) != "":
             record.secret = str(body["secret"])
+        if "wireApi" in body:
+            record.wire_api = str(body["wireApi"] or "chat-completions")
         if "enabled" in body:
             record.enabled = bool(body["enabled"])
         if "defaultSelected" in body and body["defaultSelected"]:

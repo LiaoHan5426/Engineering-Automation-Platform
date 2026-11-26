@@ -13,7 +13,8 @@ from urllib.parse import urlparse
 
 from app.domain.plugin_errors import InvalidInstallSpecError
 
-PACKAGE_NAME = re.compile(r"^(?:@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*$")
+PACKAGE_NAME_PATTERN = r"(?:@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*"
+PACKAGE_NAME = re.compile(PACKAGE_NAME_PATTERN)
 PACKAGE_NAME_MAX_LENGTH = 214
 GIT_SHORTHAND = re.compile(r"^(?:github|gitlab|bitbucket|gist):", re.IGNORECASE)
 GIT_URL = re.compile(r"^git(?:\+[a-z]+)?:\/\/|^git@[^:]+:", re.IGNORECASE)
@@ -75,8 +76,8 @@ def parse_install_spec(raw: str) -> ParsedInstallSpec:
     at = spec.find("@", 1)
     name = spec if at == -1 else spec[:at]
     version = None if at == -1 else spec[at + 1 :]
-    if len(name) > PACKAGE_NAME_MAX_LENGTH or not PACKAGE_NAME.match(name):
+    if len(name) > PACKAGE_NAME_MAX_LENGTH or not PACKAGE_NAME.fullmatch(name):
         raise InvalidInstallSpecError(spec, "not a package name the registry accepts")
-    if version == "":
-        raise InvalidInstallSpecError(spec, "a version after @ must not be empty")
+    if version is not None and (len(version) > 120 or not re.fullmatch(r"[0-9A-Za-z.*+~^<>= |_-]+", version)):
+        raise InvalidInstallSpecError(spec, "Expected an npm version, range, or dist-tag after @.")
     return ParsedInstallSpec(kind="registry", spec=spec, name=name, range=version)

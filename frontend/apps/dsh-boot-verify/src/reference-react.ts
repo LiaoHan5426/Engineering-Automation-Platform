@@ -1,3 +1,4 @@
+import './better-sidebar.css'
 import { registerProductPanels } from './product-panels'
 import { mergeEnablement } from '@eap/dsh-boot/enablement'
 import { createReactSlotWrapper, isReactComponent, pluginRequire } from '@eap/plugin-runtime'
@@ -48,7 +49,9 @@ function scopeLegacyContext(ctx: object, vue: ReferenceVue): object {
                         'sessionIdOf',
                         'diagnostics',
                       ]
-                    : [],
+                    : options.name === 'settings.section'
+                      ? ['store', 'service']
+                      : options.name === 'settings.section.icon' ? ['size'] : [],
                 )
               : component,
           )
@@ -138,9 +141,73 @@ function scopeLegacyRegistration(registration: Registration): Registration {
     },
   }
 }
+function scopeAvailableSettings(ctx: object, source: string): object {
+  const slots = Reflect.get(ctx, 'slots') as object
+  const pluginManager = source === '@deepseek-ai/dsh-client-ui-plugin-manager'
+  const adapted = new Proxy(slots, {
+    get(target, key) {
+      const member = Reflect.get(target, key)
+      if (key === 'register') {
+        return (options: { name?: string; id?: string; key?: string; inject?: (...args: unknown[]) => object }, component: unknown) => {
+          // EAP has no writable DSH profile for the onboarding acknowledgement.
+          if (
+            (options.name === 'settings.onboarding' && ['welcome-notice', 'deepseek-official'].includes(String(options.id))) ||
+            (options.name === 'settings.general.item' && options.id === 'permission') ||
+            (options.name === 'settings.section' && options.id === 'agent-presets') ||
+            (options.name === 'settings.section' && options.id === 'plugins' && pluginManager)
+          ) {
+            return () => {}
+          }
+          if (pluginManager && options.name === 'main' && options.key === 'plugins') {
+            const locale = Reflect.get(ctx, 'locale') as { getSnapshot(): { active: string } }
+            const chinese = () => locale.getSnapshot().active.startsWith('zh')
+            return member.call(target, {
+              ...options,
+              inject: (...args: unknown[]) => ({
+                ...options.inject?.(...args),
+                explicitPluginConfiguration: true,
+                deploymentBuiltins: () => [
+                  { id: 'subagent', label: chinese() ? '子智能体' : 'Subagents' },
+                  { id: 'web-search', label: chinese() ? '网页搜索与获取' : 'Web search and fetch' },
+                  { id: 'agent-loop', label: chinese() ? 'Agent 循环' : 'Agent loop' },
+                  { id: 'shell', label: chinese() ? '终端' : 'Terminal' },
+                ],
+                unavailableBuiltinDescription: () => chinese()
+                  ? '当前宿主未开放此插件的配置。'
+                  : 'This host does not expose configuration for this plugin.',
+              }),
+            }, component)
+          }
+          return member.call(target, options, component)
+        }
+      }
+      return typeof member === 'function' ? member.bind(target) : member
+    },
+  })
+  return new Proxy(ctx, {
+    get(target, key, receiver) {
+      return key === 'slots' ? adapted : Reflect.get(target, key, receiver)
+    },
+  })
+}
+
 function scopeLoad(target: RegistrationQueue) {
   const load = target.load.bind(target)
   target.load = (registration) => {
+    if (artifactMode && [
+      '@deepseek-ai/dsh-client-ui-settings-models',
+      '@deepseek-ai/dsh-client-ui-plugin-manager',
+      '@deepseek-ai/dsh-client-ui-permission-presets',
+      '@deepseek-ai/dsh-client-ui-agent-preset',
+    ].includes(registration.id)) {
+      return load({
+        ...registration,
+        factory(require) {
+          const exported = registration.factory(require) as { apply(ctx: object): unknown }
+          return { ...exported, apply: (ctx: object) => exported.apply(scopeAvailableSettings(ctx, registration.id)) }
+        },
+      })
+    }
     if (!artifactMode || registration.id !== '@deepseek-ai/dsh-client-ui-sidebar') {
       return load(scopeLegacyRegistration(registration))
     }

@@ -29,7 +29,7 @@ async def create_connection(request: Request):
         return problem_from_code(str(exc) or ConnectionErrorCode.INVALID_CONNECTION)
 
 
-@router.put("/connections/{connection_id}")
+@router.post("/connections/{connection_id}")
 async def update_connection(connection_id: str, request: Request):
     body = await request.json()
     try:

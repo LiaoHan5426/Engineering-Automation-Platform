@@ -12,6 +12,7 @@ from app.api.board import router as board_router
 from app.api.catalog import router as catalog_router
 from app.api.connections import router as connections_router
 from app.api.conversations import router as conversations_router
+from app.api.dsh_management import router as dsh_management_router
 from app.api.dsh_session import router as dsh_session_router
 from app.api.dsh_workspace import router as dsh_workspace_router
 from app.api.git_executions import router as git_executions_router
@@ -130,6 +131,7 @@ def create_app(
     app.include_router(git_executions_router, prefix="/api")
     app.include_router(conversations_router, prefix="/api")
     app.include_router(dsh_session_router, prefix="/api")
+    app.include_router(dsh_management_router, prefix="/api")
     app.include_router(dsh_workspace_router, prefix="/api")
     app.include_router(connections_router, prefix="/api")
     app.include_router(notify_router, prefix="/api")

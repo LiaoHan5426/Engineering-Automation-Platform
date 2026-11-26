@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse
+from starlette.convertors import StringConvertor, register_url_convertor
 
 from app.api.problem import problem, problem_from_code
 from app.application.plugins import PluginService
@@ -11,6 +12,18 @@ from app.domain.plugin_errors import (
     DshPackageError, InstallFetchError, InstallSpecMissingError, InvalidInstallSpecError,
 )
 
+from app.infrastructure.plugins.install_spec import PACKAGE_NAME_PATTERN
+
+
+class PluginNameConvertor(StringConvertor):
+    # Scoped npm names contain exactly one slash, between scope and package.
+    regex = PACKAGE_NAME_PATTERN
+
+    def to_string(self, value: str) -> str:
+        return str(value)
+
+
+register_url_convertor("dsh_package", PluginNameConvertor())
 router = APIRouter(prefix="/plugins", tags=["plugins"])
 
 
@@ -37,7 +50,7 @@ async def install_plugin(request: Request):
         return problem(400, str(exc), "not a DSH web client package")
 
 
-@router.post("/{name}/enable")
+@router.post("/{name:dsh_package}/enable")
 def enable_plugin(name: str, request: Request):
     try:
         item = plugin_service(request).enable(name)
@@ -48,7 +61,7 @@ def enable_plugin(name: str, request: Request):
     return item
 
 
-@router.post("/{name}/disable")
+@router.post("/{name:dsh_package}/disable")
 def disable_plugin(name: str, request: Request):
     try:
         item = plugin_service(request).disable(name)
@@ -57,7 +70,7 @@ def disable_plugin(name: str, request: Request):
     return item
 
 
-@router.post("/{name}/update")
+@router.post("/{name:dsh_package}/update")
 def update_plugin(name: str, request: Request):
     try:
         return plugin_service(request).update(name)
@@ -73,7 +86,7 @@ def update_plugin(name: str, request: Request):
         return problem(400, str(exc), "not a DSH web client package")
 
 
-@router.post("/{name}/uninstall")
+@router.post("/{name:dsh_package}/uninstall")
 def uninstall_plugin(name: str, request: Request):
     try:
         return plugin_service(request).uninstall(name)
@@ -86,7 +99,7 @@ def contributions(request: Request) -> dict[str, Any]:
     return plugin_service(request).contributions()
 
 
-@router.get("/{name}/files/{file_path:path}")
+@router.get("/{name:dsh_package}/files/{file_path:path}")
 def plugin_file(name: str, file_path: str, request: Request):
     try:
         target = plugin_service(request).resolve_file(name, file_path)
@@ -100,7 +113,7 @@ def plugin_file(name: str, file_path: str, request: Request):
     return FileResponse(target, media_type=media)
 
 
-@router.get("/host/{name}/status")
+@router.get("/host/{name:dsh_package}/status")
 def host_status(name: str, request: Request):
     try:
         return plugin_service(request).status(name)
@@ -108,7 +121,7 @@ def host_status(name: str, request: Request):
         return problem(409, "HOST_NOT_ACTIVE", "plugin host bridge not active; enable the plugin")
 
 
-@router.post("/host/{name}/sidebar/api/{method}")
+@router.post("/host/{name:dsh_package}/sidebar/api/{method}")
 async def sidebar_api(name: str, method: str, request: Request):
     if request.headers.get("content-type", "").split(";")[0] != "application/json":
         return problem(415, "UNSUPPORTED_MEDIA_TYPE", "Expected application/json")
@@ -124,7 +137,7 @@ async def sidebar_api(name: str, method: str, request: Request):
         return problem(409, "HOST_NOT_ACTIVE", "plugin host bridge not active; enable the plugin")
 
 
-@router.get("/host/{name}/sidebar/api")
+@router.get("/host/{name:dsh_package}/sidebar/api")
 def sidebar_api_root(name: str, request: Request):
     try:
         return plugin_service(request).sidebar(name, "health", {})

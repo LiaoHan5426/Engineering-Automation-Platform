@@ -85,8 +85,9 @@ export function apply(ctx: ClientContext): void {
   const schema = createSettingsSchemaOperations(ctx.settingsSchema)
   // Bound once here, where the Remote namespaces are declared in this plugin's
   // own `inject`; the cards receive callbacks and never a context.
-  const operations = createModelsOperations(ctx)
-  const controller = new ModelsSettingsStore(ctx, schema, ctx.configForms.describe())
+  const describe = ctx.configForms.describe()
+  const operations = createModelsOperations(ctx, (view) => describe.acceptView(view))
+  const controller = new ModelsSettingsStore(ctx, schema, describe)
   // Registration-time text (the nav label thunk) and the inject faces share
   // one bound translate; copy freshness rides the locale revision.
   const t = ctx.locale.bind(NS) as ModelsSectionInjected['t']

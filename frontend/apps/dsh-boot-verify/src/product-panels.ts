@@ -1,13 +1,9 @@
-import ModelSettings from '../../web/src/features/settings/ModelSettings.vue'
 import { createApp } from 'vue'
 import WorkspaceOverview from '../../web/src/features/shell/WorkspaceOverview.vue'
-import DshPluginManager from '../../web/src/features/plugins/DshPluginManager.vue'
-import { readBoardLocation } from '../../web/src/features/shell/boardLocation'
 import { i18n } from '../../web/src/lib/i18n'
 import '@eap/ui/styles.css'
 import './product-panels.css'
 
-import TaskBoard from './TaskBoard.vue'
 
 type VueRuntime = Pick<typeof import('vue'), 'h' | 'onMounted' | 'onBeforeUnmount'>
 type SidebarContext = {
@@ -20,76 +16,14 @@ type SidebarContext = {
 }
 
 export function registerProductPanels(ctx: SidebarContext, vue: VueRuntime) {
-  ctx.effect(
-    () =>
-      ctx.slots.inject('sidebar.settings', () =>
-        ctx.slots.register(
-          { name: 'sidebar.settings' },
-          {
-            setup() {
-              let dialog: HTMLDialogElement | null = null
-              let container: HTMLElement | null = null
-              let app: ReturnType<typeof createApp> | undefined
-              const close = () => {
-                app?.unmount()
-                app = undefined
-              }
-              vue.onBeforeUnmount(close)
-              return () =>
-                vue.h('div', [
-                  vue.h(
-                    'button',
-                    {
-                      type: 'button',
-                      onClick: () => {
-                        if (!dialog || !container || dialog.open) return
-                        app = createApp(ModelSettings, { hideAccountLogin: true })
-                        app.use(i18n).mount(container)
-                        dialog.showModal()
-                      },
-                    },
-                    '设置',
-                  ),
-                  vue.h(
-                    'dialog',
-                    {
-                      'aria-label': '设置',
-                      class: 'eap-product-settings',
-                      onClose: close,
-                      ref: (node: unknown) => {
-                        dialog = node instanceof HTMLDialogElement ? node : null
-                      },
-                    },
-                    [
-                      vue.h(
-                        'button',
-                        { type: 'button', onClick: () => dialog?.close() },
-                        '关闭设置',
-                      ),
-                      vue.h('div', {
-                        ref: (node: unknown) => {
-                          container = node instanceof HTMLElement ? node : null
-                        },
-                      }),
-                    ],
-                  ),
-                ])
-            },
-          },
-        ),
-      ),
-    'EAP settings',
-  )
   const panels = [
     {
       id: 'eap-overview',
       label: '工作台',
       order: -20,
       component: WorkspaceOverview,
-      props: { boardEnabled: true },
+      props: { boardEnabled: false },
     },
-    { id: 'eap-board', label: '任务板', order: -18, component: TaskBoard, props: {} },
-    { id: 'eap-plugins', label: '插件中心', order: -19, component: DshPluginManager, props: {} },
   ]
   ctx.effect(
     () =>
@@ -124,11 +58,7 @@ export function registerProductPanels(ctx: SidebarContext, vue: VueRuntime) {
                 const render = () => {
                   if (container === null) return
                   app?.unmount()
-                  const location =
-                    panel.id === 'eap-board' ? readBoardLocation(window.location.hash) : null
-                  app = location
-                    ? createApp(TaskBoard, location)
-                    : createApp(panel.component, panel.props)
+                  app = createApp(panel.component, panel.props)
                   app.use(i18n).mount(container)
                 }
                 vue.onMounted(() => {
@@ -151,9 +81,7 @@ export function registerProductPanels(ctx: SidebarContext, vue: VueRuntime) {
           )
         }
         const openLinkedPanel = () => {
-          if (readBoardLocation(window.location.hash)) {
-            ctx.layout.selectPanel('eap-board')
-          } else if (window.location.hash === '#overview') {
+          if (window.location.hash === '#overview') {
             ctx.layout.selectPanel('eap-overview')
           }
         }

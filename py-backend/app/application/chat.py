@@ -42,7 +42,7 @@ def _attached_files(context: object) -> list[dict[str, Any]]:
 class ChatConversations(Protocol):
     def open_conversation(self, connection_id: str | None, model: str | None) -> dict[str, Any]: ...
     def session_history(self, conversation_id: str) -> tuple[int, list[dict[str, Any]]] | None: ...
-    def session_summaries(self, workspace_id: str) -> list[tuple[str, int, int, str | None, str | None]]: ...
+    def session_summaries(self, workspace_id: str) -> list[tuple[str, int, int, str | None, str | None, str | None]]: ...
     def workspace_sessions(self, workspace_id: str) -> list[tuple[str, str]]: ...
     def get_conversation(self, conversation_id: str) -> dict[str, Any] | None: ...
     def put_working_memory(self, conversation_id: str, body: dict[str, Any]) -> dict[str, Any]: ...
@@ -196,13 +196,14 @@ class ChatService:
                 "updatedAt": updated_at,
                 "blank": count == 0,
                 "messageCount": count,
+                "firstUserMessage": first,
                 "connectionId": connection_id,
                 "model": model,
                 "running": self.has_active_turn(session_id),
                 "agentAvailable": True,
                 "cwd": str(self._settings.workspace_root),
             }
-            for session_id, updated_at, count, connection_id, model in self._conversations.session_summaries(workspace_id)
+            for session_id, updated_at, count, connection_id, model, first in self._conversations.session_summaries(workspace_id)
         ]
 
     def workspace_sessions(self, workspace_id: str) -> list[tuple[str, str]]:

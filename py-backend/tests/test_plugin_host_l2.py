@@ -209,3 +209,92 @@ def test_sidebar_open_tool_stays_on_server(client, tmp_path: Path):
     assert result["ok"] is True
     assert result["controlPlane"] == "py-backend"
     assert result["code"] == "sidebar_open"
+
+def test_native_registry_version_check_respects_recorded_source(client, tmp_path, monkeypatch):
+    from app.infrastructure.plugins.versions import REGISTRY_URL, versions_from_metadata
+
+    package = tmp_path / "registry-fixture"
+    (package / "lib").mkdir(parents=True)
+    (package / "lib" / "client.js").write_text("", encoding="utf-8")
+    (package / "package.json").write_text(json.dumps({
+        "name": "eap-registry-fixture", "version": "1.0.0",
+        "dsh": {"client": {"platform": "web"}, "bundle": {"patch": "./cordis.patch.yml"}},
+    }), encoding="utf-8")
+    registry = client.app.state.plugins._registry
+    registry.install_from_path(package, spec="eap-registry-fixture@1.0.0")
+
+    manifest = {"dsh": {"client": {"platform": "web"}, "bundle": {"patch": "./cordis.patch.yml"}}}
+    metadata = {
+        "dist-tags": {"latest": "1.2.0"},
+        "versions": {"0.9.0": manifest, "1.0.0": manifest, "1.2.0": manifest,
+                     "1.2.0-rc.10": manifest, "1.2.0-rc.2": manifest, "1.3.0": {}},
+    }
+
+    async def lookup(item):
+        return versions_from_metadata(item["version"], metadata)
+
+    monkeypatch.setattr("app.api.dsh_management.list_registry_versions", lookup)
+
+    def rpc(method, args):
+        result = client.post(f"/api/{method}", json={
+            "type": "client-request", "rpcId": "plugin-versions", "method": method,
+            "payload": {"args": args},
+        })
+        assert result.status_code == 200
+        return result.json()["result"]["value"]
+
+    assert rpc("pluginManager/listBundles", {})[0]["update"] == "registry"
+    versions = rpc("pluginManager/listVersions", {"name": "eap-registry-fixture", "options": {}})
+    assert versions["registry"] == REGISTRY_URL
+    assert [(row["version"], row["bundle"]) for row in versions["versions"]] == [
+        ("1.3.0", False), ("1.2.0", True), ("1.2.0-rc.10", True), ("1.2.0-rc.2", True),
+    ]
+    assert versions["versions"][1]["tags"] == ["latest"]
+
+    registry.install_from_path(package, spec="")
+    assert "update" not in rpc("pluginManager/listBundles", {})[0]
+
+def test_native_plugin_install_preflight_and_recovery(client, tmp_path):
+    package = tmp_path / "native-install-fixture"
+    (package / "lib").mkdir(parents=True)
+    (package / "lib" / "client.js").write_text("", encoding="utf-8")
+    (package / "package.json").write_text(json.dumps({
+        "name": "@eap/native-install-fixture", "version": "1.0.0",
+        "dsh": {"client": {"platform": "web", "immediately": True},
+                "bundle": {"patch": "./cordis.patch.yml"}},
+    }), encoding="utf-8")
+
+    def rpc(method, args):
+        method = f"pluginManager/{method}"
+        reply = client.post(f"/api/{method}", json={
+            "type": "client-request", "rpcId": "fixture", "method": method, "payload": {"args": args},
+        })
+        assert reply.status_code == 200
+        return reply.json()["result"]
+
+    inspect = rpc("inspect", {"spec": str(package)})["value"]
+    assert inspect["status"] == "accepted"
+    assert inspect["kind"] == "path"
+    install = {"spec": str(package), "options": {
+        "registry": inspect["registry"], "requestId": "test-native-install", "enabled": True,
+    }}
+    response = rpc("installBundle", install)
+    assert response["value"]["application"] == "applied"
+    assert rpc("installBundle", install) == response
+    assert rpc("waitForInstall", {"requestId": "test-native-install"}) == response
+    assert rpc("inspect", {"spec": str(package)})["value"]["problem"] == "already-installed"
+    contributions = client.get("/api/plugins/contributions").json()["uiClients"]
+    assert contributions[0]["name"] == "@eap/native-install-fixture"
+    assert contributions[0]["immediately"] is True
+    resource = client.get(contributions[0]["clientUrl"])
+    assert resource.status_code == 200
+    assert resource.headers["content-type"].startswith("application/javascript")
+    assert client.get(contributions[0]["hostApiBase"] + "/status").status_code == 200
+    assert client.post("/api/plugins/@eap/native-install-fixture/disable").status_code == 200
+    different = {**install, "options": {**install["options"], "enabled": False}}
+    assert not rpc("installBundle", different)["ok"]
+
+    invalid = rpc("installBundle", {"spec": str(tmp_path / "missing"), "options": {"requestId": "failure"}})
+    assert invalid["ok"]
+    assert invalid["value"]["application"] == "failed"
+    assert rpc("waitForInstall", {"requestId": "failure"}) == invalid

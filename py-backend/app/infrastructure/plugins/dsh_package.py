@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 
 from app.domain.plugin_errors import DshPackageError
+from app.infrastructure.plugins.install_spec import PACKAGE_NAME
 
 @dataclass(frozen=True)
 class DshPackageInfo:
@@ -37,7 +39,7 @@ def read_dsh_package(root: Path) -> DshPackageInfo:
         raise DshPackageError("INVALID_PACKAGE_JSON") from exc
     name = str(data.get("name") or "").strip()
     version = str(data.get("version") or "").strip()
-    if not name or not version:
+    if not PACKAGE_NAME.fullmatch(name) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.+-]*", version):
         raise DshPackageError("INVALID_PACKAGE_IDENTITY")
     dsh = data.get("dsh")
     if not isinstance(dsh, dict):
@@ -62,7 +64,7 @@ def read_dsh_package(root: Path) -> DshPackageInfo:
         raise DshPackageError("MISSING_CLIENT_EXPORT")
     client_rel = str(client_export).lstrip("./").replace("\\", "/")
     client_file = (root / client_rel).resolve()
-    if not str(client_file).startswith(str(root)) or not client_file.is_file():
+    if not client_file.is_relative_to(root) or not client_file.is_file():
         raise DshPackageError("CLIENT_ENTRY_NOT_FOUND")
     inject_raw = client.get("inject") if isinstance(client.get("inject"), list) else []
     inject = tuple(str(item) for item in inject_raw)

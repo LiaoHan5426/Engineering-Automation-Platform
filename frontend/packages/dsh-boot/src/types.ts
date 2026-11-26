@@ -50,6 +50,7 @@ export interface UiClientContribution {
   filesBaseUrl?: string
   hostApiBase: string
   inject?: string[]
+  immediately?: boolean
   controlPlane?: 'py-backend'
   enabled?: boolean
 }
