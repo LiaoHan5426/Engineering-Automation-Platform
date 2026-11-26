@@ -6,9 +6,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import Response, StreamingResponse
 
 from app.api.problem import problem_from_code
-from app.domain.errors import ChatErrorCode
-from app.services.chat_service import ChatService
-from app.services.llm_openai import LlmError
+from app.api.sse import format_sse
+from app.domain.errors import ChatErrorCode, LlmError
+from app.application.chat import ChatService
 
 router = APIRouter(prefix="/ai", tags=["chat"])
 
@@ -142,13 +142,13 @@ async def send_message(conversation_id: str, request: Request):
     if service.get_conversation(conversation_id) is None:
         return problem_from_code(ChatErrorCode.UNKNOWN_CONVERSATION)
 
-    if service._journal.active_for(conversation_id) is not None:  # noqa: SLF001
+    if service.has_active_turn(conversation_id):
         return problem_from_code(ChatErrorCode.CONVERSATION_BUSY)
 
     async def event_stream():
         try:
-            async for frame in service.stream_send(conversation_id, body):
-                yield frame
+            async for event in service.stream_send(conversation_id, body):
+                yield format_sse(event)
         except LookupError as exc:
             # Should be rare after pre-check; emit final-like problem via SSE is avoided —
             # pre-stream validation already returned JSON. Close stream quietly.

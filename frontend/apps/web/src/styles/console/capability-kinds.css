@@ -1,0 +1,27 @@
+/* ============================================================
+   Capability catalog: one page per kind, each with its own surface
+   ============================================================ */
+.eap-feedback--success {
+  color: var(--ok);
+  overflow-wrap: anywhere;
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-border);
+}
+
+/* The management block states what the page can change and how a capability of this kind comes into
+   existence; without it an empty page looks broken instead of "this is where it would be configured". */
+.requirement-block .requirement {
+  align-items: flex-start;
+}
+
+.panel-block > .manager-tabs {
+  margin-bottom: 0;
+}
+
+.panel-block .table-scroll {
+  margin-top: 12px;
+}
+
+.eap-panel dt {
+  color: var(--text-mute);
+}

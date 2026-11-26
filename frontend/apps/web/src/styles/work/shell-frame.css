@@ -1,0 +1,112 @@
+.app {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.app--analysis {
+  grid-template-rows: var(--eap-layout-topbar-height) minmax(0, 1fr) 26px;
+}
+
+.body {
+  padding: 0 8px 8px 0;
+}
+
+.statusbar {
+  min-width: 0;
+  overflow: auto hidden;
+  white-space: nowrap;
+}
+
+.statusbar > span:not(.spacer) {
+  flex: 0 0 auto;
+}
+
+.body--focused {
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: 212px minmax(0, 1fr);
+}
+
+.body--focused > .inspector {
+  display: none;
+}
+
+.body--focused .workbench {
+  width: 100%;
+}
+
+.topbar {
+  position: relative;
+  z-index: 30;
+  gap: 12px;
+  min-width: 0;
+  padding: 0 18px 0 20px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 0;
+}
+
+.topbar .brand b {
+  font-size: 15px;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+.topbar .eap-button {
+  min-height: 30px;
+}
+
+.topbar .eap-chip {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+.desktop-page-title {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.desktop-page-title strong,
+.desktop-page-title small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-page-title strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.desktop-page-title small {
+  font-size: 10px;
+  color: var(--text-mute);
+}
+
+.shell-message {
+  position: absolute;
+  top: var(--eap-layout-topbar-height);
+  right: 12px;
+  left: var(--eap-layout-activity-width);
+  z-index: 40;
+}
+
+.send-in-flight {
+  padding: 8px 16px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--warn-text);
+  background: var(--warn-bg);
+}
+
+.rail {
+  position: static;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+}

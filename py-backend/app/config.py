@@ -14,10 +14,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        env_ignore_empty=True,
         extra="ignore",
     )
 
     eap_data_root: Path = _default_data_root()
+    eap_local_workspace_write_enabled: bool = False
     eap_workspace_root: Path | None = None
     eap_model_base_url: str = "https://api.deepseek.com/v1"
     eap_model_api_key: str = ""

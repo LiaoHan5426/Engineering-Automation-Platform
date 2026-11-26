@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vite-plus/test'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import App from '../../src/App.vue'
+import { createMessagePlugin } from '@eap/message'
 import { i18n } from '../../src/lib/i18n'
 import { chatBinding, type ChatBinding } from '../../src/features/shell/workbench'
 
-const render = () => renderToString(createSSRApp(App).use(i18n))
+const render = () => renderToString(createSSRApp(App).use(i18n).use(createMessagePlugin()))
 
 describe('console shell', () => {
   it('renders navigation without the SQL pipeline and inspector on the chat landing page', async () => {

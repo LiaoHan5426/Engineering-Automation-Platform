@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from functools import partial
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -10,18 +11,27 @@ from app.api.catalog import router as catalog_router
 from app.api.connections import router as connections_router
 from app.api.conversations import router as conversations_router
 from app.api.git_executions import router as git_executions_router
+from app.api.local_workspace import router as local_workspace_router
+from app.api.notify import router as notify_router
 from app.api.plugins import router as plugins_router
 from app.api.problem import unhandled_error_handler
 from app.api.sidebar_gateway import router as sidebar_gateway_router
-from app.config import Settings, get_settings
+from app.application.chat import ChatService
+from app.application.git_executions import GitExecutionService
+from app.application.plugins import PluginService
 from app.catalog.service import CatalogService
+from app.config import Settings, get_settings
+from app.domain.execution_journal import ExecutionJournal
+from app.infrastructure.chat_conversations import SqlChatConversations
+from app.infrastructure.git_execution_store import SqlGitExecutionStore
+from app.infrastructure.git_runner import LocalGitRunner
+from app.infrastructure.llm_openai import fake_stream, stream_chat_completion
 from app.persistence.connections import ConnectionStore
 from app.persistence.db import init_db, make_engine
-from app.persistence.execution_journal import ExecutionJournal
-from app.plugins.host_bridge import PluginHostBridge
-from app.plugins.registry import PluginRegistry
-from app.services.git_executions import GitExecutionService
-from app.services.chat_service import ChatService
+from app.infrastructure.plugins.host_bridge import PluginHostBridge
+from app.infrastructure.plugins.installer import install_from_spec
+from app.infrastructure.plugins.registry import PluginRegistry
+from app.services.notify_hub import NotifyHub
 from app.services.tools.registry import CapabilityRegistry
 
 
@@ -32,6 +42,7 @@ def create_app(
 ) -> FastAPI:
     settings = settings or get_settings()
     journal = ExecutionJournal()
+    notify_hub = NotifyHub()
     # Engine/DB initialized in lifespan (and eagerly below for TestClient without lifespan race).
     engine_holder: dict[str, object] = {"engine": None}
 
@@ -45,23 +56,31 @@ def create_app(
         connections = ConnectionStore(settings)
         tools = CapabilityRegistry(settings.workspace_root)
         plugin_registry = PluginRegistry(settings, engine)
-        plugin_host_bridge = PluginHostBridge(plugin_registry, settings.workspace_root)
+        plugin_host_bridge = PluginHostBridge(
+            plugin_registry, settings.workspace_root, write_enabled=settings.eap_local_workspace_write_enabled
+        )
         tools.bind_host_bridge(plugin_host_bridge)
         app.state.settings = settings
-        app.state.engine = engine
-        app.state.journal = journal
+        app.state.notify_hub = notify_hub
         app.state.connections = connections
         app.state.catalog = CatalogService(engine)
-        app.state.git_executions = GitExecutionService(settings.workspace_root)
-        app.state.plugin_registry = plugin_registry
-        app.state.plugin_host_bridge = plugin_host_bridge
+        app.state.git_executions = GitExecutionService(
+            SqlGitExecutionStore(engine), LocalGitRunner(settings.workspace_root)
+        )
+        app.state.plugins = PluginService(
+            plugin_registry, plugin_host_bridge,
+            partial(install_from_spec, plugin_registry), notify_hub,
+        )
         app.state.chat_service = ChatService(
             settings=settings,
-            engine=engine,
+            conversations=SqlChatConversations(engine),
+            stream_completion=stream_chat_completion,
+            offline_stream=fake_stream,
             journal=journal,
             connections=connections,
             tools=tools,
             catalog=app.state.catalog,
+            notify_hub=notify_hub,
             offline_reply=offline_reply,
         )
 
@@ -100,6 +119,8 @@ def create_app(
     app.include_router(git_executions_router, prefix="/api")
     app.include_router(conversations_router, prefix="/api")
     app.include_router(connections_router, prefix="/api")
+    app.include_router(notify_router, prefix="/api")
+    app.include_router(local_workspace_router, prefix="/api")
     app.include_router(plugins_router, prefix="/api")
     app.include_router(sidebar_gateway_router)
     app.add_exception_handler(Exception, unhandled_error_handler)
@@ -111,8 +132,10 @@ app = create_app()
 
 def main() -> None:
     import os
+    import socket
 
     import uvicorn
+    from uvicorn.supervisors import ChangeReload
 
     settings = get_settings()
     # Import-string form is required for reload workers.
@@ -121,7 +144,7 @@ def main() -> None:
     # events; force polling so edits under app/ actually restart the worker.
     if settings.eap_reload:
         os.environ.setdefault("WATCHFILES_FORCE_POLLING", "1")
-    uvicorn.run(
+    config = uvicorn.Config(
         "app.main:app",
         host=settings.eap_host,
         port=settings.eap_port,
@@ -129,6 +152,26 @@ def main() -> None:
         reload_dirs=[str(app_dir)] if settings.eap_reload else None,
         reload_delay=0.35 if settings.eap_reload else None,
     )
+    server = uvicorn.Server(config)
+    if not hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+        if config.should_reload:
+            with config.bind_socket() as listener:
+                ChangeReload(config, target=server.run, sockets=[listener]).run()
+        else:
+            server.run()
+        return
+
+    # Windows SO_REUSEADDR can let a second reload supervisor bind the same
+    # port. Use an exclusive listener so an old worker cannot serve requests.
+    family = socket.AF_INET6 if ":" in settings.eap_host else socket.AF_INET
+    with socket.socket(family, socket.SOCK_STREAM) as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        listener.bind((settings.eap_host, settings.eap_port))
+        listener.set_inheritable(True)
+        if config.should_reload:
+            ChangeReload(config, target=server.run, sockets=[listener]).run()
+        else:
+            server.run(sockets=[listener])
 
 
 if __name__ == "__main__":

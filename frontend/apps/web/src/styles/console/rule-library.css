@@ -1,0 +1,105 @@
+/* ============================================================
+   Rule library
+   ============================================================ */
+.rule-layout {
+  align-items: start;
+}
+
+.rules {
+  display: grid;
+  gap: 10px;
+}
+
+.rule {
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.rule-code {
+  margin: 4px 0 8px;
+  font-size: 11.5px;
+  color: var(--text-mute);
+}
+
+.rule-cond {
+  padding: 6px 9px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  color: var(--text-soft);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.rule-cond b {
+  margin-right: 6px;
+  color: var(--text);
+}
+
+.rule-cond--sub {
+  background: transparent;
+  border-style: dashed;
+}
+
+.rule .evidence {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-soft);
+}
+
+.rule-suggestion {
+  padding-left: 9px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+}
+
+.finding--static {
+  cursor: default;
+}
+
+.dry-result {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.fact-group {
+  margin-top: 12px;
+}
+
+.fact-group h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.rule-errors {
+  padding-left: 18px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--danger);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.chips .eap-badge {
+  max-width: 100%;
+}
+
+@media (width <= 1080px) {
+  .rule-layout {
+    grid-template-columns: 1fr;
+  }
+}

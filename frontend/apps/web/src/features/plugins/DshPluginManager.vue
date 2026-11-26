@@ -282,7 +282,7 @@ defineExpose({ refresh })
 .hint {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--eap-muted, #666);
+  color: var(--eap-muted);
   overflow-wrap: anywhere;
 }
 

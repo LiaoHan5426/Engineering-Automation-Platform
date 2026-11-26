@@ -8,6 +8,7 @@
 
 import type { PluginUiContribution } from '@eap/runtime-client'
 import { bootCordisClient, type CordisBootHandle } from './client/boot'
+import type { LocaleService } from './client/types'
 import { ensureDshCenterAnchor } from './centerAnchor'
 import { loadClientModule } from './moduleLoader'
 
@@ -48,7 +49,7 @@ function createHostFetch(hostApiBase: string) {
   }
 }
 
-export function createPluginIsland(): IslandHost {
+export function createPluginIsland(createLocale?: (name: string) => LocaleService): IslandHost {
   const active = new Map<
     string,
     { boot: CordisBootHandle; handle: IslandHandle }
@@ -85,6 +86,7 @@ export function createPluginIsland(): IslandHost {
         const boot = await bootCordisClient({
           hostApiBase: contrib.hostApiBase,
           fetchHost,
+          locale: createLocale?.(contrib.name),
         })
         try {
           const mod = await loadClientModule({

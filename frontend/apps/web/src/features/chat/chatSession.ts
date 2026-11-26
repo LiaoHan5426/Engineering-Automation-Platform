@@ -1394,3 +1394,5 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     reconnectConversation,
   }
 }
+
+export type ChatSession = ReturnType<typeof createChatSession>

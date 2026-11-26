@@ -37,7 +37,9 @@
 | `@eap/ui` | **全部**基础/无领域复合 UI 与 BEM 样式 | 实现以 §6 与 index.ts 为准 | Vue + `@eap/style`/icons；FileUpload 可引用 request 的无领域类型；禁止 runtime-client |
 | `@eap/hooks` | 无 UI 强绑定的 Vue composable | `useFocusTrap`、`useEscClose`、`useMediaQuery`、本地偏好键读写（无业务实体） | Vue；**不**依赖 runtime-client |
 | `@eap/effects` | 动效 / 过渡 / 可访问性反馈原语 | 统一 transition 名、reduced-motion 包装、加载 shimmer 类 | 优先纯 CSS/小工具；可被 `@eap/ui` 引用 |
-| `@eap/layout` | 壳层布局原语（非业务页） | SplitPane、Dock/Rail 槽位、WorkbenchFrame、滚动区约定 | `@eap/ui` + hooks；不含 Chat/Board 业务 |
+| `@eap/layout` | Vue 工作台布局 | `Layout`、`LayoutHeader`、`LayoutAside`、`LayoutContent`、`LayoutFooter` 可按需组合，`WorkbenchFrame` 提供工作台组装 | 布局管理窄屏与焦点，应用负责路由、内容和插件席位状态 |
+| `@eap/i18n` | 应用级国际化 | `createAppI18n` 创建翻译实例，`registerMessages` 按命名空间注册多语言词典，Vue 宿主可注入注册入口 | 业务词典、请求语言同步归应用 |
+| `@eap/message` | 应用级消息展示 | Message、Notify、对应指令与 MessageHost 共用展示队列 | 域事件、传输、徽标和产品展示映射归应用 |
 | `@eap/toggle` *或* 并入 `@eap/ui` | 开关类控制 | Switch、Segmented、ThemeToggle（纯展示） | 默认**先做进 `@eap/ui`**；仅当体积/依赖独立时再拆 `@eap/toggle` |
 | `@eap/plugin-sdk` / `@eap/plugin-runtime` | 工作台插件契约与可信运行时 | Manifest、贡献点、启停、槽位 | 见 v1.6 §2B；**不等于** Skill/MCP |
 | `@eap/plugin-table` | 纯表格插件（vxe-table + `@vxe-ui/core`） | `Table`；分页用 `@eap/ui` Pagination | 不 `app.use` vxe-pc-ui，不把表格实现放进 `@eap/ui`。vxe-pc-ui 只作类型依赖 |
@@ -78,6 +80,8 @@ FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File
 | 生成快照与候选应用 | `components/GenerationBaseline.vue`、`components/ProposalApplication.vue`（从Chat移出，旧文件删除） | Chat和任务候选共同使用的L3产品组合，复用Badge/Collapse/Checkbox/Button；Board通过显式operations接入任务API，无网络错误回退另一入口 | 第二宿主复用完整候选域时再评估抽包，不增加平行应用面板 |
 | 候选文件Diff | `components/ProposalDiffView.vue`，Chat与专家审批共用 | 应用层只读候选展示，复用现有Monaco/文本降级，销毁前先解除模型绑定；审批状态/API留各feature | 第二宿主复用候选交付合同再抽包，不新增平行Diff或基础UI包 |
 | 多文件交付证据面板 | `components/DeliveryEvidencePanel.vue`、`DeliveryEvidenceSummary.vue`、`deliveryEvidenceModel.ts`，任务候选审阅消费 | L3应用交付域组合，复用Input/Button/Panel/Badge；只做计数/筛选/选择/正文展示，无API/应用/验证/接受动作；不新建基础包 | 第二宿主复用完整交付域时评估抽包；通用控件留@eap/ui |
+| 右侧栏开关 | `components/SidebarRightToggle.vue`、`components/sidebarRight.ts`，应用壳 `App.vue` 与 `ChatSessionToolbar.vue` 共用 | 应用层组合，复用Button；以布局列的 `data-sidebar-right-seat` / `data-collapsed` 属性为唯一状态源（插件持有席位），不另建共享store | 右侧栏进入 `@eap/ui` layout 契约时随之迁移，不另写平行开关 |
+| 消息总线宿主 | `components/NotifyHost.vue`；总线 `lib/notifyBus.ts` / `lib/notifyClient.ts`；会话徽标消费在 `DesktopNavigation.vue` | 应用壳唯一 toast/banner/dialog 出口，复用 Feedback/Badge/ConfirmBox；合同来自 `@eap/runtime-client` NotifyEvent；不接 Cordis `workspace.toast` 双轨 | 第二宿主或插件显式订阅同一 bus 时再评估抽包，禁止平行通知栈 |
 | 场景原型工作面 | `features/ScenarioWorkspace.vue` 只组装版本选择与开发准备，设计器经既有 Builder 入口打开 | 不再复制挂载 LayoutDraft/GrapesJS；场景返回状态留应用层 | 无新增共享包 |
 
 ## 4. 何时新建 `packages/*`

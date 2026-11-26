@@ -1,0 +1,14 @@
+{
+  "name": "@eap/layout",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./workbench.css": "./src/workbench.css"
+  },
+  "dependencies": {
+    "@eap/ui": "workspace:*",
+    "vue": "catalog:frontend"
+  }
+}

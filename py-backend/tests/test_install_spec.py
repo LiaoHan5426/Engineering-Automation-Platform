@@ -3,8 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from app.plugins.install_spec import InvalidInstallSpecError, parse_install_spec
-from app.plugins.installer import _git_target
+from app.domain.plugin_errors import InvalidInstallSpecError
+from app.infrastructure.plugins.install_spec import parse_install_spec
+from app.infrastructure.plugins.installer import _git_target
 
 
 def test_registry_name_and_range():

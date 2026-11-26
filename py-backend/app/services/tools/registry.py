@@ -7,7 +7,7 @@ from app.domain.errors import ChatErrorCode
 from app.services.tools.git_status import run_git_status
 
 if TYPE_CHECKING:
-    from app.plugins.host_bridge import PluginHostBridge
+    from app.infrastructure.plugins.host_bridge import PluginHostBridge
 
 ToolFn = Callable[[Path], dict[str, Any]]
 

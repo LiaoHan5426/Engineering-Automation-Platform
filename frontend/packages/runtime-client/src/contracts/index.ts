@@ -64,3 +64,4 @@ export * from './prototypeInteraction.ts'
 
 export * from './taskMode.ts'
 export { AiToolMode } from './aiToolMode.ts'
+export * from './notify.ts'

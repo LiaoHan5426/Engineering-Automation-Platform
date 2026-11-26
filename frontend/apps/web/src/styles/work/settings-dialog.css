@@ -1,0 +1,101 @@
+.eap-dsh-regions {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.eap-dsh-regions [data-dsh-region='sidebar-leading'] {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--eap-layout-navigation-width, 240px);
+  width: 240px;
+}
+
+.eap-dsh-regions dialog.settings-dialog {
+  box-sizing: border-box;
+  padding: 16px 16px 20px;
+  color: inherit;
+
+  /* The outlet host is pointer-events: none so empty mounts do not block the
+     workspace. The property inherits, which also disables the top-layer dialog. */
+  pointer-events: auto;
+  background: var(--surface, var(--eap-color-surface));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.eap-dsh-regions dialog.settings-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(960px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  height: min(85dvh, 860px);
+  max-height: 85dvh;
+  margin: auto;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.eap-dsh-regions dialog.settings-dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  background: color-mix(in srgb, Canvas 55%, transparent);
+}
+
+.settings-dialog__bar {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.settings-dialog__bar h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+.settings-dialog__body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.settings-dialog__nav,
+.settings-dialog__page {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.settings-dialog .settings-search {
+  width: 100%;
+}
+
+.settings-dialog .settings-group {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.settings-dialog .settings-group__label {
+  padding: 0 10px;
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-mute);
+  letter-spacing: 0.04em;
+}
+
+@media (width <= 720px) {
+  .settings-dialog__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

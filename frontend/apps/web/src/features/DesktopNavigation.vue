@@ -3,7 +3,12 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { expertSidebarSection } from './expert/expertNavigation'
 import { settingsIds } from './settings/catalog'
-import { Input, DropdownMenu, Button, type MenuAction } from '@eap/ui'
+import { Input, DropdownMenu, Button, Badge, type MenuAction } from '@eap/ui'
+import {
+  clearSessionAttention,
+  sessionAttentionCount,
+  subscribeSessionAttention,
+} from '../lib/notifyBus'
 import {
   IconCode,
   IconBriefcase,
@@ -396,8 +401,15 @@ function select(next: Area) {
   }
   open(previous && expertIds.includes(previous) ? previous : 'experts')
 }
+const attentionTick = ref(0)
+function attentionFor(id: string) {
+  void attentionTick.value
+  return sessionAttentionCount(id)
+}
 function chooseConversation(id: string) {
   openMenuId.value = null
+  clearSessionAttention(id)
+  attentionTick.value += 1
   chatBinding.value?.select(id)
   open('chat')
 }
@@ -452,12 +464,17 @@ function onMenuKey(event: KeyboardEvent) {
   }
   if (renamingProjectId.value) cancelRenameProject()
 }
+let stopAttention: (() => void) | undefined
 onMounted(() => {
   window.addEventListener('keydown', onMenuKey)
   window.addEventListener('hashchange', syncExpertSection)
   syncExpertSection()
+  stopAttention = subscribeSessionAttention(() => {
+    attentionTick.value += 1
+  })
 })
 onUnmounted(() => {
+  stopAttention?.()
   window.removeEventListener('keydown', onMenuKey)
   window.removeEventListener('hashchange', syncExpertSection)
 })
@@ -755,7 +772,13 @@ onUnmounted(() => {
                   :active="activeView === 'chat' && chatBinding?.activeId === item.id"
                   @click="chooseConversation(item.id)"
                   ><span>{{ item.title || t('desktop.freeChat') }}</span
-                  ><small
+                  ><Badge
+                    v-if="attentionFor(item.id)"
+                    tone="danger"
+                    class="session-attention"
+                    data-testid="session-attention"
+                    :label="String(attentionFor(item.id))"
+                  /><small
                     v-if="sessionStatus(item) || sessionStamp(item.updatedAt)"
                     class="session-row__meta"
                     ><span
@@ -821,7 +844,13 @@ onUnmounted(() => {
               :active="activeView === 'chat' && chatBinding?.activeId === item.id"
               @click="chooseConversation(item.id)"
               ><span>{{ item.title || t('desktop.freeChat') }}</span
-              ><small
+              ><Badge
+                v-if="attentionFor(item.id)"
+                tone="danger"
+                class="session-attention"
+                data-testid="session-attention"
+                :label="String(attentionFor(item.id))"
+              /><small
                 v-if="sessionStatus(item) || sessionStamp(item.updatedAt)"
                 class="session-row__meta"
                 ><span
@@ -1293,6 +1322,12 @@ onUnmounted(() => {
 .session-row__time {
   display: inline-flex;
   margin-left: auto;
+}
+
+.session-attention {
+  margin-left: 4px;
+  min-width: 1.1rem;
+  justify-content: center;
 }
 
 .session-status {

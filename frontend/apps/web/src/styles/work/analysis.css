@@ -1,0 +1,98 @@
+.analysis-workspace .page-head .why {
+  padding: 0;
+  margin-top: 12px;
+  background: none;
+  border: 0;
+}
+
+.analysis-workspace .sql-evidence {
+  display: grid;
+  gap: 4px;
+  max-width: 62ch;
+  padding: 8px 10px;
+  margin: 8px 0 10px;
+  background: var(--surface-soft, var(--surface-2));
+  border: 1px solid var(--border, var(--border));
+  border-radius: 10px;
+}
+
+.analysis-workspace .sql-evidence p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-soft, var(--text-soft));
+}
+
+.analysis-workspace .sql-evidence-scope {
+  font-weight: 650;
+  color: var(--text, var(--text-soft));
+}
+
+.analysis-workspace .sql-scope {
+  display: inline-flex;
+  padding: 4px 10px;
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--accent);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+}
+
+.analysis-workspace .sql-intro {
+  max-width: 62ch;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.analysis-workspace .sql-boundary > summary {
+  font-size: 12px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.analysis-workspace .sql-boundary:not([open]) > *:not(summary) {
+  display: none;
+}
+
+.analysis-workspace .studio {
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.analysis-workspace .studio-side-head {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.analysis-workspace .studio-side-head .eap-button {
+  flex: 0 0 auto;
+}
+
+.analysis-workspace .task-list {
+  max-height: 60vh;
+}
+
+.analysis-workspace .task-item-main .mono {
+  display: block;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-workspace .stream-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  text-align: center;
+}
+
+.analysis-workspace .stream-empty .hint {
+  max-width: 50ch;
+}

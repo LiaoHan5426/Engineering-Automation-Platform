@@ -35,8 +35,8 @@ describe('bootCordisClient', () => {
     expect(app.classList.contains('app--inspector')).toBe(false)
     expect(body.classList.contains('body--inspector')).toBe(false)
     expect(document.querySelector('.workspace-inspector')?.getAttribute('style') ?? '').not.toContain('display: none')
-    expect(boot.ctx.get('sidebarRight')).toBeUndefined()
-    expect(boot.ctx.get('sidebarRightTabs')).toBeUndefined()
+    expect(boot.ctx.get('sidebarRight')).toMatchObject({ openTab: expect.any(Function) })
+    expect(boot.ctx.get('sidebarRightTabs')).toMatchObject({ register: expect.any(Function) })
     expect(boot.ctx.get('profile')).toBeUndefined()
 
     await boot.ctx.remote.session.phase?.({ sessionId: 'eap' })

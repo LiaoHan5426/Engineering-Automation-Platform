@@ -1,0 +1,150 @@
+/* ============================================================
+   Managers (experts / knowledge / databases)
+   ============================================================ */
+.manager-workspace {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.manager-workspace > * {
+  min-width: 0;
+}
+
+/* 页头横跨两栏：标题与描述必须压在这两个面板之上，而不是挤进 240px 的列表列。 */
+.manager-page-head {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.manager-list {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.manager-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.manager-toolbar h2,
+.manager-toolbar h3 {
+  margin: 0;
+}
+
+.manager-item {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.manager-item small {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.manager-item strong {
+  overflow-wrap: anywhere;
+}
+
+.manager-tabs {
+  margin-bottom: 16px;
+}
+
+.editor-workspace {
+  min-width: 0;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+  align-items: start;
+}
+
+.property-panel {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.property-panel h3 {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.property-panel label {
+  display: block;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.property-panel small {
+  color: var(--text-mute);
+  overflow-wrap: anywhere;
+}
+
+.property-panel pre {
+  max-width: 100%;
+  overflow: auto;
+  font-size: 11px;
+}
+
+.choice-list {
+  display: grid;
+  gap: 8px;
+  max-height: 190px;
+  padding: 10px;
+  overflow: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.choice-list label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.document-grid {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.document-content {
+  font: inherit;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.observation {
+  padding: 12px 14px;
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.observation p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-soft);
+}
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}

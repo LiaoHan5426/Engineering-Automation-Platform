@@ -15,6 +15,21 @@ import type { RuleValidation } from './contracts/capabilityModels'
 import type { RulePackWriteResult } from './contracts/capabilityModels'
 import type { TaskStatistics } from './contracts/capabilityModels'
 import type { RuntimeHealth } from './contracts/runtimeModels'
+import { parseNotifyEvent, type NotifySnapshot } from './contracts/notify.ts'
+export {
+  NotifyKind,
+  NotifySeverity,
+  NotifySurface,
+  NOTIFY_KINDS,
+  NOTIFY_SEVERITIES,
+  NOTIFY_SURFACES,
+  isNotifyKind,
+  isNotifySeverity,
+  isNotifySurface,
+  surfacesFor,
+  parseNotifyEvent,
+} from './contracts/notify.ts'
+export type { NotifyEvent, NotifySnapshot, NotifyTarget } from './contracts/notify.ts'
 import type { DataLayoutResponse } from './contracts/runtimeModels'
 import type { TrustedToolResponse } from './contracts/toolModels'
 import type { TrustedToolVersionProbeResult } from './contracts/toolModels'
@@ -102,7 +117,12 @@ import { isChatExecutionStatus } from './contracts/chatExecution.ts'
 export { ContextMetering } from './contracts/contextBudget.ts'
 import { ModelErrors } from './errors/modelErrors.ts'
 import { ToolErrors } from './errors/toolErrors.ts'
-import { createRequestClient, openStream, type RequestClient } from '@eap/request'
+import {
+  createRequestClient,
+  openStream,
+  type RequestClient,
+  type RequestOptions,
+} from '@eap/request'
 import { createExpertAgentApi } from './expertAgent.ts'
 import { createPluginApi } from './plugins.ts'
 import { createTaskDescriptionApi } from './taskDescription.ts'
@@ -145,8 +165,8 @@ const client = createRequestClient({
   onPendingChange: (pending) => onPendingChange?.(pending),
 })
 
-async function get<T>(path: string): Promise<T> {
-  return (await client.get<T>(path)).data
+async function get<T>(path: string, options?: RequestOptions): Promise<T> {
+  return (await client.get<T>(path, options)).data
 }
 
 function gitExecutionPath(operation: GitExecutionOperation) {
@@ -187,6 +207,19 @@ const gitOperationApi = {
         { signal },
       )
       .then((r) => validateToolExecution(r.data)),
+}
+
+export interface LocalWorkspacePlugin {
+  id: string
+  scope: 'global'
+  access: 'read' | 'read-write'
+  methods: string[]
+}
+
+export const localWorkspaceApi = {
+  listPlugins: () => get<{ items: LocalWorkspacePlugin[] }>('/local-workspace/plugins'),
+  call: <T>(method: string, body: Record<string, unknown> = {}) =>
+    client.post<T>('/local-workspace/' + encodeURIComponent(method), body).then(({ data }) => data),
 }
 
 export const runtimeApi = {
@@ -356,7 +389,34 @@ export const runtimeApi = {
     client.post('/experts/validate', definition).then((response) => response.data),
   saveExpert: (definition: { id: string; name: string; manifest: string }) =>
     client.post('/experts', definition).then((response) => response.data),
-  health: () => get<RuntimeHealth>('/health'),
+  health: () => get<RuntimeHealth>('/health', { silent: true } as RequestOptions),
+  notifySnapshot: (after = 0) =>
+    get<NotifySnapshot>('/notify/snapshot', {
+      silent: true,
+      params: { after },
+    } as RequestOptions).then((body) => {
+      if (!body || !Array.isArray(body.events) || typeof body.latestSequence !== 'number')
+        throw new Error('NOTIFY_SNAPSHOT_INVALID')
+      return {
+        latestSequence: body.latestSequence,
+        events: body.events.map(parseNotifyEvent),
+      } satisfies NotifySnapshot
+    }),
+  openNotifyStream: (after = 0, options?: { signal?: AbortSignal }) =>
+    openStream(client, '/notify/stream?after=' + encodeURIComponent(String(after)), {
+      method: 'GET',
+      headers: { Accept: 'text/event-stream', 'Accept-Language': runtimeLanguage() },
+      signal: options?.signal,
+      timeout: 0,
+    }),
+  notifyWsUrl: (after = 0) => {
+    const root = client.defaults.baseURL ?? baseUrl
+    const url = new URL(root.endsWith('/') ? root : root + '/', globalThis.location?.href)
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+    url.pathname = url.pathname.replace(/\/?$/, '/') + 'notify/ws'
+    url.search = 'after=' + encodeURIComponent(String(after))
+    return url.toString()
+  },
   dataLayout: () => get<DataLayoutResponse>('/runtime/data-layout'),
   trustedTools: () => get<TrustedToolResponse>('/runtime/trusted-tools'),
   probeTrustedToolVersion: (id: string, options?: { signal?: AbortSignal }) =>
@@ -364,9 +424,7 @@ export const runtimeApi = {
       .post<TrustedToolVersionProbeResult>(
         '/runtime/trusted-tools/' + encodeURIComponent(id) + '/probe-version',
         {},
-        {
-          signal: options?.signal,
-        },
+        { signal: options?.signal, silent: true } as RequestOptions,
       )
       .then((r) => r.data),
   clearTrustedToolProbeCache: () =>
@@ -432,7 +490,11 @@ export const runtimeApi = {
     client.delete('/cli-programs/' + encodeURIComponent(id)).then((r) => r.data),
   probeCliProgram: (id: string) =>
     client
-      .post<CliProbeResult>('/cli-programs/' + encodeURIComponent(id) + '/probe')
+      .post<CliProbeResult>(
+        '/cli-programs/' + encodeURIComponent(id) + '/probe',
+        {},
+        { silent: true } as RequestOptions,
+      )
       .then((r) => r.data),
   saveCliOperation: (programId: string, operation: CliOperationRequest, editing: boolean) => {
     const url =
@@ -464,7 +526,11 @@ export const runtimeApi = {
   /** Explicitly run `<binary> --version`. The only place a binary is executed for a management check. */
   probeCliChannel: (name: string) =>
     client
-      .post<CliProbeResult>('/capabilities/' + encodeURIComponent(name) + '/cli/probe')
+      .post<CliProbeResult>(
+        '/capabilities/' + encodeURIComponent(name) + '/cli/probe',
+        {},
+        { silent: true } as RequestOptions,
+      )
       .then((r) => r.data),
   mcpServers: () => get<{ items: McpServerItem[] }>('/mcp-servers'),
   saveMcpServer: (server: McpServerRequest) =>
@@ -479,7 +545,11 @@ export const runtimeApi = {
     client.delete('/mcp-servers/' + encodeURIComponent(id)).then((r) => r.data),
   probeMcpServer: (id: string) =>
     client
-      .post<McpProbeResult>('/mcp-servers/' + encodeURIComponent(id) + '/probe')
+      .post<McpProbeResult>(
+        '/mcp-servers/' + encodeURIComponent(id) + '/probe',
+        {},
+        { silent: true } as RequestOptions,
+      )
       .then((r) => r.data),
   createTask: (goal: string) =>
     client
@@ -1029,7 +1099,11 @@ export function createChatApi(
       get<WorkspaceFiles>('/ai/workspace/files?path=' + encodeURIComponent(path)),
     workspaceVerificationProbe: () =>
       client
-        .post<VerificationProbe>('/ai/workspace/verification/probe', {})
+        .post<VerificationProbe>(
+          '/ai/workspace/verification/probe',
+          {},
+          { silent: true } as RequestOptions,
+        )
         .then((response) => response.data),
     aiConversation: (id: string) =>
       get<AiConversation>('/ai/conversations/' + encodeURIComponent(id)),

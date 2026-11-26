@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 from fastapi.testclient import TestClient
@@ -67,3 +68,31 @@ def test_sse_envelope_fields(client: TestClient) -> None:
                 "CANCELLED",
                 "UNKNOWN",
             }
+
+def test_active_turn_is_cancelled_without_persisting_partial_messages(client: TestClient) -> None:
+    conversation_id = client.post("/api/ai/conversations").json()["conversationId"]
+    service = client.app.state.chat_service
+    endpoint = f"/api/ai/conversations/{conversation_id}"
+    body = {"message": "cancel this turn", "toolMode": "none"}
+
+    async def cancel_during_turn() -> str:
+        events = service.stream_send(conversation_id, body)
+        running = await anext(events)
+        execution_id = running["executionId"]
+        assert running["status"] == "RUNNING"
+        duplicate = client.post(f"{endpoint}/messages", json=body)
+        assert duplicate.status_code == 409
+        assert duplicate.json()["code"] == "CONVERSATION_BUSY"
+        cancelled = client.post(f"{endpoint}/cancel")
+        assert cancelled.json() == {"cancelled": True, "executionId": execution_id}
+        remaining = [event async for event in events]
+        assert [(event["type"], event["status"]) for event in remaining] == [
+            ("final", "CANCELLED")
+        ]
+        return execution_id
+
+    execution_id = asyncio.run(cancel_during_turn())
+    snapshot = client.get(f"{endpoint}/executions/{execution_id}/snapshot").json()
+    assert snapshot["status"] == "CANCELLED"
+    assert snapshot["complete"] is True
+    assert client.get(f"{endpoint}/graph").json()["path"] == []

@@ -1,0 +1,207 @@
+@media (width >= 1500px) {
+  .workbench {
+    padding: 28px 32px;
+  }
+}
+
+@media (width <= 1100px) {
+  .analysis-workspace .studio {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+
+@media (width <= 900px) {
+  .builder-workspace .builder-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .builder-workspace .preview-frame {
+    position: static;
+  }
+}
+
+@media (width <= 760px) {
+  .topbar {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  .topbar .brand span {
+    display: none;
+  }
+
+  .topbar .ws {
+    max-width: 210px;
+  }
+
+  .topbar .ws b {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar .eap-chip {
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  .body--focused {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .rail {
+    height: auto;
+  }
+
+  .work-page .page-head h1 {
+    font-size: 23px;
+  }
+
+  .chat-workspace .welcome-prompts {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .chat-workspace .chat-welcome {
+    padding: 28px 0;
+  }
+
+  .chat-workspace .connection-form,
+  .builder-workspace .version-list {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-workspace .context-menu {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-workspace > .chat-composer {
+    position: static;
+  }
+
+  .chat-workspace .context-toolbar label {
+    flex: 1 1 120px;
+  }
+
+  .chat-workspace .context-toolbar select {
+    width: 100%;
+  }
+
+  .analysis-workspace .studio {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-workspace .task-list {
+    max-height: 160px;
+  }
+
+  .analysis-workspace .page-head {
+    padding-inline: 4px;
+  }
+
+  .analysis-workspace .sql-scope {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .analysis-workspace .composer-card,
+  .analysis-workspace .studio-composer {
+    scroll-margin-bottom: 16px;
+  }
+
+  .builder-workspace .builder-editor,
+  .builder-workspace .preview-frame,
+  .builder-workspace .version-panel {
+    padding: 16px;
+  }
+
+  .builder-workspace .preview-canvas {
+    min-height: 220px;
+    padding: 16px;
+  }
+
+  .work-overview > summary {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
+@media (width <= 680px) {
+  .body--focused {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: static;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .rail .nav {
+    flex: 0 0 auto;
+  }
+
+  .workbench {
+    padding: 16px 12px;
+  }
+
+  .topbar .ws {
+    max-width: 150px;
+  }
+
+  .topbar .ws b {
+    max-width: 85px;
+  }
+
+  .statusbar {
+    font-size: 10px;
+  }
+}
+
+@media (width <= 680px) {
+  .app {
+    grid-template-rows: var(--eap-layout-topbar-height) minmax(0, 1fr) 30px;
+  }
+
+  .body,
+  .body--focused {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .rail {
+    height: auto;
+    max-height: 62px;
+  }
+}
+
+@media (width >= 761px) and (height <= 950px) {
+  .chat-workspace .chat-welcome {
+    padding: 16px 12px;
+  }
+
+  .chat-workspace .welcome-mark {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 8px;
+    font-size: 20px;
+  }
+
+  .chat-workspace .chat-welcome h2 {
+    font-size: 22px;
+  }
+
+  .chat-workspace .welcome-prompts {
+    margin-top: 16px;
+  }
+
+  .chat-workspace > .chat-composer {
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  .chat-workspace > .chat-composer > label > textarea {
+    min-height: 80px;
+  }
+}

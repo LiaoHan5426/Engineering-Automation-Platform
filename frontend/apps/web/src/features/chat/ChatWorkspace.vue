@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import type { CodePreparationSelection } from '../shell/workbench'
+import type { BoardTask } from '@eap/runtime-client'
 
-import { AiToolMode, ChatExecutionStatus, CodeErrors } from '@eap/runtime-client'
+import { AiToolMode, ChatExecutionStatus } from '@eap/runtime-client'
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  DropdownMenu,
   Badge,
   Button,
-  Checkbox,
   ConfirmBox,
   Feedback,
   InfiniteScroll,
@@ -19,14 +18,12 @@ import {
   Collapse,
   WorkbenchFrame,
   Drawer,
+  Icon,
 } from '@eap/ui'
-import { type AiConnectionState } from '@eap/runtime-client'
-import { IconEllipsis, Icon, IconPanelRight } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
 import { subscribeRuntimeLiveness } from '../../lib/runtimeLiveness'
-import { createChatSession } from './chatSession'
+import { createChatSession, type ChatTurn } from './chatSession'
 import { isDraftSubmitKey } from './draftKeys'
-import { installToolbarFallback } from './toolbarKeys'
 import TurnContextDetails from './TurnContextDetails.vue'
 import TaskMemoryPanel from './TaskMemoryPanel.vue'
 import ExecutionLogDialog from './ExecutionLogDialog.vue'
@@ -34,30 +31,27 @@ import ModelHistoryDialog from './ModelHistoryDialog.vue'
 import ChatExportDialog from './ChatExportDialog.vue'
 import WorkDocumentDialog from './WorkDocumentDialog.vue'
 import TaskPlanDialog from './TaskPlanDialog.vue'
+import ChatSessionToolbar from './ChatSessionToolbar.vue'
+import ChatSessionNotices from './ChatSessionNotices.vue'
+import ChatFailureNotices from './ChatFailureNotices.vue'
+import TurnSteps from './TurnSteps.vue'
+import MessageVersionSwitch from './MessageVersionSwitch.vue'
+import CodeProposalCard from './CodeProposalCard.vue'
 import CodePreparationDialog from '../shell/CodePreparationDialog.vue'
-import { boardTaskLocation } from '../shell/boardLocation'
 import { boardImplementationDraft } from '../shell/boardImplementationDraft'
-import type { BoardTask } from '@eap/runtime-client'
-import type { ChatTurn } from './chatSession'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
 import SessionPanel from '../../components/SessionPanel.vue'
 import WorkspaceWelcome from '../../components/WorkspaceWelcome.vue'
 import { chatService, chatStorage } from './chatService'
 import TaskComposer from './TaskComposer.vue'
-import GenerationBaseline from '../../components/GenerationBaseline.vue'
-import ProposalApplication from '../../components/ProposalApplication.vue'
 import { apiStorageScope } from '../../lib/runtimeConfig'
 import { readTaskHandoff, writeTaskHandoff } from '../shell/boardTaskHandoff'
 import { adoptBoardTaskDraft } from './boardTaskDraft'
-import type { CodeProposal, CodeTaskRef } from '@eap/runtime-client'
 import { catalogRefreshNote, type CatalogNote } from './catalogNote'
-import { readFeedScroll, saveFeedScroll } from './feedScroll'
 import { outgoingInstructions } from './outgoing'
-import { applyFailureCode, applyFailureMessage } from './applyError'
-import { pendingWrite } from './pendingWrite'
-import { refusedFromState } from './proposalRefusal'
-import { proposalRefused } from '@eap/runtime-client'
 import { reasoningForModel, type ReasoningLevel } from './reasoningChoice'
+import { useChatFeed } from './useChatFeed'
+import { useCodeProposals } from './codeProposals'
 import {
   adoptScratch,
   applyScenario,
@@ -74,8 +68,6 @@ import {
 } from '../shell/workbench'
 import {
   applyRuntimeIdentity,
-  identityFromStatus,
-  identityPath,
   refreshWorkspaceDirty,
   runtimeIdentity,
 } from '../shell/runtimeIdentity'
@@ -84,101 +76,6 @@ const { t, locale } = useI18n()
 const props = withDefaults(defineProps<{ active?: boolean }>(), {
   active: true,
 })
-const feedPort = ref<{ getEl: () => HTMLElement | null } | null>(null)
-const shownTurns = ref(40)
-const loadingOlder = ref(false)
-const holdingFeed = ref(false)
-function feed() {
-  return feedPort.value?.getEl() ?? null
-}
-let restoringFeed = false
-function feedKey(id: string | null | undefined) {
-  return id || 'scratch'
-}
-const FEED_BOTTOM_SLACK = 64
-/** True while the reader is parked at the newest turn; scrolling up releases it. */
-const followBottom = ref(true)
-let lastFeedTop = 0
-
-/**
- * Follow is inferred from the reader's own direction, not from the current offset:
- * while an answer streams, the feed grows under a stationary scrollTop, which would
- * otherwise look like "the reader scrolled away".
- */
-function onFeedScroll(event: Event) {
-  if (restoringFeed || !props.active) return
-  const feedNode = event.currentTarget
-  if (!(feedNode instanceof HTMLElement)) return
-  saveFeedScroll(feedKey(session.conversationId.value), feedNode.scrollTop)
-  const movedUp = feedNode.scrollTop < lastFeedTop - 4
-  lastFeedTop = feedNode.scrollTop
-  if (movedUp) followBottom.value = false
-  else if (feedNode.scrollHeight - feedNode.scrollTop - feedNode.clientHeight <= FEED_BOTTOM_SLACK)
-    followBottom.value = true
-}
-
-function scrollFeedToBottom(behavior: ScrollBehavior = 'auto') {
-  const node = feed()
-  // A box without layout metrics cannot be scrolled; skip instead of collapsing a
-  // restored position to zero.
-  if (!node || !node.clientHeight) return
-  node.scrollTo({ top: node.scrollHeight, behavior })
-  lastFeedTop = node.scrollTop
-  followBottom.value = true
-}
-
-function jumpToLatest() {
-  scrollFeedToBottom('smooth')
-}
-
-function restoreFeed(id: string | null | undefined) {
-  restoringFeed = true
-  holdingFeed.value = true
-  const apply = () => {
-    const node = feed()
-    if (node) {
-      node.scrollTop = readFeedScroll(feedKey(id))
-      lastFeedTop = node.scrollTop
-    }
-  }
-  const raf =
-    typeof requestAnimationFrame === 'function'
-      ? requestAnimationFrame
-      : (cb: FrameRequestCallback) => setTimeout(cb, 0) as unknown as number
-  void nextTick(() => {
-    apply()
-    raf(() => {
-      apply()
-      raf(() => {
-        // A restored offset may be clamped by the browser (e.g. the new
-        // conversation is shorter than the saved scrollTop). Re-derive the
-        // follow state from the *actual* landing position, otherwise the
-        // "back to latest" button lingers while we are already at the bottom.
-        const node = feed()
-        if (node && node.clientHeight) {
-          lastFeedTop = node.scrollTop
-          followBottom.value =
-            node.scrollHeight - node.scrollTop - node.clientHeight <= FEED_BOTTOM_SLACK
-        }
-        restoringFeed = false
-        holdingFeed.value = false
-      })
-    })
-  })
-}
-watch(
-  () => props.active,
-  (active) => {
-    if (!active) saveFeedScroll(feedKey(session.conversationId.value), feed()?.scrollTop ?? 0)
-    else {
-      void session.refreshConnections().catch((error) => {
-        historyNote.value = errorMessage(error)
-      })
-      void session.refreshStatus()
-      restoreFeed(session.conversationId.value)
-    }
-  },
-)
 const importingPrototype =
   typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('eap.chat.prototype')
 const api = chatService()
@@ -186,25 +83,43 @@ const session = createChatSession(
   api,
   typeof localStorage === 'undefined' ? undefined : chatStorage(localStorage),
 )
-const showJumpToLatest = computed(() => !followBottom.value && session.turns.value.length > 0)
-// Streaming appends grow the feed from the top edge; only follow while the reader
-// has not scrolled away. `turns.value.length` alone misses token-level growth.
+const feedPort = ref<{ getEl: () => HTMLElement | null } | null>(null)
+const feed = useChatFeed({
+  feedPort,
+  active: () => props.active,
+  conversationId: session.conversationId,
+  turns: session.turns,
+})
+const {
+  holdingFeed,
+  loadingOlder,
+  visibleTurns,
+  hasOlderTurns,
+  showJumpToLatest,
+  onFeedScroll,
+  jumpToLatest,
+  showOlderTurns,
+} = feed
+const proposals = useCodeProposals({
+  api,
+  turns: session.turns,
+  approval: () => session.context.value.approval,
+  t,
+})
+const { proposalNote } = proposals
 watch(
-  () => {
-    const turns = session.turns.value
-    const last = turns[turns.length - 1]
-    return `${turns.length}:${last?.text?.length ?? 0}`
-  },
-  () => {
-    if (!followBottom.value) return
-    void nextTick(() => scrollFeedToBottom())
+  () => props.active,
+  (active) => {
+    if (!active) feed.saveCurrent()
+    else {
+      void session.refreshConnections().catch((error) => {
+        historyNote.value = errorMessage(error)
+      })
+      void session.refreshStatus()
+      feed.restoreFeed(session.conversationId.value)
+    }
   },
 )
-const visibleTurns = computed(() => {
-  const all = session.turns.value
-  const start = Math.max(0, all.length - shownTurns.value)
-  return all.slice(start).map((turn, offset) => ({ turn, key: start + offset }))
-})
 // send appends a user/assistant pair and forbids another send while inflight.
 // visibleTurns keys retain the absolute transcript index, including after slicing.
 const pendingAnswerKey = computed(() => {
@@ -215,38 +130,6 @@ const pendingAnswerKey = computed(() => {
 })
 function turnIsRunning(turn: ChatTurn) {
   return turn.status === ChatExecutionStatus.RUNNING
-}
-function turnHasSteps(turn: ChatTurn, live: boolean) {
-  return (
-    (live && turnIsRunning(turn)) ||
-    turn.toolEvents.length > 0 ||
-    !!turn.knowledgeContext ||
-    !!turn.skillContext
-  )
-}
-/** Force-open while this live turn is streaming; leave uncontrolled afterward so the user can collapse. */
-function turnStepOpen(turn: ChatTurn, live: boolean): true | undefined {
-  return live && turnIsRunning(turn) ? true : undefined
-}
-const hasOlderTurns = computed(() => shownTurns.value < session.turns.value.length)
-watch(
-  () => session.turns.value.length,
-  (length, previous) => {
-    if (previous != null && length > previous && shownTurns.value > 40)
-      shownTurns.value += length - previous
-  },
-)
-function showOlderTurns() {
-  if (loadingOlder.value || !hasOlderTurns.value) return
-  const node = feed()
-  const before = node?.scrollHeight ?? 0
-  const top = node?.scrollTop ?? 0
-  loadingOlder.value = true
-  shownTurns.value = Math.min(session.turns.value.length, shownTurns.value + 40)
-  void nextTick(() => {
-    if (node) node.scrollTop = top + node.scrollHeight - before
-    loadingOlder.value = false
-  })
 }
 const manageId = ref<string | null>(null)
 const manageTitle = ref('')
@@ -286,7 +169,6 @@ watch(
   { immediate: true },
 )
 const deleting = ref(false)
-const moreOpen = ref(false)
 const executionLog = ref<{ conversationId: string; executionId: string } | null>(null)
 watch(
   () => [session.conversationId.value, props.active],
@@ -415,9 +297,7 @@ watch(
     preparingTask.value = null
     rememberSessionExecution(id)
     restorePanel(id)
-    if (previous !== undefined) saveFeedScroll(feedKey(previous), feed()?.scrollTop ?? 0)
-    shownTurns.value = 40
-    void nextTick(() => restoreFeed(id))
+    feed.switchConversation(id, previous)
   },
   { immediate: true },
 )
@@ -431,7 +311,6 @@ const filesOverlayOpen = computed(() => workbench.panel === 'files')
 /** Terminal docks under the conversation and shrinks height — not a right rail. */
 const terminalDockOpen = computed(() => workbench.panel === 'terminal')
 function choosePanel(id: 'summary' | 'changes' | 'files' | 'terminal') {
-  moreOpen.value = false
   rememberPanel(session.conversationId.value, workbench.panel === id ? null : id)
 }
 function closePanel() {
@@ -463,46 +342,6 @@ function openFromSummary(target: 'changes' | 'files' | 'terminal' | 'composer' |
 const archived = computed(
   () => !!session.history.value.find((x) => x.id === session.conversationId.value)?.archived,
 )
-const reconnectConfirmId = ref<string | null>(null)
-const reconnectActionBusy = ref(false)
-const reconnectLabel = computed(() =>
-  t(session.draft.value.trim() ? 'historyUi.reconnectRetry' : 'historyUi.reconnect'),
-)
-watch(
-  () => session.conversationId.value,
-  () => {
-    reconnectConfirmId.value = null
-  },
-)
-async function confirmReconnect() {
-  const id = reconnectConfirmId.value
-  if (!id || reconnectActionBusy.value || id !== session.conversationId.value) return
-  reconnectActionBusy.value = true
-  try {
-    const result = await session.reconnectConversation()
-    reconnectConfirmId.value = null
-    if (
-      result?.readyToRetry &&
-      props.active &&
-      session.conversationId.value === id &&
-      session.draft.value.trim()
-    )
-      await sendTask()
-  } finally {
-    reconnectActionBusy.value = false
-  }
-}
-function statusTone() {
-  if (session.expired.value || archived.value) return 'warning'
-  const state = session.status.value?.state
-  return state === 'available' ? 'success' : state === 'error' ? 'danger' : 'warning'
-}
-/** Ready-enough states do not need a connection badge in the chat chrome. */
-const showConnectionBadge = computed(() => {
-  if (session.expired.value || archived.value) return true
-  const state = session.status.value?.state
-  return state === 'not_configured' || state === 'error' || state === 'disabled' || !state
-})
 async function removeConversation() {
   if (!deleteId.value) return
   deleting.value = true
@@ -515,59 +354,6 @@ async function removeConversation() {
     deleting.value = false
   }
 }
-const refused = ref<Record<string, boolean>>({})
-const refusing = ref<string | null>(null)
-const refuseNote = ref('')
-const conflicted = ref<Record<string, boolean>>({})
-const applied = ref<Record<string, string[]>>({})
-const appliedVerification = ref<Record<string, string>>({})
-const appliedChecks = ref<
-  Record<string, Array<{ name: string; exitCode: number | null; summary: string }>>
->({})
-function syncRefused(id: string, value: boolean) {
-  refused.value = { ...refused.value, [id]: value }
-}
-async function hydrateProposalRefusal(proposal: CodeProposal) {
-  if (refused.value[proposal.id]) return
-  try {
-    const state = await api.codeProposal(proposal.conversationId, proposal.id)
-    if (refusedFromState(state)) syncRefused(proposal.id, true)
-  } catch {
-    /* durable status unavailable in this mode */
-  }
-}
-watch(
-  () =>
-    session.turns.value
-      .map((turn) => turn.proposal)
-      .filter((proposal): proposal is CodeProposal => !!proposal),
-  (proposals) => {
-    for (const proposal of proposals) void hydrateProposalRefusal(proposal)
-  },
-  { immediate: true },
-)
-async function refuseProposal(turn: {
-  proposal?: CodeProposal | null
-  executionId?: string | null
-}) {
-  const proposal = turn.proposal
-  if (!proposal || refused.value[proposal.id] || refusing.value) return
-  refusing.value = proposal.id
-  refuseNote.value = ''
-  try {
-    const state = await api.refuseCodeProposal(proposal.conversationId, proposal.id, {
-      executionId: turn.executionId ?? null,
-    })
-    syncRefused(proposal.id, proposalRefused(state.status))
-  } catch (error) {
-    refuseNote.value = errorMessage(error)
-  } finally {
-    if (refusing.value === proposal.id) refusing.value = null
-  }
-}
-const applying = ref<string | null>(null)
-const proposalNote = ref('')
-const writeConfirmed = ref<Record<string, boolean>>({})
 const modelChoices = computed(() =>
   session.connections.value
     .filter((item) => item.enabled)
@@ -671,10 +457,6 @@ watchEffect(() => {
   applyRuntimeIdentity(session.status.value)
   void refreshWorkspaceDirty(runtimeIdentity.value)
 })
-const displayWorkspacePath = computed(() => {
-  const status = session.status.value
-  return identityPath(identityFromStatus(status)) || status?.workspaceLabel || ''
-})
 watchEffect(() => {
   const proposal = [...session.turns.value].reverse().find((turn) => turn.proposal)?.proposal
   const activeId = session.conversationId.value
@@ -725,14 +507,14 @@ watchEffect(() => {
     executionMode: extras?.executionMode ?? workbench.executionMode,
     scenarioId: extras?.scenarioId ?? null,
     proposalFiles: proposal?.files.map((file) => file.path) ?? [],
-    appliedFiles: proposal ? (applied.value[proposal.id] ?? []) : [],
+    appliedFiles: proposal ? (proposals.applied.value[proposal.id] ?? []) : [],
     proposal,
-    writeRefused: proposal ? !!refused.value[proposal.id] : false,
+    writeRefused: proposal ? !!proposals.refused.value[proposal.id] : false,
     verification:
-      (proposal && appliedVerification.value[proposal.id]) ||
+      (proposal && proposals.appliedVerification.value[proposal.id]) ||
       proposal?.verification ||
       'not_requested',
-    verificationChecks: proposal ? (appliedChecks.value[proposal.id] ?? []) : [],
+    verificationChecks: proposal ? (proposals.appliedChecks.value[proposal.id] ?? []) : [],
     select: (id: string) => {
       void session.selectConversation(id)
     },
@@ -744,35 +526,13 @@ watchEffect(() => {
 function flushHiddenHistory() {
   if (document.visibilityState === 'hidden') session.flushPersistence()
 }
-/** Layout column `#eap-cordis-sidebar-right`. The conversation header owns the expand control. */
-const sidebarRightSeated = ref(false)
-const sidebarRightCollapsed = ref(false)
-let sidebarRightObserver: MutationObserver | undefined
 
-function syncSidebarRight() {
-  const column = document.getElementById('eap-cordis-sidebar-right')
-  sidebarRightSeated.value = !!column?.hasAttribute('data-sidebar-right-seat')
-  sidebarRightCollapsed.value = !!column?.hasAttribute('data-collapsed')
-}
-
-function setSidebarRightCollapsed(collapsed: boolean) {
-  const column = document.getElementById('eap-cordis-sidebar-right')
-  if (!column?.hasAttribute('data-sidebar-right-seat')) return
-  if (collapsed) column.setAttribute('data-collapsed', '')
-  else column.removeAttribute('data-collapsed')
-  syncSidebarRight()
-}
-
-let releaseToolbar: (() => void) | null = null
 let stopRuntimeLiveness: (() => void) | undefined
-const sessionToolbar = ref<HTMLElement | null>(null)
 onUnmounted(() => {
-  releaseToolbar?.()
   stopRuntimeLiveness?.()
   session.flushPersistence()
   window.removeEventListener('pagehide', session.flushPersistence)
   document.removeEventListener('visibilitychange', flushHiddenHistory)
-  sidebarRightObserver?.disconnect()
   if (chatBinding.value?.activeId === session.conversationId.value) chatBinding.value = null
 })
 function useScene(id: string) {
@@ -850,22 +610,6 @@ async function regenerateAnswer(index: number) {
   await session.sendRegenerate(question.nodeId)
 }
 
-const graphRetryControl = ref<InstanceType<typeof Button>>()
-async function retryGraph() {
-  const id = session.conversationId.value
-  const control = graphRetryControl.value?.$el as HTMLButtonElement | undefined
-  const restoreFocus = document.activeElement === control
-  await session.retryGraph()
-  await nextTick()
-  if (
-    restoreFocus &&
-    session.conversationId.value === id &&
-    session.graphError.value &&
-    control?.isConnected
-  )
-    control.focus()
-}
-
 async function sendTask() {
   if (session.graphLoading.value || session.graphError.value || session.browsingHistory.value)
     return
@@ -904,73 +648,10 @@ async function sendTask() {
     }
   }
 }
-function turnPending(turn: { proposal?: CodeProposal | null }) {
-  if (!turn.proposal) return 'desktop.pendingNone'
-  const state = pendingWrite({
-    policy: session.context.value.approval,
-    files: turn.proposal.files,
-    applied: !!applied.value[turn.proposal.id]?.length,
-    refused: !!refused.value[turn.proposal.id],
-    conflict: !!conflicted.value[turn.proposal.id],
-  })
-  return `desktop.pending${state.charAt(0).toUpperCase()}${state.slice(1)}`
-}
-function baselineReady(proposal: CodeProposal) {
-  return (
-    proposal.files.length > 0 && proposal.files.every((file) => file.baseHash.trim().length > 0)
-  )
-}
-function continueDelivery(task: CodeTaskRef) {
-  window.location.hash = boardTaskLocation(task)
-}
-async function applyProposal(proposal: CodeProposal) {
-  if (
-    !baselineReady(proposal) ||
-    !writeConfirmed.value[proposal.id] ||
-    applying.value ||
-    session.context.value.approval === 'read_only'
-  )
-    return
-  applying.value = proposal.id
-  proposalNote.value = ''
-  try {
-    const result = await api.applyCodeProposal(proposal.conversationId, proposal.id)
-    conflicted.value = { ...conflicted.value, [proposal.id]: false }
-    applied.value = { ...applied.value, [proposal.id]: result.written }
-    appliedVerification.value = { ...appliedVerification.value, [proposal.id]: result.verification }
-    appliedChecks.value = { ...appliedChecks.value, [proposal.id]: result.checks ?? [] }
-    proposalNote.value = t('task.written')
-  } catch (error) {
-    if (applyFailureCode(error) === CodeErrors.FILE_CHANGED_SINCE_PROPOSAL) {
-      conflicted.value = { ...conflicted.value, [proposal.id]: true }
-      writeConfirmed.value = { ...writeConfirmed.value, [proposal.id]: false }
-    }
-    proposalNote.value = applyFailureMessage(error, t)
-  } finally {
-    applying.value = null
-  }
-}
-const stateKey: Record<AiConnectionState, string> = {
-  disabled: 'chat.disabled',
-  not_configured: 'chat.not_configured',
-  configured_unverified: 'chat.configured_unverified',
-  available: 'chat.available',
-  error: 'chat.error',
-}
 
 onMounted(async () => {
-  if (sessionToolbar.value) releaseToolbar = installToolbarFallback(sessionToolbar.value)
   window.addEventListener('pagehide', session.flushPersistence)
   document.addEventListener('visibilitychange', flushHiddenHistory)
-  const column = document.getElementById('eap-cordis-sidebar-right')
-  if (column) {
-    sidebarRightObserver = new MutationObserver(syncSidebarRight)
-    sidebarRightObserver.observe(column, {
-      attributes: true,
-      attributeFilter: ['data-sidebar-right-seat', 'data-collapsed', 'hidden'],
-    })
-  }
-  syncSidebarRight()
   stopRuntimeLiveness = subscribeRuntimeLiveness((event) => {
     if (event.lost) session.markUnreachable()
     if (event.recovered) {
@@ -996,170 +677,19 @@ onMounted(async () => {
     data-testid="chat-workspace"
   >
     <div class="page-head chat-page-head live-utilities">
-      <div class="live-utilities__row">
-        <div v-if="session.phase.value === 'loading'" class="session-status">
-          <p class="hint">{{ t('chat.loading') }}</p>
-        </div>
-        <div
-          v-else-if="session.phase.value === 'offline'"
-          class="session-status session-status--notice"
-          role="status"
-        >
-          <p class="hint">{{ t('chat.offline') }}</p>
-        </div>
-        <div v-else class="session-status">
-          <Badge
-            v-if="showConnectionBadge"
-            :tone="statusTone()"
-            :label="t(stateKey[session.status.value?.state ?? 'disabled'])"
-          />
-          <p v-if="session.status.value?.errorCode" class="hint">
-            {{ session.status.value.errorCode }}
-          </p>
-          <p
-            class="hint session-path"
-            data-testid="session-workspace-path"
-            :title="
-              [
-                displayWorkspacePath ? `${t('chat.workspace')}：${displayWorkspacePath}` : '',
-                session.status.value?.workspaceLabel
-                  ? `id：${session.status.value.workspaceLabel}`
-                  : '',
-                session.memoryNote.value ? `${t('chat.memory')}：${session.memoryNote.value}` : '',
-              ]
-                .filter(Boolean)
-                .join(' · ')
-            "
-          >
-            {{ displayWorkspacePath }}
-          </p>
-        </div>
-        <div
-          ref="sessionToolbar"
-          class="session-tools"
-          role="toolbar"
-          focusgroup="toolbar wrap"
-          :aria-label="t('desktop.sessionTools')"
-        >
-          <div
-            class="session-tools__group"
-            role="group"
-            :aria-label="t('desktop.sessionPanels')"
-          >
-            <Button
-              size="sm"
-              variant="ghost"
-              type="button"
-              class="shell-tool"
-              data-testid="open-summary"
-              :aria-pressed="workbench.panel === 'summary'"
-              @click="choosePanel('summary')"
-              >{{ t('desktop.summary') }}</Button
-            >
-            <Button
-              size="sm"
-              variant="ghost"
-              type="button"
-              class="shell-tool"
-              data-testid="open-terminal"
-              :aria-pressed="workbench.panel === 'terminal'"
-              :title="t('desktop.terminalDockHint')"
-              @click="choosePanel('terminal')"
-              >{{ t('desktop.terminal') }}</Button
-            >
-            <Button
-              size="sm"
-              variant="ghost"
-              type="button"
-              class="shell-tool"
-              data-testid="open-changes"
-              :aria-pressed="workbench.panel === 'changes'"
-              @click="choosePanel('changes')"
-              >{{ t('desktop.changes') }}</Button
-            >
-            <Button
-              size="sm"
-              variant="ghost"
-              type="button"
-              class="shell-tool"
-              data-testid="open-files"
-              :aria-pressed="workbench.panel === 'files'"
-              @click="choosePanel('files')"
-              >{{ t('desktop.sources') }}</Button
-            >
-          </div>
-          <span class="session-tools__sep" role="separator" aria-orientation="vertical"></span>
-          <DropdownMenu
-            v-model:open="moreOpen"
-            :label="t('desktop.moreActions')"
-            data-testid="ribbon-more-menu"
-            @select="
-              (id) => {
-                if (id === 'export') exportingChat = true
-                if (id === 'model-context') modelHistoryOpen = true
-              }
-            "
-            :items="[
-              {
-                id: 'model-context',
-                label: t('desktop.moreModelContext'),
-                disabled: !session.conversationId.value || session.sending.value,
-                description: t('desktop.moreModelContextHint'),
-                testId: 'open-model-history',
-              },
-              {
-                id: 'export',
-                label: t('desktop.moreExport'),
-                disabled:
-                  !session.conversationId.value ||
-                  session.sending.value ||
-                  !session.turns.value.length,
-                description: t('desktop.exportBoundary'),
-                testId: 'chat-export-open',
-              },
-              {
-                id: 'share',
-                label: t('desktop.moreShare'),
-                disabled: true,
-                description: t('desktop.moreShareOff'),
-              },
-            ]"
-          >
-            <Button
-              size="sm"
-              variant="icon"
-              type="button"
-              class="shell-tool"
-              data-testid="ribbon-more"
-              :aria-label="t('desktop.moreActions')"
-              ><IconEllipsis
-            /></Button>
-          </DropdownMenu>
-          <Button
-            v-if="sidebarRightSeated"
-            variant="icon"
-            type="button"
-            class="layout-sidebar-toggle"
-            data-testid="toggle-layout-sidebar-right"
-            :active="!sidebarRightCollapsed"
-            :aria-expanded="!sidebarRightCollapsed"
-            aria-controls="eap-cordis-sidebar-right"
-            :aria-label="
-              sidebarRightCollapsed
-                ? t('desktop.openRightSidebar')
-                : t('desktop.closeRightSidebar')
-            "
-            v-bind="
-              sidebarRightCollapsed
-                ? { 'data-sidebar-right-expand': '' }
-                : { 'data-sidebar-right-toggle': '' }
-            "
-            @click="setSidebarRightCollapsed(!sidebarRightCollapsed)"
-          >
-            <IconPanelRight />
-          </Button>
-        </div>
-      </div>
+      <ChatSessionToolbar
+        :phase="session.phase.value"
+        :status="session.status.value"
+        :expired="session.expired.value"
+        :archived="archived"
+        :memory-note="session.memoryNote.value"
+        :conversation-id="session.conversationId.value"
+        :sending="session.sending.value"
+        :has-turns="session.turns.value.length > 0"
+        @panel="choosePanel"
+        @export="exportingChat = true"
+        @model-context="modelHistoryOpen = true"
+      />
       <ExecutionLogDialog
         v-if="executionLog"
         :conversation-id="executionLog.conversationId"
@@ -1252,132 +782,40 @@ onMounted(async () => {
           @scroll="onFeedScroll"
           @load="showOlderTurns"
         >
-          <Feedback v-if="session.browsingHistory.value" tone="info" data-testid="branch-reading">
-            {{ t('chat.readingBranch') }}
+          <ChatSessionNotices
+            :session="session"
+            :active="props.active"
+            :archived="archived"
+            :history-note="historyNote"
+            :hide-history-note="!!deleteId"
+            :retry-send="sendTask"
+          >
+            <p v-if="boardNote" class="hint" role="status" data-testid="board-draft-note">
+              {{ boardNote }}
+            </p>
             <Button
+              v-if="answerHandoffPending"
               size="sm"
-              variant="secondary"
-              data-testid="branch-latest"
-              @click="session.showLatestMessages()"
-              >{{ t('chat.latestBranch') }}</Button
+              data-testid="answer-task-resume"
+              @click="resumeTaskHandoff"
+              >{{ t('desktop.taskHandoffResume') }}</Button
             >
-          </Feedback>
-          <Feedback
-            v-if="session.graphError.value || session.graphLoading.value"
-            :tone="session.graphError.value ? 'warning' : 'info'"
-            data-testid="graph-error"
-          >
-            {{ t(session.graphError.value ? 'historyUi.graphFailed' : 'historyUi.graphLoading') }}
             <Button
-              size="sm"
-              variant="secondary"
-              ref="graphRetryControl"
-              data-testid="retry-graph"
-              :disabled="session.graphLoading.value || session.sending.value"
-              @click="retryGraph"
-              >{{ t('historyUi.retryGraph') }}</Button
+              v-if="workbench.pendingBoardDraft"
+              data-testid="adopt-board-draft"
+              :disabled="session.sending.value || session.opening.value"
+              @click="adoptingBoardDraft = true"
+              >{{ t('generation.adoptTask') }}</Button
             >
-          </Feedback>
-          <Feedback v-if="session.storageError.value" tone="warning">{{
-            t('historyUi.storageError')
-          }}</Feedback>
-          <Feedback
-            v-if="historyNote && !deleteId && session.phase.value !== 'offline'"
-            tone="warning"
-            >{{ historyNote }}</Feedback
-          >
-          <p v-if="boardNote" class="hint" role="status" data-testid="board-draft-note">
-            {{ boardNote }}
-          </p>
-          <Button
-            v-if="answerHandoffPending"
-            size="sm"
-            data-testid="answer-task-resume"
-            @click="resumeTaskHandoff"
-            >{{ t('desktop.taskHandoffResume') }}</Button
-          >
-          <Button
-            v-if="workbench.pendingBoardDraft"
-            data-testid="adopt-board-draft"
-            :disabled="session.sending.value || session.opening.value"
-            @click="adoptingBoardDraft = true"
-            >{{ t('generation.adoptTask') }}</Button
-          >
-          <ConfirmBox
-            v-if="adoptingBoardDraft && workbench.pendingBoardDraft"
-            :title="t('generation.adoptTask')"
-            :impact="[workbench.pendingBoardDraft.title, t('generation.adoptTaskImpact')]"
-            :confirm-label="t('generation.adoptTask')"
-            @confirm="adoptPendingBoardDraft"
-            @cancel="adoptingBoardDraft = false"
-          />
-          <Feedback v-if="session.expired.value || archived" tone="warning">{{
-            archived ? t('historyUi.archiveNotice') : t('historyUi.expired')
-          }}</Feedback>
-          <Button
-            v-if="session.expired.value && !archived"
-            data-testid="reconnect-session"
-            :disabled="
-              session.reconnecting.value ||
-              reconnectActionBusy ||
-              session.checkingConversation.value
-            "
-            @click="reconnectConfirmId = session.conversationId.value"
-            >{{ reconnectLabel }}</Button
-          >
-          <ConfirmBox
-            v-if="reconnectConfirmId"
-            :title="reconnectLabel"
-            :impact="[t('historyUi.reconnectImpact'), t('historyUi.reconnectLocal')]"
-            :confirm-label="reconnectLabel"
-            :busy="reconnectActionBusy"
-            @confirm="confirmReconnect"
-            @cancel="reconnectConfirmId = null"
-          />
-          <Feedback v-if="session.sessionUnavailable.value" tone="warning">{{
-            t('historyUi.probeFailed')
-          }}</Feedback>
-          <Button
-            v-if="session.sessionUnavailable.value || (session.expired.value && !archived)"
-            data-testid="recheck-session"
-            :disabled="
-              session.checkingConversation.value ||
-              session.reconnecting.value ||
-              reconnectActionBusy
-            "
-            @click="session.recheckConversation()"
-            >{{ t('historyUi.recheck') }}</Button
-          >
-          <Feedback
-            v-if="
-              session.failure.value === 'reconnect-failed' ||
-              session.failure.value === 'workspace-changed'
-            "
-            data-testid="reconnect-error"
-            tone="warning"
-            >{{
-              t(
-                session.failure.value === 'workspace-changed'
-                  ? 'historyUi.workspaceChanged'
-                  : 'historyUi.reconnectFailed',
-              )
-            }}</Feedback
-          >
-          <Feedback v-if="session.reconnectNotice.value" tone="info">{{
-            t(
-              session.reconnectNotice.value === 'reset'
-                ? 'historyUi.contextReset'
-                : 'historyUi.contextKept',
-            )
-          }}</Feedback>
-          <p
-            v-if="
-              workbench.executionMode !== 'plan' && session.toolMode.value === AiToolMode.GIT_STATUS
-            "
-            class="hint"
-          >
-            {{ t('chat.gitWarning') }}
-          </p>
+            <ConfirmBox
+              v-if="adoptingBoardDraft && workbench.pendingBoardDraft"
+              :title="t('generation.adoptTask')"
+              :impact="[workbench.pendingBoardDraft.title, t('generation.adoptTaskImpact')]"
+              :confirm-label="t('generation.adoptTask')"
+              @confirm="adoptPendingBoardDraft"
+              @cancel="adoptingBoardDraft = false"
+            />
+          </ChatSessionNotices>
 
           <WorkspaceWelcome
             v-if="!session.turns.value.length || workbench.workMode === 'work'"
@@ -1399,98 +837,7 @@ onMounted(async () => {
             >
               <template v-if="turn.role === 'assistant'">
                 <div class="turn-node" data-testid="assistant-turn-node">
-                  <div
-                    v-if="turnHasSteps(turn, key === pendingAnswerKey)"
-                    class="turn-steps"
-                    data-testid="turn-steps"
-                  >
-                    <p class="turn-steps__label">{{ t('chat.toolSteps') }}</p>
-                    <Collapse
-                      v-if="
-                        key === pendingAnswerKey &&
-                        turnIsRunning(turn) &&
-                        !turn.text &&
-                        !turn.toolEvents.length &&
-                        !turn.knowledgeContext &&
-                        !turn.skillContext
-                      "
-                      class="turn-step turn-step--streaming"
-                      :open="true"
-                      data-testid="turn-streaming-step"
-                    >
-                      <template #summary>{{ t('chat.streamingAnswer') }}</template>
-                      <p class="hint">{{ t('chat.waitingForAnswer') }}</p>
-                    </Collapse>
-                    <Collapse
-                      v-for="event in turn.toolEvents"
-                      :key="event.sequence"
-                      class="turn-step"
-                      :open="turnStepOpen(turn, key === pendingAnswerKey)"
-                      data-testid="turn-tool-step"
-                    >
-                      <template #summary>
-                        {{
-                          t('chat.toolStep', {
-                            code: event.code || t('chat.toolStepFallback'),
-                          })
-                        }}
-                      </template>
-                      <p class="hint">#{{ event.sequence }} · {{ event.code }}</p>
-                    </Collapse>
-                    <Collapse
-                      v-if="turn.knowledgeContext"
-                      data-testid="turn-knowledge"
-                      class="turn-step"
-                      :open="turnStepOpen(turn, key === pendingAnswerKey)"
-                    >
-                      <template #summary>
-                        {{ t('chat.knowledgeStep') }} · {{ turn.knowledgeContext.expertRef.id }} ·
-                        r{{ turn.knowledgeContext.expertRef.revision }}
-                      </template>
-                      <p>{{ t('knowledgeContext.provided') }}</p>
-                      <p>{{ t('knowledgeContext.excerpts') }}</p>
-                      <p v-if="turn.knowledgeContext.status === 'no_matches'">
-                        {{ t('knowledgeContext.no_matches') }}
-                      </p>
-                      <ul>
-                        <li
-                          v-for="reference in turn.knowledgeContext.references"
-                          :key="reference.id"
-                        >
-                          <strong
-                            >{{ reference.id }} · {{ reference.source }} ·
-                            {{ reference.knowledgeBase }}</strong
-                          >
-                          <p>
-                            {{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} ·
-                            {{ reference.documentId }}
-                          </p>
-                          <pre>{{ reference.excerpt }}</pre>
-                        </li>
-                      </ul>
-                    </Collapse>
-                    <Collapse
-                      v-if="turn.skillContext"
-                      data-testid="turn-skill"
-                      class="turn-step"
-                      :open="turnStepOpen(turn, key === pendingAnswerKey)"
-                    >
-                      <template #summary>
-                        {{ t('chat.skillStep') }} · {{ turn.skillContext.skillRef.id }} ·
-                        {{ turn.skillContext.skillRef.version }} · r{{
-                          turn.skillContext.skillRef.stateRevision
-                        }}
-                      </template>
-                      <p>{{ t('skill.evidence') }}</p>
-                      <code>{{ turn.skillContext.skillRef.digest }}</code>
-                      <pre>{{ turn.skillContext.instructions }}</pre>
-                      <div v-for="resource in turn.skillContext.resources" :key="resource.path">
-                        <strong>{{ resource.path }}</strong>
-                        <pre>{{ resource.content }}</pre>
-                      </div>
-                      <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
-                    </Collapse>
-                  </div>
+                  <TurnSteps :turn="turn" :live="key === pendingAnswerKey" />
                   <div class="turn-body" data-testid="turn-body">
                     <RichText
                       v-if="turn.text"
@@ -1498,9 +845,7 @@ onMounted(async () => {
                       :source="turn.text"
                       :copy-label="t('chat.copyCode')"
                       :copied-label="t('chat.copiedCode')"
-                      :streaming-label="
-                        turnIsRunning(turn) ? t('chat.streamingAnswer') : ''
-                      "
+                      :streaming-label="turnIsRunning(turn) ? t('chat.streamingAnswer') : ''"
                     />
                     <p v-else>
                       {{
@@ -1511,44 +856,13 @@ onMounted(async () => {
                         )
                       }}
                     </p>
-                    <div
-                      v-if="turn.nodeId && session.messageVersions(turn.nodeId).length > 1"
-                      class="turn-version"
-                      data-testid="message-versions"
-                    >
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        :aria-label="t('chat.previousVersion')"
-                        :disabled="
-                          session.sending.value ||
-                          session.graphLoading.value ||
-                          session.messageVersions(turn.nodeId)[0]?.id === turn.nodeId
-                        "
-                        @click="changeMessageVersion(turn, -1)"
-                        >‹</Button
-                      >
-                      <span
-                        >{{
-                          session
-                            .messageVersions(turn.nodeId)
-                            .findIndex((n) => n.id === turn.nodeId) + 1
-                        }}
-                        / {{ session.messageVersions(turn.nodeId).length }}</span
-                      >
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        :aria-label="t('chat.nextVersion')"
-                        :disabled="
-                          session.sending.value ||
-                          session.graphLoading.value ||
-                          session.messageVersions(turn.nodeId).at(-1)?.id === turn.nodeId
-                        "
-                        @click="changeMessageVersion(turn, 1)"
-                        >›</Button
-                      >
-                    </div>
+                    <MessageVersionSwitch
+                      v-if="turn.nodeId"
+                      :versions="session.messageVersions(turn.nodeId)"
+                      :current="turn.nodeId"
+                      :disabled="session.sending.value || session.graphLoading.value"
+                      @change="changeMessageVersion(turn, $event)"
+                    />
                     <p v-if="turn.error">
                       {{
                         turn.errorLanguage === locale && turn.errorMessage
@@ -1586,9 +900,7 @@ onMounted(async () => {
                       >{{ t('desktop.taskFromAnswer') }}</Button
                     >
                     <Button
-                      v-if="
-                        turn.planningTask && turn.text && !turn.error && !session.sending.value
-                      "
+                      v-if="turn.planningTask && turn.text && !turn.error && !session.sending.value"
                       size="sm"
                       data-testid="task-plan-open"
                       @click="taskPlan = turn"
@@ -1616,111 +928,15 @@ onMounted(async () => {
                       >{{ t('executionLog.title') }}</Button
                     >
                   </div>
-                  <section
+                  <CodeProposalCard
                     v-if="turn.proposal"
-                    class="code-proposal write-request"
-                    data-testid="code-proposal"
-                  >
-                <h3>{{ t('desktop.writeRequest', { count: turn.proposal.files.length }) }}</h3>
-                <GenerationBaseline :generation="turn.proposal.generation" />
-                <p v-if="!refused[turn.proposal.id]" class="hint" data-testid="turn-pending">
-                  {{ t(turnPending(turn)) }}
-                </p>
-                <Collapse v-for="file in turn.proposal.files" :key="file.path">
-                  <template #summary
-                    >{{ file.path }} ·
-                    {{ file.before == null ? t('task.newFile') : t('task.modifiedFile') }} ·
-                    {{ t('desktop.fileBaseline') }}：{{
-                      file.baseHash || t('desktop.summaryUnknown')
-                    }}</template
-                  >
-                  <div class="code-comparison">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      type="button"
-                      data-testid="open-proposal-diff"
-                      @click="viewProposalDiff(file.path)"
-                      >{{ t('desktop.openProposalDiff') }}</Button
-                    >
-                    <div>
-                      <strong>{{ t('task.before') }}</strong>
-                      <pre>{{ file.before ?? t('task.newFile') }}</pre>
-                    </div>
-                    <div>
-                      <strong>{{ t('task.after') }}</strong>
-                      <pre>{{ file.content }}</pre>
-                    </div>
-                  </div>
-                </Collapse>
-                <div class="proposal-actions">
-                  <Button
-                    v-if="!applied[turn.proposal.id] && !refused[turn.proposal.id]"
-                    type="button"
-                    data-testid="refuse-write"
-                    :disabled="!!refusing"
-                    @click="refuseProposal(turn)"
-                    >{{ t('desktop.refuseWrite') }}</Button
-                  >
-                </div>
-                <p
-                  v-if="refuseNote && refusing === turn.proposal.id"
-                  class="hint"
-                  role="alert"
-                  data-testid="refuse-write-error"
-                >
-                  {{ refuseNote }}
-                </p>
-                <p v-if="refused[turn.proposal.id]" class="hint" data-testid="refused-write">
-                  {{ t('desktop.refusedWrite') }}
-                </p>
-                <ProposalApplication
-                  v-if="turn.proposal.generation"
-                  :proposal="turn.proposal"
-                  @continue="continueDelivery"
-                  :read-only="
-                    session.context.value.approval === 'read_only' ||
-                    !!refused[turn.proposal.id] ||
-                    session.expired.value ||
-                    archived
-                  "
-                  @applied="
-                    (result) => {
-                      applied[turn.proposal!.id] = result.written
-                      appliedVerification[turn.proposal!.id] = result.verification
-                      appliedChecks[turn.proposal!.id] = result.checks
-                    }
-                  "
-                />
-                <template
-                  v-else-if="
-                    !applied[turn.proposal.id] &&
-                    !refused[turn.proposal.id] &&
-                    baselineReady(turn.proposal)
-                  "
-                >
-                  <label
-                    ><Checkbox v-model="writeConfirmed[turn.proposal.id]" />
-                    {{ t('task.confirmWrite') }}</label
-                  >
-                  <Button
-                    type="button"
-                    variant="primary"
-                    :disabled="
-                      !writeConfirmed[turn.proposal.id] ||
-                      !!applying ||
-                      !turn.proposal.writeAllowed ||
-                      session.context.value.approval === 'read_only'
-                    "
-                    @click="applyProposal(turn.proposal)"
-                    >{{ t('task.apply') }}</Button
-                  >
-                </template>
-                <p v-else-if="applied[turn.proposal.id]">
-                  {{ t('task.written') }}
-                  {{ applied[turn.proposal.id]?.join('、') }}
-                </p>
-                  </section>
+                    :proposal="turn.proposal"
+                    :execution-id="turn.executionId"
+                    :proposals="proposals"
+                    :approval="session.context.value.approval"
+                    :locked="session.expired.value || archived"
+                    @view-diff="viewProposalDiff"
+                  />
                   <TurnContextDetails :budget="turn.contextBudget" :artifacts="turn.artifacts" />
                   <Feedback
                     v-if="
@@ -1735,43 +951,13 @@ onMounted(async () => {
               </template>
               <template v-else>
                 <p v-if="turn.text" class="turn-text">{{ turn.text }}</p>
-                <div
-                  v-if="turn.nodeId && session.messageVersions(turn.nodeId).length > 1"
-                  class="turn-version"
-                  data-testid="message-versions"
-                >
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    :aria-label="t('chat.previousVersion')"
-                    :disabled="
-                      session.sending.value ||
-                      session.graphLoading.value ||
-                      session.messageVersions(turn.nodeId)[0]?.id === turn.nodeId
-                    "
-                    @click="changeMessageVersion(turn, -1)"
-                    >‹</Button
-                  >
-                  <span
-                    >{{
-                      session.messageVersions(turn.nodeId).findIndex((n) => n.id === turn.nodeId) +
-                      1
-                    }}
-                    / {{ session.messageVersions(turn.nodeId).length }}</span
-                  >
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    :aria-label="t('chat.nextVersion')"
-                    :disabled="
-                      session.sending.value ||
-                      session.graphLoading.value ||
-                      session.messageVersions(turn.nodeId).at(-1)?.id === turn.nodeId
-                    "
-                    @click="changeMessageVersion(turn, 1)"
-                    >›</Button
-                  >
-                </div>
+                <MessageVersionSwitch
+                  v-if="turn.nodeId"
+                  :versions="session.messageVersions(turn.nodeId)"
+                  :current="turn.nodeId"
+                  :disabled="session.sending.value || session.graphLoading.value"
+                  @change="changeMessageVersion(turn, $event)"
+                />
                 <Button
                   v-if="turn.nodeId && !session.sending.value && !session.browsingHistory.value"
                   size="sm"
@@ -1784,130 +970,12 @@ onMounted(async () => {
             </li>
           </ol>
 
-          <Button
-            v-if="session.failure.value === 'target-changed'"
-            type="button"
-            :disabled="!selectedModel || session.sending.value"
-            @click="
-              session.chooseConversationConnection(
-                session.boundConnectionId.value!,
-                session.boundModel.value,
-              )
-            "
-            >{{ t('modelUi.reconnect') }}</Button
-          >
-          <Button
-            v-if="
-              !session.expired.value &&
-              !session.graphError.value &&
-              !session.graphLoading.value &&
-              (session.failure.value === 'failed' ||
-                session.failure.value === 'kept' ||
-                session.failure.value === 'cancelled' ||
-                session.failure.value === 'not-configured')
-            "
-            type="button"
-            data-testid="retry-send"
-            :disabled="
-              session.sending.value ||
-              !session.draft.value.trim() ||
-              (workbench.executionMode === 'agent' && !agentReady)
-            "
-            @click="sendTask"
-            >{{ t('desktop.retrySend') }}</Button
-          >
-          <a
-            v-if="session.failure.value === 'not-configured'"
-            data-testid="locate-settings"
-            :title="t('desktop.locateSettingsNote')"
-            href="#model-settings"
-            >{{ t('desktop.locateSettings') }}</a
-          >
-          <Button
-            v-if="
-              session.failure.value === 'model-unavailable' ||
-              session.failure.value === 'target-change-failed'
-            "
-            type="button"
-            data-testid="locate-model"
-            :title="t('desktop.locateModelNote')"
-            @click="workbench.modelMenuToken += 1"
-            >{{ t('desktop.locateModel') }}</Button
-          >
-          <Feedback v-if="session.targetNotice.value === 'cleared'" tone="info">{{
-            t('chat.memoryCleared')
-          }}</Feedback>
-          <Feedback v-if="session.targetNotice.value === 'kept'" tone="info">{{
-            t('modelUi.memoryKept')
-          }}</Feedback>
-          <Feedback
-            v-if="session.contextMemoryCleared.value"
-            data-testid="context-cleared"
-            tone="info"
-            >{{ t('skill.cleared') }}</Feedback
-          >
-          <Feedback v-else-if="session.knowledgeMemoryCleared.value" tone="info">{{
-            t('knowledgeContext.cleared')
-          }}</Feedback>
-          <Feedback v-if="session.failure.value.startsWith('skill-')" tone="warning">{{
-            t('skill.' + session.failure.value.slice('skill-'.length))
-          }}</Feedback>
-          <Feedback v-if="session.failure.value.startsWith('knowledge-')" tone="warning">{{
-            t('knowledgeContext.' + session.failure.value.slice('knowledge-'.length))
-          }}</Feedback>
-          <Feedback
-            v-else-if="session.failure.value === 'context-budget-exceeded'"
-            data-testid="context-budget-exceeded"
-            tone="warning"
-          >
-            <p>{{ t('contextBudget.exceeded') }}</p>
-            <p v-if="session.lastContextBudget.value">
-              {{
-                t('contextBudget.exceededDetail', {
-                  used: session.lastContextBudget.value.usedChars,
-                  platform: session.lastContextBudget.value.platformLimit,
-                  reserve: session.lastContextBudget.value.outputReserve,
-                  metering: session.lastContextBudget.value.metering,
-                })
-              }}
-            </p>
-          </Feedback>
-          <Feedback
-            v-else-if="session.failure.value === 'protocol-tools-unavailable'"
-            tone="warning"
-            >{{ t('modelUi.protocolToolsUnavailable') }}</Feedback
-          >
-          <Feedback v-else-if="session.failure.value.startsWith('generation-')" tone="warning">{{
-            t('generation.' + session.failure.value)
-          }}</Feedback>
-          <Feedback
-            v-else-if="
-              session.failure.value &&
-              !session.failure.value.startsWith('skill-') &&
-              !['reconnect-failed', 'workspace-changed'].includes(session.failure.value)
-            "
-            tone="warning"
-            >{{
-              t(
-                session.failure.value === 'target-changed'
-                  ? 'modelUi.retryTarget'
-                  : session.failure.value === 'model-unavailable'
-                    ? 'modelUi.unavailable'
-                    : session.failure.value === 'not-configured'
-                      ? 'chat.notConfigured'
-                      : session.failure.value === 'target-change-failed'
-                        ? 'chat.targetChangeFailed'
-                        : 'desktop.retrySame',
-              )
-            }}</Feedback
-          >
-          <Button
-            v-if="session.failure.value === 'generation-stale'"
-            data-testid="retry-generation"
-            :disabled="session.sending.value || !session.draft.value.trim()"
-            @click="sendTask"
-            >{{ t('generation.retry') }}</Button
-          >
+          <ChatFailureNotices
+            :session="session"
+            :has-model="!!selectedModel"
+            :agent-blocked="workbench.executionMode === 'agent' && !agentReady"
+            @send="sendTask"
+          />
           <Feedback v-if="proposalNote" tone="info">{{ proposalNote }}</Feedback>
           <p v-if="effortReset" class="hint" data-testid="effort-reset">
             {{ t('desktop.effortReset', { effort: t('task.' + effortReset) }) }}
@@ -2280,33 +1348,6 @@ onMounted(async () => {
   border: 1px solid var(--border-strong);
   border-radius: 12px;
 }
-
-.code-proposal {
-  display: grid;
-  gap: 12px;
-  margin: 16px 0;
-}
-
-.code-comparison {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.code-comparison pre {
-  max-height: 380px;
-  padding: 12px;
-  overflow: auto;
-  color: var(--eap-code-text);
-  background: var(--eap-code-bg);
-  border-radius: 8px;
-}
-
-@media (width <= 800px) {
-  .code-comparison {
-    grid-template-columns: 1fr;
-  }
-}
 </style>
 
 <style src="../../workspace.css"></style>
@@ -2328,83 +1369,10 @@ onMounted(async () => {
   border-bottom: 1px solid var(--border);
 }
 
-.live-utilities__row {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-}
-
-.session-status {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.session-status--notice .hint {
-  display: inline-block;
-  max-width: 100%;
-  padding: 2px 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--warn-text, var(--text));
-  white-space: nowrap;
-  background: var(--warn-bg, var(--surface-2));
-  border-radius: 6px;
-}
-
-.session-tools {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 6px;
-  align-items: center;
-  margin-left: auto;
-}
-
-.session-tools__group {
-  display: flex;
-  gap: 2px;
-  align-items: center;
-}
-
-.session-tools__sep {
-  align-self: stretch;
-  margin-block: 6px;
-  border-inline-start: 1px solid var(--border);
-}
-
-.session-tools .shell-tool {
-  min-inline-size: 2rem;
-  min-block-size: 2rem;
-  white-space: nowrap;
-}
-
-.session-tools .shell-tool:is([aria-pressed='true']) {
-  box-shadow: inset 0 0 0 1px var(--eap-color-primary);
-}
-
-@media (pointer: coarse) {
-  .session-tools .shell-tool {
-    min-inline-size: 2.75rem;
-    min-block-size: 2.75rem;
-  }
-}
-
 @media (width <= 760px) {
   .live-utilities {
     gap: 8px;
     padding: 8px 12px 10px;
-  }
-
-  .live-utilities__row {
-    flex-wrap: wrap;
-  }
-
-  .session-tools {
-    flex-wrap: wrap;
-    max-width: 100%;
-    margin-left: 0;
   }
 }
 
@@ -2571,57 +1539,6 @@ onMounted(async () => {
   min-width: 0;
 }
 
-.turn-steps {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-}
-
-.turn-steps__label {
-  margin: 0;
-  font-size: 11px;
-  color: var(--text-soft);
-  letter-spacing: 0.02em;
-}
-
-.turn-step {
-  padding-inline: 10px;
-  margin: 0;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.turn-step :deep(.eap-collapse__summary) {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-height: 28px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--text-soft);
-  list-style: none;
-}
-
-.turn-step :deep(.eap-collapse__summary)::-webkit-details-marker {
-  display: none;
-}
-
-.turn-step :deep(.eap-collapse__summary)::marker {
-  content: none;
-}
-
-.turn-step :deep(.eap-collapse__summary)::before {
-  font-size: 10px;
-  color: var(--text-mute);
-  content: '▸';
-}
-
-.turn-step[open] :deep(.eap-collapse__summary)::before {
-  content: '▾';
-}
-
 .turn-body {
   min-width: 0;
   padding: 14px 16px;
@@ -2687,15 +1604,5 @@ onMounted(async () => {
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-soft);
-}
-
-.code-comparison > div:first-child pre {
-  color: var(--danger);
-  background: var(--danger-bg);
-}
-
-.code-comparison > div:last-child pre {
-  color: var(--ok);
-  background: var(--ok-bg);
 }
 </style>

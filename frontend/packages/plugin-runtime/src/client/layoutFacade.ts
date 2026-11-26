@@ -10,7 +10,7 @@ type RegisterOptions = {
 type SlotHost = {
   register: (options: object, component?: unknown) => () => void
   registerFactory: (options: object, component?: unknown) => () => void
-  inject: (key: string, callback: () => unknown) => () => void
+  inject: (key: string, callback: () => (() => void) | void) => () => void
   entries: (key: string) => readonly unknown[]
   entriesOfSlot: (key: string) => readonly unknown[]
   subscribe: (key: string, fn: () => void) => () => void

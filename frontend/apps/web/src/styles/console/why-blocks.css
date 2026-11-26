@@ -1,0 +1,168 @@
+/* ============================================================
+   Why blocks: the summary is the question, the body is the answer
+   ============================================================ */
+details.why {
+  padding: 10px 14px;
+  margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+details.why > summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+}
+
+details.why > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The marker is drawn with borders, never a font code point: a glyph is how the prototype ended up
+   printing a stray "B8" on every page. */
+details.why > summary::before {
+  width: 0;
+  height: 0;
+  content: '';
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--text-mute);
+  transition: transform 0.15s ease;
+}
+
+details.why[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.why p {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text-soft);
+}
+
+.stage .link {
+  margin-left: 6px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.decision-panel {
+  padding: 12px 14px;
+  margin-top: 12px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.decision-panel h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.decision-panel .advice-list {
+  padding-left: 20px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text-soft);
+}
+
+.decision-panel .hint {
+  margin-bottom: 0;
+}
+
+.ignored-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--neutral);
+  background: var(--neutral-bg);
+  border-radius: 999px;
+}
+
+/* An ignored finding stays visible and stays in place: a review trail that deletes its own entries is
+   indistinguishable from a finding that never existed. */
+.finding.ignored {
+  opacity: 0.75;
+}
+
+.finding.ignored .code {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-mute);
+}
+
+.supplement {
+  padding-top: 14px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.supplement h3 {
+  margin: 0 0 6px;
+}
+
+.supplement .form-actions {
+  align-items: center;
+}
+
+.insp-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.rew-box {
+  padding: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.diff {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.diff-side {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.diff-tag {
+  display: block;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.diff-tag.del {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.diff-tag.add {
+  color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.diff-side pre {
+  padding: 8px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

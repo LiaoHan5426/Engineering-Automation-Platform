@@ -1,0 +1,33 @@
+/* Layout primitives can be used separately or nested. */
+:where(.eap-layout) {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+:where(.eap-layout--vertical) {
+  flex-direction: column;
+}
+
+:where(.eap-layout--horizontal) {
+  flex-direction: row;
+}
+
+:where(.eap-layout__header, .eap-layout__aside, .eap-layout__footer) {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+:where(.eap-layout__aside) {
+  inline-size: var(--eap-layout-aside-width, auto);
+  overflow: auto;
+}
+
+:where(.eap-layout__content) {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}

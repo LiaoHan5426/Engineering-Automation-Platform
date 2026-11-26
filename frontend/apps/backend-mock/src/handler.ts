@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createMockChatBackend } from './chatBackend.ts'
 import { mockLanguage, mockProblem } from './problems.ts'
 import { ChatExecutionStatus } from '@eap/runtime-client/contracts'
+import { mockNotifySnapshot, publishMockNotify, writeMockNotifySse } from './notifyBackend.ts'
 
 async function readJson(req: IncomingMessage, limit: number): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = []
@@ -68,8 +69,31 @@ export function createMockHandler() {
     res.setHeader('Content-Language', language)
     // This namespace never proxies to Java or any external model service.
     try {
-      const body = await readJson(req, 262144)
       const url = new URL(req.url ?? '/', 'http://mock.local')
+      if (req.method === 'GET' && url.pathname === '/local-workspace/plugins') {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+          .end(JSON.stringify({ items: [] }))
+        return
+      }
+      if ((req.method ?? 'GET').toUpperCase() === 'GET' && url.pathname === '/notify/snapshot') {
+        const after = Number(url.searchParams.get('after') ?? '0')
+        if (!Number.isFinite(after) || after < 0) {
+          res
+            .writeHead(400, { 'Content-Type': 'application/problem+json; charset=utf-8' })
+            .end(JSON.stringify(mockProblem(400, { code: 'NOTIFY_AFTER_INVALID' }, language)))
+          return
+        }
+        res
+          .writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+          .end(JSON.stringify(mockNotifySnapshot(after)))
+        return
+      }
+      if ((req.method ?? 'GET').toUpperCase() === 'GET' && url.pathname === '/notify/stream') {
+        const after = Number(url.searchParams.get('after') ?? '0')
+        await writeMockNotifySse(req, res, Number.isFinite(after) ? after : 0)
+        return
+      }
+      const body = await readJson(req, 262144)
       if (url.searchParams.has('connectionId'))
         body.connectionId = url.searchParams.get('connectionId')
       const reply = await backend.handle(req.method ?? 'GET', url.pathname + url.search, body)
@@ -134,6 +158,16 @@ export function createMockHandler() {
             })}\n\n`,
           )
         }
+        publishMockNotify({
+          kind: 'session',
+          severity: (payload.status ?? ChatExecutionStatus.SUCCEEDED) === ChatExecutionStatus.SUCCEEDED
+            ? 'info'
+            : 'error',
+          code: 'CHAT_TURN_' + (payload.status ?? ChatExecutionStatus.SUCCEEDED),
+          title: '会话已更新',
+          text: 'mock conversation turn finished',
+          conversationId,
+        })
         res.end()
         return
       }

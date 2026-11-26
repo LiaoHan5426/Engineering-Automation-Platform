@@ -10,64 +10,26 @@
  * No EAP profile.
  */
 
-import { createApp, nextTick, type App } from 'vue'
+import { createAppI18n } from '@eap/i18n'
+import { pluginRequire } from '../moduleLoader'
+import { createApp, Fragment, h, nextTick, Teleport, type App } from 'vue'
 import { installLayoutSlotFacade } from './layoutFacade'
 import { retainLayoutRegions } from './layoutRegions'
 import { createHostProxiedRemote, type HostFetch } from './hostRemotes'
 import { installReactSlotBridge } from './reactSlotBridge'
 import { installShellLayout } from './shellFrame'
 import { createShellContext } from './shellContext'
+import { createSidebarSeat, WORKSPACE_SEAT } from './sidebarSeat'
 import { createEapSlotRegistry } from './slotRegistry'
-import type { ClientContext } from './types'
+import type { ClientContext, LocaleService } from './types'
+
+import './pluginTheme.css'
 
 const COLUMN_ID = 'eap-cordis-sidebar-right'
 
 export type CordisBootHandle = {
   ctx: ClientContext
   dispose: () => void
-}
-
-function createMinimalLocale() {
-  const listeners = new Set<() => void>()
-  let revision = 1
-  let snap = { revision }
-  const dicts = new Map<string, Record<string, string>>()
-  const bump = () => {
-    revision += 1
-    snap = { revision }
-    for (const l of listeners) l()
-  }
-  return {
-    /** LocaleFace extends HostObservable<{ revision }> for the Vue renderer. */
-    getSnapshot: () => snap,
-    subscribe(listener: () => void) {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    bind(ns: string) {
-      return (key: string, params?: Record<string, unknown>) => {
-        const dict = dicts.get(`${ns}:zh`) ?? dicts.get(`${ns}:en`)
-        let text = dict?.[key] ?? key
-        if (params) {
-          for (const [name, value] of Object.entries(params)) {
-            text = text.replaceAll(`{${name}}`, String(value))
-          }
-        }
-        return text
-      }
-    },
-    register(ns: string, packs: Record<string, Record<string, string>> | unknown) {
-      if (packs && typeof packs === 'object') {
-        for (const [lang, dict] of Object.entries(packs as Record<string, Record<string, string>>)) {
-          if (dict && typeof dict === 'object') dicts.set(`${ns}:${lang}`, dict)
-        }
-      }
-      bump()
-      return () => {}
-    },
-    getLocale: () => ({ active: 'zh', revision }),
-    t: (key: string) => key,
-  }
 }
 
 function ensureColumn(): HTMLElement {
@@ -98,6 +60,7 @@ function applyShellLayout(open: boolean) {
 export async function bootCordisClient(options: {
   hostApiBase: string
   fetchHost: HostFetch
+  locale?: LocaleService
 }): Promise<CordisBootHandle> {
   const ctx = createShellContext()
   const releaseContext = ctx.dispose.bind(ctx)
@@ -113,10 +76,41 @@ export async function bootCordisClient(options: {
   ctx.provide('remote', remote as never)
   ctx.provide('remote.session', remote.session as never)
   ctx.provide('remote.settings', remote.settings as never)
-  ctx.provide('remote.workspaceFiles', (remote as { workspaceFiles: unknown }).workspaceFiles as never)
+  ctx.provide(
+    'remote.workspaceFiles',
+    (remote as { workspaceFiles: unknown }).workspaceFiles as never,
+  )
 
-  const locale = createMinimalLocale()
+  const locale =
+    options.locale ??
+    createAppI18n({
+      locale: 'zh-CN',
+      fallbackLocale: 'en-US',
+    }).createPluginLocale('cordis')
   ctx.provide('locale', locale as never)
+
+  // A workspace presentation seat, backed by py-backend's cwd.
+  const listeners = new Set<() => void>()
+  let sessionSnapshot: { byId: Record<string, { cwd: string }> } = { byId: {} }
+  ctx.provide('sessions', {
+    list: {
+      getSnapshot: () => sessionSnapshot,
+      subscribe(listener: () => void) {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+    },
+  })
+  void options
+    .fetchHost('session.cwd', { sessionId: WORKSPACE_SEAT })
+    .then((value) => {
+      const cwd = (value as { cwd?: unknown } | null)?.cwd
+      if (typeof cwd !== 'string' || !cwd) return
+      sessionSnapshot = { byId: { [WORKSPACE_SEAT]: { cwd } } }
+      for (const listener of listeners) listener()
+    })
+    .catch(() => {})
+  disposers.push(() => listeners.clear())
 
   // 2) Declare the catalog tree. The shell owns every seat, including the right column.
   const releaseRegions = retainLayoutRegions()
@@ -130,13 +124,23 @@ export async function bootCordisClient(options: {
 
   // 3) Mount root. The right column is the sidebar-right outlet.
   const column = ensureColumn()
+  const sidebar = createSidebarSeat(
+    slots,
+    column,
+    options.locale && (() => locale.t('desktop.sidebarStart')),
+    options.locale && (() => locale.t('desktop.sidebarNewTab')),
+  )
+  disposers.push(sidebar.dispose)
+  ctx.provide('sidebarRightTabs', sidebar.registry)
+  ctx.provide('sidebarRight', sidebar.controller)
   applyShellLayout(true)
   const shell = document.getElementById('eap-dsh-region-shell')
   if (!shell) throw new Error('missing layout outlet shell')
   let vueApp: App | null = createApp({
     name: 'EapCordisMount',
     setup() {
-      return () => slots.renderSlot('root', {})
+      return () =>
+        h(Fragment, [slots.renderSlot('root', {}), h(Teleport, { to: column }, [h(sidebar.View)])])
     },
   })
   vueApp.mount(shell)
@@ -153,9 +157,7 @@ export async function bootCordisClient(options: {
   // Provide non-fiber helpers a plugin may read via ctx.get / property access.
   ctx.provide('connection', { state: 'connected' } as never)
   ctx.provide('modules', {
-    import: async () => {
-      throw new Error('MODULE_IMPORT_USE_LOADER')
-    },
+    import: async (specifier: string) => pluginRequire(specifier),
   } as never)
 
   return {

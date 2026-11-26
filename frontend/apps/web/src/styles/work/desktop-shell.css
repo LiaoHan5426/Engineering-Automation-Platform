@@ -1,0 +1,316 @@
+/* Desktop shell: fixed activity rail and contextual navigation. */
+
+.body--sql {
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr) var(
+      --eap-layout-rail-width
+    );
+}
+
+.body > .workbench {
+  padding: 26px 30px;
+  overflow-x: hidden;
+  background: var(--surface);
+  border-radius: 18px;
+}
+
+.body > .workbench > .eap-feedback {
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+.model-settings-workspace .page-head h1 {
+  font-size: 24px;
+}
+
+.model-settings-workspace .eyebrow {
+  display: none;
+}
+
+.model-settings-workspace .connection-panel {
+  background: var(--surface);
+}
+
+.desktop-navigation--chat .desktop-sidebar {
+  display: none;
+}
+
+.context-toolbar {
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.composer-quick {
+  display: grid;
+  gap: 4px;
+  min-width: 100px;
+  font-size: 11px;
+}
+
+.composer-quick select {
+  max-width: 190px;
+}
+
+.composer-model {
+  margin-left: auto;
+}
+
+.composer-manage {
+  align-self: center;
+  font-size: 11px;
+}
+
+@media (width <= 1100px) {
+  .body {
+    grid-template-columns:
+      calc(var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px))
+      minmax(0, 1fr);
+  }
+
+  .body > .inspector {
+    display: none;
+  }
+}
+
+.body--chat {
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr);
+}
+
+@media (width <= 680px) {
+  .body > .workbench {
+    padding: 18px 16px;
+  }
+
+  .body--chat > .workbench {
+    padding: 0;
+  }
+
+  .topbar .brand {
+    display: none;
+  }
+
+  .topbar {
+    padding-inline: 12px;
+  }
+}
+
+.chat-composer {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.chat-composer > label,
+.chat-composer .task-context {
+  min-width: 0;
+}
+
+.chat-composer textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.conversation-analysis {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.chat-workspace .context-toolbar .composer-quick {
+  flex: 0 0 auto;
+  min-width: 120px;
+}
+
+.chat-workspace .context-toolbar .composer-model {
+  flex: 1 1 140px;
+  min-width: 140px;
+}
+
+.chat-workspace .context-toolbar .composer-settings-button {
+  margin-left: 0;
+}
+
+.chat-main > .chat-composer > label {
+  display: block;
+}
+
+.chat-main > .chat-composer .task-context {
+  padding-top: 6px;
+  border-top: 0;
+}
+
+.chat-main > .chat-composer .context-toolbar {
+  gap: 8px;
+}
+
+.chat-main > .chat-composer .composer-quick {
+  min-width: 90px;
+}
+
+.chat-main > .chat-composer select {
+  padding: 7px 8px;
+  background: var(--surface-2);
+  border: 0;
+}
+
+.body.body--chat {
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr);
+}
+
+.body.body--sql {
+  grid-template-columns: var(--eap-layout-navigation-width) minmax(0, 1fr) var(
+      --eap-layout-rail-width
+    );
+}
+
+.shell-tool {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.sidebar-toggle {
+  display: none;
+}
+
+@media (width <= 1100px) {
+  .body.body--chat,
+  .body.body--sql {
+    grid-template-columns:
+      calc(var(--eap-layout-activity-width) + min(var(--eap-layout-sidebar-width), 254px))
+      minmax(0, 1fr);
+  }
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: var(--eap-layout-topbar-height) 0 0 var(--eap-layout-activity-width);
+  z-index: 35;
+  display: none;
+  margin: 0;
+}
+
+@media (width <= 760px) {
+  .body,
+  .body.body--chat,
+  .body.body--sql {
+    grid-template-columns: var(--eap-layout-activity-width) minmax(0, 1fr);
+  }
+
+  .app .desktop-navigation .desktop-sidebar {
+    display: none;
+  }
+
+  .sidebar-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  /* Keep rail + workbench width; project pane overlays with mask so composer is not squeezed. */
+  .app.drawer-open .body,
+  .app.drawer-open .body.body--chat,
+  .app.drawer-open .body.body--sql {
+    grid-template-columns: var(--eap-layout-activity-width) minmax(0, 1fr);
+  }
+
+  .app.drawer-open .desktop-navigation .desktop-sidebar {
+    position: fixed;
+    top: var(--eap-layout-topbar-height);
+    bottom: 0;
+    left: var(--eap-layout-activity-width);
+    z-index: 40;
+    display: flex;
+    width: min(280px, calc(100vw - var(--eap-layout-activity-width)));
+    box-shadow: 12px 0 32px color-mix(in srgb, var(--text) 18%, transparent);
+  }
+
+  .app.drawer-open .sidebar-backdrop {
+    display: block;
+  }
+
+  .chat-main > .chat-composer {
+    position: relative;
+    z-index: 16;
+    width: calc(100% - 16px);
+  }
+
+  .conversation-sidebar {
+    position: relative;
+    inset: auto;
+    bottom: auto;
+  }
+
+  .chat-workspace .context-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .chat-workspace .preview-input-box .context-toolbar > .eap-button[type='submit'] {
+    margin-left: auto;
+  }
+
+  .chat-workspace .live-utilities {
+    gap: 6px;
+    padding: 8px 12px;
+  }
+
+  .chat-workspace .session-status {
+    flex: 1 1 140px;
+  }
+
+  .chat-workspace .session-tools {
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+
+  /* Multi-page 708 matrix: keep sidebar toggle + page title + one primary action reachable. */
+  .body > .workbench {
+    padding: 16px 12px;
+  }
+
+  .body--chat > .workbench {
+    padding: 0;
+  }
+
+  .topbar {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .topbar .brand {
+    display: none;
+  }
+
+  .topbar .menu-wrap {
+    min-width: 0;
+    max-width: 108px;
+  }
+
+  .topbar .ws {
+    gap: 0;
+    max-width: 108px;
+  }
+
+  .topbar .ws b,
+  .topbar .ws .caret {
+    max-width: 88px;
+    font-size: 11px;
+  }
+
+  .topbar .sql-top-secondary {
+    display: none;
+  }
+
+  .topbar .sql-top-primary {
+    flex: 0 0 auto;
+  }
+
+  .topbar .eap-chip {
+    display: none;
+  }
+
+  .desktop-page-title {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 12px;
+  }
+}

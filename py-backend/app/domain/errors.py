@@ -20,3 +20,10 @@ class ChatErrorCode(StrEnum):
 class ConnectionErrorCode(StrEnum):
     UNKNOWN_CONNECTION = "UNKNOWN_CONNECTION"
     INVALID_CONNECTION = "INVALID_CONNECTION"
+
+
+class LlmError(Exception):
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__(detail)
+        self.code = code
+        self.detail = detail

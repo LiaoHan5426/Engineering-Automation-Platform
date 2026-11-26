@@ -1,0 +1,91 @@
+/* Composer menus stay above the input toolbar instead of expanding the page. */
+
+.chat-workspace .composer-settings-button {
+  margin-left: auto;
+}
+
+.chat-workspace .composer-model {
+  min-width: 0;
+  max-width: min(60%, 320px);
+}
+
+.chat-workspace .composer-model select {
+  max-width: 100%;
+}
+
+.composer-popup {
+  width: min(440px, calc(100vw - 88px));
+  min-width: 0;
+  max-height: min(420px, var(--reka-popover-content-available-height));
+}
+
+.chat-workspace .composer-settings {
+  right: 0;
+  left: auto;
+  display: grid;
+  gap: 12px;
+}
+
+.chat-workspace .composer-popup label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.chat-workspace .composer-popup h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.chat-workspace .composer-popup-content {
+  display: grid;
+  gap: 12px;
+}
+
+.chat-workspace .context-chips:empty {
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.chat-workspace .context-toolbar > .eap-button {
+  flex: 0 0 auto;
+}
+
+.chat-workspace .context-toolbar > .eap-button[type='submit'] {
+  min-width: 72px;
+}
+
+.chat-workspace .preview-input-box .context-toolbar > .eap-button[type='submit'] {
+  width: 34px;
+  min-width: 34px;
+}
+
+@media (width <= 760px) {
+  .chat-workspace .context-toolbar {
+    gap: 5px;
+  }
+
+  .chat-workspace .context-toolbar .composer-model {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .chat-workspace .context-toolbar .composer-model select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .chat-workspace .context-toolbar > .eap-button[type='submit'] {
+    min-width: 48px;
+  }
+}

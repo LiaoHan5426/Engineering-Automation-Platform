@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createMessagePlugin } from '@eap/message'
 import NProgress from 'nprogress'
 import { configureRuntimeRequests } from '@eap/runtime-client'
 import { initializeAppearance } from './features/settings/appearance'
@@ -8,7 +9,8 @@ import '@eap/plugin-table/styles.css'
 import App from './App.vue'
 import './style.css'
 import './work-pages.css'
-import { i18n } from './lib/i18n'
+import { registerMessagesKey } from '@eap/i18n'
+import { i18n, registerMessages } from './lib/i18n'
 import { scenarioCatalog } from './features/shell/workbench'
 import { chatStorage } from './features/chat/chatService'
 import { clearLegacyChatHistory } from './features/chat/chatHistory'
@@ -29,5 +31,10 @@ configureRuntimeRequests({
 const disposeAppearance = initializeAppearance()
 if (import.meta.hot) import.meta.hot.dispose(disposeAppearance)
 
-createApp(App).use(tablePlugin).use(i18n).mount('#app')
+createApp(App)
+  .use(tablePlugin)
+  .use(i18n)
+  .use(createMessagePlugin())
+  .provide(registerMessagesKey, registerMessages)
+  .mount('#app')
 void scenarioCatalog.load()

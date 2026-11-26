@@ -55,9 +55,21 @@ def test_git_diff_execution_is_a_finished_argv_observation(client: TestClient) -
 
     again = client.post(
         "/api/cli-programs/git/operations/git-diff/executions",
-        json={"requestId": "req-git-diff-1"},
+        json={"requestId": " req-git-diff-1 "},
     )
+    assert again.status_code == 200
     assert again.json()["id"] == body["id"]
+
+    executions = "/api/cli-programs/git/operations/git-diff/executions"
+    listed = client.get(executions)
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()["items"]] == [body["id"]]
+    detail = client.get(f"{executions}/{body['id']}")
+    assert detail.status_code == 200
+    cancelled = client.post(f"{executions}/{body['id']}/cancel")
+    assert cancelled.status_code == 200
+    assert cancelled.json() == detail.json()
+    assert cancelled.json()["status"] == body["status"]
 
     review = client.get(
         f"/api/cli-programs/git/operations/git-diff/executions/{body['id']}/process-review"

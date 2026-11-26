@@ -1,0 +1,49 @@
+/* Geometry shared by workbench consumers. Product skins may override it. */
+:where(.eap-workbench-frame).eap-layout {
+  display: grid;
+  grid-template-rows: var(--eap-layout-topbar-height, 56px) minmax(0, 1fr);
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:where(.eap-workbench-frame > .topbar) {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+:where(.eap-workbench-frame) > .eap-layout {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: var(--eap-layout-navigation-width, 288px) minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+:where(.eap-workbench-frame .workbench) {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+:where([data-layout-surface]) > * {
+  height: 100%;
+}
+
+:where(.eap-workbench-frame[data-layout-no-topbar]).eap-layout {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+:where(.eap-workbench-frame[data-layout-has-status]).eap-layout {
+  grid-template-rows: var(--eap-layout-topbar-height, 56px) minmax(0, 1fr) auto;
+}
+
+:where(.eap-workbench-frame[data-layout-has-status][data-layout-no-topbar]).eap-layout {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+:where(.eap-workbench-frame > .body[data-layout-no-navigation]).eap-layout {
+  grid-template-columns: minmax(0, 1fr);
+}

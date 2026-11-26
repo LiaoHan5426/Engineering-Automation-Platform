@@ -1,0 +1,86 @@
+.chat-page-head {
+  position: relative;
+  padding-right: 260px;
+}
+
+.records-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 8px 12px;
+  anchor-name: --chat-records;
+  font-size: 12px;
+  color: var(--text-soft);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.chat-records-panel {
+  position: fixed;
+  inset: 110px 24px auto auto;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 150px);
+  padding: 18px;
+  margin: 0;
+  overflow: auto;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.chat-records-panel::backdrop {
+  background: transparent;
+}
+
+.records-panel-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.records-panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.chat-records-panel .hint {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-mute);
+}
+
+.chat-records-panel ul {
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
+@supports (top: anchor(bottom)) {
+  .chat-records-panel {
+    top: anchor(bottom);
+    right: anchor(right);
+    margin-top: 8px;
+    position-anchor: --chat-records;
+  }
+}
+
+@media (width <= 760px) {
+  .chat-page-head {
+    padding-top: 42px;
+    padding-right: 0;
+  }
+
+  .records-toggle {
+    right: auto;
+    left: 0;
+  }
+
+  .chat-records-panel {
+    inset: 145px 16px auto auto;
+    max-height: calc(100dvh - 200px);
+  }
+}

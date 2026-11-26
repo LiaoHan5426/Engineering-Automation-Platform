@@ -6,106 +6,90 @@ from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse
 
 from app.api.problem import problem, problem_from_code
-from app.plugins.dsh_package import DshPackageError
-from app.plugins.host_bridge import PluginHostBridge
-from app.plugins.install_spec import InvalidInstallSpecError
-from app.plugins.installer import InstallFetchError, install_from_spec
-from app.plugins.registry import PluginRegistry
+from app.application.plugins import PluginService
+from app.domain.plugin_errors import (
+    DshPackageError, InstallFetchError, InstallSpecMissingError, InvalidInstallSpecError,
+)
 
 router = APIRouter(prefix="/plugins", tags=["plugins"])
 
 
-def _registry(request: Request) -> PluginRegistry:
-    return request.app.state.plugin_registry
-
-
-def _bridge(request: Request) -> PluginHostBridge:
-    return request.app.state.plugin_host_bridge
+def plugin_service(request: Request) -> PluginService:
+    return request.app.state.plugins
 
 
 @router.get("")
 def list_plugins(request: Request) -> dict[str, Any]:
-    return _registry(request).list_plugins()
+    return plugin_service(request).list_plugins()
 
 
 @router.post("/install")
 async def install_plugin(request: Request):
     body = await request.json()
-    raw = str(body.get("spec") or body.get("sourcePath") or "")
+    raw = str(body.get("spec") or body.get("sourcePath") or "") if isinstance(body, dict) else ""
     try:
-        item = install_from_spec(_registry(request), raw)
+        return await plugin_service(request).install(raw)
     except InvalidInstallSpecError as exc:
         return problem(400, "INVALID_INSTALL_SPEC", exc.reason)
     except InstallFetchError as exc:
         return problem(400, exc.code, str(exc))
     except DshPackageError as exc:
         return problem(400, str(exc), "not a DSH web client package")
-    _bridge(request).sync_enabled()
-    return item
 
 
 @router.post("/{name}/enable")
 def enable_plugin(name: str, request: Request):
     try:
-        item = _registry(request).enable(name)
+        item = plugin_service(request).enable(name)
     except LookupError:
         return problem_from_code("UNKNOWN_PLUGIN")
     except DshPackageError as exc:
         return problem(400, str(exc), "plugin package broken")
-    _bridge(request).sync_enabled()
     return item
 
 
 @router.post("/{name}/disable")
 def disable_plugin(name: str, request: Request):
     try:
-        item = _registry(request).disable(name)
+        item = plugin_service(request).disable(name)
     except LookupError:
         return problem_from_code("UNKNOWN_PLUGIN")
-    _bridge(request).sync_enabled()
     return item
 
 
 @router.post("/{name}/update")
 def update_plugin(name: str, request: Request):
-    registry = _registry(request)
     try:
-        spec = registry.install_spec_of(name)
+        return plugin_service(request).update(name)
     except LookupError:
         return problem_from_code("UNKNOWN_PLUGIN")
-    if not spec.strip():
-        return problem(409, "INSTALL_SPEC_MISSING", "plugin has no recorded install spec")
-    try:
-        item = install_from_spec(registry, spec)
+    except InstallSpecMissingError as exc:
+        return problem(409, "INSTALL_SPEC_MISSING", str(exc))
     except InvalidInstallSpecError as exc:
         return problem(400, "INVALID_INSTALL_SPEC", exc.reason)
     except InstallFetchError as exc:
         return problem(400, exc.code, str(exc))
     except DshPackageError as exc:
         return problem(400, str(exc), "not a DSH web client package")
-    _bridge(request).sync_enabled()
-    return item
 
 
 @router.post("/{name}/uninstall")
 def uninstall_plugin(name: str, request: Request):
     try:
-        _registry(request).uninstall(name)
+        return plugin_service(request).uninstall(name)
     except LookupError:
         return problem_from_code("UNKNOWN_PLUGIN")
-    _bridge(request).sync_enabled()
-    return {"name": name, "removed": True}
 
 
 @router.get("/contributions")
 def contributions(request: Request) -> dict[str, Any]:
-    return _registry(request).contributions()
+    return plugin_service(request).contributions()
 
 
 @router.get("/{name}/files/{file_path:path}")
 def plugin_file(name: str, file_path: str, request: Request):
     try:
-        target = _registry(request).resolve_file(name, file_path)
+        target = plugin_service(request).resolve_file(name, file_path)
     except LookupError:
         return problem_from_code("UNKNOWN_PLUGIN")
     except DshPackageError:
@@ -119,13 +103,15 @@ def plugin_file(name: str, file_path: str, request: Request):
 @router.get("/host/{name}/status")
 def host_status(name: str, request: Request):
     try:
-        return _bridge(request).status(name)
+        return plugin_service(request).status(name)
     except LookupError:
         return problem(409, "HOST_NOT_ACTIVE", "plugin host bridge not active; enable the plugin")
 
 
 @router.post("/host/{name}/sidebar/api/{method}")
 async def sidebar_api(name: str, method: str, request: Request):
+    if request.headers.get("content-type", "").split(";")[0] != "application/json":
+        return problem(415, "UNSUPPORTED_MEDIA_TYPE", "Expected application/json")
     body: dict[str, Any] = {}
     try:
         raw = await request.json()
@@ -133,7 +119,7 @@ async def sidebar_api(name: str, method: str, request: Request):
     except Exception:  # noqa: BLE001
         body = {}
     try:
-        return _bridge(request).handle_sidebar_api(name, method, body)
+        return plugin_service(request).sidebar(name, method, body)
     except LookupError:
         return problem(409, "HOST_NOT_ACTIVE", "plugin host bridge not active; enable the plugin")
 
@@ -141,6 +127,6 @@ async def sidebar_api(name: str, method: str, request: Request):
 @router.get("/host/{name}/sidebar/api")
 def sidebar_api_root(name: str, request: Request):
     try:
-        return _bridge(request).handle_sidebar_api(name, "health", {})
+        return plugin_service(request).sidebar(name, "health", {})
     except LookupError:
         return problem(409, "HOST_NOT_ACTIVE", "plugin host bridge not active; enable the plugin")

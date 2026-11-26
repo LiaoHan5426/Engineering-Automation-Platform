@@ -3,6 +3,47 @@
 Colocated local Chat host: FastAPI + SQLite. Virtualenv lives **inside this directory**
 (`.venv`), not at the repository root. Decision: `docs/decisions/py-backend-thin-mvp.md`.
 
+## Git execution architecture
+
+The Git HTTP routes call `app/application/git_executions.py`. The application
+service coordinates request deduplication and completed observations using the
+execution record in `app/domain/git_execution.py`. The app factory injects the
+local Git runner and SQLite store from `app/infrastructure/`. The store uses
+the existing `git_execution` table.
+
+## Chat turn architecture
+
+`app/application/chat.py` coordinates turns and yields structured execution
+events. The HTTP adapter in `app/api/conversations.py` encodes these events as
+SSE. `app/domain/execution_journal.py` owns in-memory execution state and
+interlocks. The app factory injects the conversation store and model stream
+adapters from `app/infrastructure/`. The conversation adapter persists the user
+and assistant messages in one transaction.
+
+## Plugin lifecycle and Host architecture
+
+`app/application/plugins.py` coordinates plugin lifecycle changes, Host
+synchronization, and install-failure notifications. The plugin and same-origin
+sidebar routers translate HTTP requests into these use cases. The registry,
+installer, and Cordis Host bridge are composed from
+`app/infrastructure/plugins/`.
+
+## Built-in local-workspace plugins
+
+The local Host registers workspace files and Git as global
+capabilities in `app/infrastructure/local_workspace/registry.py`. Web lists
+them through `GET /api/local-workspace/plugins` and calls registered methods via
+`POST /api/local-workspace/{method}`. The DSH sidebar keeps its existing wire
+protocol and dispatches to the same registry. File and Git reads use the
+configured workspace root, including when no DSH sidebar is installed.
+
+To enable saving existing UTF-8 files and staging or unstaging repository
+paths, set `EAP_LOCAL_WORKSPACE_WRITE_ENABLED=true` in the local Host environment
+and restart it. Enable this for a trusted local workspace. Saves require the
+`mtimeMs` returned by `fs.read` as `expectedMtimeMs` and return `fs-conflict`
+when the file changed. The DSH client's raw `POST /sidebar/write` uses the
+same save handler as `fs.write`.
+
 ## Setup (Windows PowerShell)
 
 ```powershell

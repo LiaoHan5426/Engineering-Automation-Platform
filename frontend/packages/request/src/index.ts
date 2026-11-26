@@ -5,8 +5,15 @@ import axios, {
   type AxiosResponse,
 } from 'axios'
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** When true, the call does not change onPendingChange (probes, notify catch-up). */
+    silent?: boolean
+  }
+}
+
 export type RequestClient = AxiosInstance
-export type RequestOptions = AxiosRequestConfig
+export type RequestOptions = AxiosRequestConfig & { silent?: boolean }
 export type RequestResponse<T = unknown> = AxiosResponse<T>
 export type RequestHeaders = Record<string, string | undefined>
 export type RequestClientOptions = AxiosRequestConfig & {
@@ -27,20 +34,21 @@ export function createRequestClient(options: RequestClientOptions = {}): Request
       for (const [key, value] of Object.entries(headers)) {
         if (value !== undefined) request.headers.set(key, value)
       }
-    onPendingChange?.(++pending)
+    if (!request.silent) onPendingChange?.(++pending)
     return request
   })
-  const finish = () => {
+  const finish = (silent?: boolean) => {
+    if (silent) return
     pending = Math.max(0, pending - 1)
     onPendingChange?.(pending)
   }
   client.interceptors.response.use(
     (response) => {
-      finish()
+      finish(response.config.silent)
       return response
     },
     (error: unknown) => {
-      finish()
+      finish(axios.isAxiosError(error) ? error.config?.silent : undefined)
       return Promise.reject(error)
     },
   )

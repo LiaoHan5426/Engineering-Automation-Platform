@@ -13,7 +13,9 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@eap/i18n": "workspace:*",
     "@eap/runtime-client": "workspace:*",
+    "@eap/ui": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vue": "catalog:frontend"
@@ -22,6 +24,7 @@
     "@eap/tsconfig": "workspace:*",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-vue": "catalog:tooling",
     "typescript": "catalog:tooling",
     "vite": "catalog:tooling",
     "vite-plus": "catalog:tooling"

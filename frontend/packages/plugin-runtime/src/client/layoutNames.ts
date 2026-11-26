@@ -1,6 +1,6 @@
 import { LAYOUT_PREFIX, LAYOUT_SLOTS } from './layoutSlots'
 
-const CATALOG = new Set(LAYOUT_SLOTS.map((slot) => slot.key))
+const CATALOG = new Set<string>(LAYOUT_SLOTS.map((slot) => slot.key))
 
 /** Registry name for a catalog key. `root` stays `root` because the shell renders that name. */
 export function canonicalSlotName(name: string): string {

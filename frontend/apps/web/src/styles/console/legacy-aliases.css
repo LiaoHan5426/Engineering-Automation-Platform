@@ -1,0 +1,80 @@
+/* ============================================================
+   Buttons / badges / feedback / panels / metrics live in @eap/ui.
+   Keep layout helpers and legacy class aliases here for gradual migration.
+   ============================================================ */
+.feedback,
+.error-message,
+.planning-note {
+  padding: 11px 14px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.feedback {
+  color: var(--info);
+  background: var(--info-bg);
+}
+
+.error-message {
+  color: var(--danger);
+  overflow-wrap: anywhere;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+}
+
+.planning-note {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--warn-text);
+  background: var(--warn-bg);
+}
+
+.panel-block {
+  margin-top: 16px;
+}
+
+.panel-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.panel-head p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.list-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.list-item b {
+  font-size: 13.5px;
+}
+
+.list-item small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}

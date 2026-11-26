@@ -1,0 +1,13 @@
+{
+  "name": "@eap/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "vue": "catalog:frontend",
+    "vue-i18n": "catalog:frontend"
+  }
+}

@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vite-plus/test'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import App from '../../../src/App.vue'
+import { createMessagePlugin } from '@eap/message'
 import { i18n } from '../../../src/lib/i18n'
 
-const render = () => renderToString(createSSRApp(App).use(i18n))
+const render = () => renderToString(createSSRApp(App).use(i18n).use(createMessagePlugin()))
 
 /**
  * The desktop shell is a 72px icon rail, a workspace sidebar, and the main surface.

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { createElement } from 'react'
+import { createElement, type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vite-plus/test'
 import { classifyFileType, fileSizeText } from '../src/client/pluginUi.ts'
@@ -22,12 +22,30 @@ describe('plugin require', () => {
     const html = renderToStaticMarkup(createElement(ui.FileTypeIcon, { kind: 'vue' }))
     expect(html).toContain('data-eap-ui="FileTypeIcon"')
     expect(html).toContain('data-kind="vue"')
-    const button = renderToStaticMarkup(
-      createElement(ui.Button, {}, 'Close'),
-    )
+    const button = renderToStaticMarkup(createElement(ui.Button, {}, 'Close'))
     expect(button).toContain('<button')
     expect(button).toContain('Close')
     expect(ui.NotAPrimitive).toBeUndefined()
+  })
+
+  it('renders separate glyphs for directory controls and classifies files by path', () => {
+    const ui = pluginRequire('@deepseek-ai/dsh-client-ui-primitives') as Record<
+      string,
+      ComponentType<{ kind?: string; path?: string }>
+    >
+    const render = (name: string, props = {}) =>
+      renderToStaticMarkup(createElement(ui[name]!, props))
+    const path = (html: string) => html.match(/<path d="([^"]+)"/)?.[1]
+    const folder = render('FileTypeIcon', { kind: 'folder' })
+    const file = render('FileTypeIcon', { path: 'candidate.json' })
+    const right = render('IconChevronRightOutlineRegular')
+    const down = render('IconChevronDownOutlineRegular')
+
+    expect(file).toContain('data-kind="json"')
+    expect(folder).toContain('data-kind="folder"')
+    const shapes = [folder, file, right, down].map(path)
+    expect(shapes.every(Boolean)).toBe(true)
+    expect(new Set(shapes).size).toBe(4)
   })
 
   it('does not provide other dsh packages', () => {

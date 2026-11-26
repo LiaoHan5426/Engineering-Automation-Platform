@@ -1,0 +1,105 @@
+.work-page {
+  min-width: 0;
+  max-width: var(--eap-layout-content-max-width);
+  margin: 0 auto;
+  animation: none;
+}
+
+.work-page .page-head {
+  margin-bottom: 22px;
+}
+
+.work-page .page-head h1 {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.035em;
+}
+
+.work-page .page-head > p:last-child {
+  max-width: 76ch;
+  margin-top: 7px;
+  line-height: 1.65;
+}
+
+.work-page .eyebrow {
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 0.16em;
+}
+
+.work-page input:not([type='checkbox'], [type='file'], .eap-input),
+.work-page select:not(.eap-select),
+.work-page textarea:not(.eap-textarea) {
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+}
+
+.work-page textarea:not(.eap-textarea) {
+  resize: vertical;
+}
+
+.work-page input:not(.eap-input):focus-visible,
+.work-page textarea:not(.eap-textarea):focus-visible,
+.work-page select:not(.eap-select):focus-visible {
+  outline: 3px solid var(--accent-soft);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.work-page label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.work-page input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  margin-right: 5px;
+  vertical-align: middle;
+  accent-color: var(--accent);
+}
+
+.work-page .eap-button {
+  min-height: 36px;
+}
+
+.work-page .eap-button:not(.eap-button--card) {
+  white-space: nowrap;
+}
+
+.work-page .eap-feedback {
+  overflow-wrap: anywhere;
+}
+
+.work-overview {
+  padding: 0 16px;
+  margin-bottom: 18px;
+}
+
+.work-overview > summary {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 0;
+  color: var(--text-soft);
+}
+
+.work-overview > summary span {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-mute);
+}
+
+.work-overview[open] {
+  padding-bottom: 16px;
+}

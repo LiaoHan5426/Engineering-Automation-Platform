@@ -1,0 +1,99 @@
+/* ============================================================
+   Console shell: the workspace scope, the shell message, status bar
+   ============================================================ */
+.menu-wrap {
+  position: relative;
+}
+
+.ws .caret {
+  font-size: 10px;
+  color: var(--text-mute);
+}
+
+.menu {
+  display: grid;
+  gap: 4px;
+  width: min(340px, calc(100vw - 24px));
+  max-height: var(--reka-popover-content-available-height);
+}
+
+.menu-head {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-mute);
+  letter-spacing: 0.06em;
+}
+
+.menu-form {
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px 0;
+}
+
+.menu-note {
+  margin: 6px 8px 2px;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text-mute);
+}
+
+.shell-message {
+  padding: 8px 24px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--info);
+  background: var(--info-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.metric-source {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-mute);
+}
+
+.metric-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-mute);
+}
+
+/* 状态条：原来占一整页的「概览」折在这里。四个数字与它们的口径都还在，但落地页是
+   干活的地方——单人本机打开这个工具是为了给它一段 SQL，不是为了先看一遍计数。 */
+.status-strip {
+  padding: 14px;
+  margin: 0 0 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.status-strip .metrics {
+  gap: 10px;
+}
+
+.status-strip .metric-note {
+  margin-top: 8px;
+}
+
+.status-more {
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.status-more > summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-mute);
+  cursor: pointer;
+}
+
+.status-more .why,
+.status-more .eap-panel {
+  margin-top: 12px;
+}

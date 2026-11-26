@@ -1,0 +1,95 @@
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (width <= 1360px) {
+  .body {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+
+  .inspector {
+    display: none;
+  }
+
+  .inspector-toggle {
+    display: inline-flex;
+  }
+
+  .inspector--open {
+    position: fixed;
+    inset: 58px 0 36px auto;
+    z-index: 61;
+    display: block;
+    width: min(380px, 90vw);
+    box-shadow: -8px 0 28px color-mix(in srgb, var(--text) 20%, transparent);
+  }
+
+  .inspector-backdrop {
+    position: fixed;
+    inset: 58px 0 36px;
+    z-index: 60;
+    display: block;
+  }
+
+  .workbench {
+    padding: 18px;
+  }
+}
+
+@media (width <= 1000px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid-2,
+  .editor-grid,
+  .manager-workspace,
+  .document-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (width <= 680px) {
+  .app {
+    grid-template-rows: 56px 1fr 30px;
+  }
+
+  .body {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    flex-flow: row wrap;
+    padding: 10px;
+  }
+
+  .rail__eyebrow,
+  .rail__foot {
+    display: none;
+  }
+
+  .rail .nav {
+    width: auto;
+  }
+
+  .statusbar {
+    gap: 10px;
+    overflow: auto;
+  }
+
+  .metadata-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline {
+    flex-direction: column;
+  }
+
+  .stage + .stage {
+    margin-top: 12px;
+    margin-left: 0;
+  }
+
+  .stage + .stage::before {
+    content: none;
+  }
+}

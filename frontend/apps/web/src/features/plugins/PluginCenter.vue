@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { localWorkspaceApi, type LocalWorkspacePlugin } from '@eap/runtime-client'
 import { useI18n } from 'vue-i18n'
 import { Badge, Button, Input, ConfirmBox, Feedback, Collapse, Dialog } from '@eap/ui'
 import type { PluginHost } from './host'
@@ -10,6 +11,17 @@ import DshPluginManager from './DshPluginManager.vue'
 const props = defineProps<{ host: PluginHost }>()
 const emit = defineEmits<{ dshChanged: [] }>()
 const { t } = useI18n()
+const workspacePlugins = ref<LocalWorkspacePlugin[]>([])
+const workspaceCatalogUnavailable = ref(false)
+const globalManifests = MANIFESTS.filter((manifest) => manifest.scope === 'global')
+onMounted(async () => {
+  try {
+    workspacePlugins.value = (await localWorkspaceApi.listPlugins()).items
+  } catch {
+    workspaceCatalogUnavailable.value = true
+  }
+})
+
 const detailsTarget = ref<PluginId | null>(null)
 const projectId = ref('')
 const observationStale = computed(() => {
@@ -113,211 +125,242 @@ function toggle(host: PluginHost, id: PluginId) {
       <p>{{ t('plugin.centerHint') }}</p>
     </div>
     <DshPluginManager data-testid="dsh-plugin-manager-slot" @changed="emit('dshChanged')" />
-    <div class="plugin-toolbar">
-      <Button
-        variant="secondary"
-        size="sm"
-        data-testid="plugin-refresh"
-        @click="refreshInstallation"
-      >
-        {{ t('plugin.refresh') }}
-      </Button>
-    </div>
-    <ul class="plugin-list">
-      <li v-for="manifest in MANIFESTS" :key="manifest.id" :data-testid="`plugin-${manifest.id}`">
-        <h2>
-          {{ name(manifest.id) }} <span class="hint">{{ manifest.version }}</span>
-        </h2>
-        <span :data-testid="`plugin-runtime-${manifest.id}`">
+    <section aria-labelledby="global-plugins-title" class="global-plugins">
+      <h2 id="global-plugins-title">{{ t('plugin.globalBuiltins') }}</h2>
+      <p class="hint">{{ t('plugin.globalBuiltinsHint') }}</p>
+      <Feedback
+        v-if="workspaceCatalogUnavailable"
+        tone="warning"
+        :message="t('plugin.localCatalogUnavailable')"
+      />
+      <ul v-if="workspacePlugins.length" class="plugin-list">
+        <li v-for="plugin in workspacePlugins" :key="plugin.id">
+          <h3>{{ t(`plugin.localBuiltins.${plugin.id}`) }}</h3>
           <Badge
-            :tone="runtimeTone(host.runtimeOf(manifest.id).kind)"
-            :label="runtimeLabel(host.runtimeOf(manifest.id).kind)"
+            tone="neutral"
+            :label="t(plugin.access === 'read-write' ? 'plugin.localReadWrite' : 'plugin.localReadOnly')"
           />
-        </span>
-        <p
-          v-if="host.runtimeOf(manifest.id).kind === 'dependency_missing'"
-          class="hint"
-          data-testid="plugin-dependency-missing"
-        >
-          {{ t('plugin.dependencyMissingDetail', { deps: host.runtimeOf(manifest.id).message }) }}
-        </p>
-        <p
-          v-if="host.runtimeOf(manifest.id).kind === 'activation_failed'"
-          class="hint"
-          data-testid="plugin-activation-failed"
-        >
-          {{ t('plugin.activationFailedDetail', { reason: host.runtimeOf(manifest.id).message }) }}
-        </p>
+        </li>
+      </ul>
+      <div class="plugin-toolbar">
         <Button
-          :data-testid="'plugin-details-' + manifest.id"
-          @click="detailsTarget = manifest.id"
-          >{{ t('product.pluginDetails') }}</Button
+          variant="secondary"
+          size="sm"
+          data-testid="plugin-refresh"
+          @click="refreshInstallation"
         >
-        <Dialog
-          v-if="detailsTarget === manifest.id"
-          :title="name(manifest.id)"
-          size="lg"
-          @close="detailsTarget = null"
+          {{ t('plugin.refresh') }}
+        </Button>
+      </div>
+      <ul class="plugin-list">
+        <li
+          v-for="manifest in globalManifests"
+          :key="manifest.id"
+          :data-testid="`plugin-${manifest.id}`"
         >
-          <p v-if="PLUGIN_SERVICE_DEPENDENCIES[manifest.id].length" class="hint">
-            {{ t('plugin.dependencies') }}：{{
-              PLUGIN_SERVICE_DEPENDENCIES[manifest.id].map((item) => item.label).join('、')
+          <h2>{{ name(manifest.id) }} <span class="hint">{{ manifest.version }}</span></h2>
+          <span :data-testid="`plugin-runtime-${manifest.id}`">
+            <Badge
+              :tone="runtimeTone(host.runtimeOf(manifest.id).kind)"
+              :label="runtimeLabel(host.runtimeOf(manifest.id).kind)"
+            />
+          </span>
+          <p
+            v-if="host.runtimeOf(manifest.id).kind === 'dependency_missing'"
+            class="hint"
+            data-testid="plugin-dependency-missing"
+          >
+            {{ t('plugin.dependencyMissingDetail', { deps: host.runtimeOf(manifest.id).message }) }}
+          </p>
+          <p
+            v-if="host.runtimeOf(manifest.id).kind === 'activation_failed'"
+            class="hint"
+            data-testid="plugin-activation-failed"
+          >
+            {{
+              t('plugin.activationFailedDetail', { reason: host.runtimeOf(manifest.id).message })
             }}
           </p>
-          <p class="hint">
-            {{ t('plugin.requests') }}：{{ manifest.requests.map((item) => item.id).join('、') }}
-          </p>
-          <section v-if="manifest.id === 'builder'" data-testid="designer-dependencies">
-            <p>{{ t('designer.boundary') }}</p>
-            <Button
-              variant="secondary"
-              data-testid="designer-check"
-              :disabled="host.builderDependencyCheck.value.status === 'checking'"
-              @click="host.checkBuilderDependencies()"
-              >{{ t('designer.check') }}</Button
-            >
-            <p data-testid="designer-check-state">
-              {{ t('designer.' + host.builderDependencyCheck.value.status) }}
-            </p>
-            <p v-if="host.builderDependencyCheck.value.reason">
-              {{ host.builderDependencyCheck.value.reason }}
-            </p>
-            <p v-if="host.builderDependencyCheck.value.snapshot" data-testid="designer-observation">
-              {{
-                t('designer.observed', {
-                  count: host.builderDependencyCheck.value.snapshot.resources[0]?.count,
-                  time: host.builderDependencyCheck.value.snapshot.observedAt,
-                })
+          <Button
+            :data-testid="'plugin-details-' + manifest.id"
+            @click="detailsTarget = manifest.id"
+            >{{ t('product.pluginDetails') }}</Button
+          >
+          <Dialog
+            v-if="detailsTarget === manifest.id"
+            :title="name(manifest.id)"
+            size="lg"
+            @close="detailsTarget = null"
+          >
+            <p v-if="PLUGIN_SERVICE_DEPENDENCIES[manifest.id].length" class="hint">
+              {{ t('plugin.dependencies') }}：{{
+                PLUGIN_SERVICE_DEPENDENCIES[manifest.id].map((item) => item.label).join('、')
               }}
             </p>
-            <Feedback
-              v-if="
-                host.builderDependencyCheck.value.snapshot &&
-                host.builderDependencyCheck.value.status !== 'available'
-              "
-              tone="warning"
-              >{{ t('designer.old') }}</Feedback
-            >
-          </section>
-          <section
-            v-if="manifest.id === 'board'"
-            data-testid="plugin-dependency-observation"
-            aria-live="polite"
-          >
-            <label for="plugin-check-project">{{ t('check.project') }}</label>
-            <Input
-              id="plugin-check-project"
-              v-model="projectId"
-              data-testid="plugin-check-project"
-              :maxlength="120"
-              :disabled="host.boardDependencyCheck.value.status === 'checking'"
-            />
-            <p class="hint">{{ t('check.projectHint') }}</p>
-            <Button
-              variant="secondary"
-              data-testid="plugin-check-dependencies"
-              :disabled="
-                !projectId.trim() ||
-                projectId.length > 120 ||
-                host.boardDependencyCheck.value.status === 'checking'
-              "
-              @click="host.checkBoardDependencies(projectId)"
-              >{{ t('check.action') }}</Button
-            >
-            <p>{{ t(`check.${host.boardDependencyCheck.value.status}`) }}</p>
-            <p v-if="observationStale" class="hint" data-testid="plugin-check-stale">
-              {{ t('check.stale') }}
+            <p class="hint">
+              {{ t('plugin.requests') }}：{{ manifest.requests.map((item) => item.id).join('、') }}
             </p>
-            <p v-if="host.boardDependencyCheck.value.source" class="hint">
-              {{ t('check.source', { source: host.boardDependencyCheck.value.source }) }}
-            </p>
-            <p v-if="host.boardDependencyCheck.value.observedAt" class="hint">
-              {{ t('check.time', { time: host.boardDependencyCheck.value.observedAt }) }}
-            </p>
-            <p v-if="host.boardDependencyCheck.value.reason" class="hint">
-              {{ t('check.reason', { reason: host.boardDependencyCheck.value.reason }) }}
-            </p>
-            <Feedback
-              v-if="!host.installation.value.enabled.board"
-              tone="warning"
-              data-testid="plugin-board-disabled-boundary"
-              >{{ t('check.disabledBoundary') }}</Feedback
-            >
-            <div v-if="snapshot" data-testid="plugin-runtime-snapshot">
-              <p class="hint">
-                {{
-                  t('check.savedObservation', {
-                    project: snapshot.projectId,
-                    time: snapshot.observedAt,
-                  })
-                }}
+            <section v-if="manifest.id === 'builder'" data-testid="designer-dependencies">
+              <p>{{ t('designer.boundary') }}</p>
+              <Button
+                variant="secondary"
+                data-testid="designer-check"
+                :disabled="host.builderDependencyCheck.value.status === 'checking'"
+                @click="host.checkBuilderDependencies()"
+                >{{ t('designer.check') }}</Button
+              >
+              <p data-testid="designer-check-state">
+                {{ t('designer.' + host.builderDependencyCheck.value.status) }}
               </p>
-              <p>{{ t('check.totals', { tasks: snapshot.taskCount, runs: snapshot.runCount }) }}</p>
-              <p>
-                {{
-                  t('check.runs', {
-                    active: snapshot.activeRunCount,
-                    unknown: snapshot.unknownRunCount,
-                  })
-                }}
+              <p v-if="host.builderDependencyCheck.value.reason">
+                {{ host.builderDependencyCheck.value.reason }}
               </p>
-              <p>
+              <p
+                v-if="host.builderDependencyCheck.value.snapshot"
+                data-testid="designer-observation"
+              >
                 {{
-                  t('check.verifications', {
-                    active: snapshot.activeVerificationCount,
-                    unknown: snapshot.unknownVerificationCount,
-                  })
-                }}
-              </p>
-              <p>
-                {{
-                  t('check.writes', {
-                    active: snapshot.activeWriteCount,
-                    unknown: snapshot.unknownWriteCount,
+                  t('designer.observed', {
+                    count: host.builderDependencyCheck.value.snapshot.resources[0]?.count,
+                    time: host.builderDependencyCheck.value.snapshot.observedAt,
                   })
                 }}
               </p>
               <Feedback
-                v-if="!currentObservation"
+                v-if="
+                  host.builderDependencyCheck.value.snapshot &&
+                  host.builderDependencyCheck.value.status !== 'available'
+                "
                 tone="warning"
-                data-testid="plugin-snapshot-old"
-                >{{ t('check.oldSnapshot') }}</Feedback
+                >{{ t('designer.old') }}</Feedback
               >
-              <Feedback v-else-if="openCount" tone="warning" data-testid="plugin-open-work">{{
-                t('check.openWork')
-              }}</Feedback>
-              <p v-else data-testid="plugin-no-open-work">{{ t('check.noOpenWork') }}</p>
-              <Collapse v-if="snapshot.items.length" data-testid="plugin-open-items">
-                <template #summary>{{ t('check.items') }}</template>
-                <ul>
-                  <li v-for="item in snapshot.items" :key="item.kind + item.id">
-                    {{ t('check.' + item.kind) }} · {{ item.status }}
-                    <template v-if="item.storedStatus !== item.status"
-                      >({{ t('check.storedState') }} {{ item.storedStatus }})</template
-                    >
-                    · Task <code>{{ item.taskId }}</code> · <code>{{ item.id }}</code>
-                  </li>
-                </ul>
-              </Collapse>
-              <p v-if="snapshot.truncated" class="hint">{{ t('check.truncated') }}</p>
-            </div>
-            <p class="hint">{{ t('check.scope') }}</p>
-          </section>
-          <p class="hint">
-            {{ t('plugin.grants') }}：{{ GRANTS.length ? GRANTS.join('、') : t('plugin.noGrant') }}
-          </p>
-        </Dialog>
-        <Button
-          variant="secondary"
-          :data-testid="`plugin-toggle-${manifest.id}`"
-          @click="toggle(host, manifest.id)"
-        >
-          {{
-            host.installation.value.enabled[manifest.id] ? t('plugin.disable') : t('plugin.enable')
-          }}
-        </Button>
-      </li>
-    </ul>
+            </section>
+            <section
+              v-if="manifest.id === 'board'"
+              data-testid="plugin-dependency-observation"
+              aria-live="polite"
+            >
+              <label for="plugin-check-project">{{ t('check.project') }}</label>
+              <Input
+                id="plugin-check-project"
+                v-model="projectId"
+                data-testid="plugin-check-project"
+                :maxlength="120"
+                :disabled="host.boardDependencyCheck.value.status === 'checking'"
+              />
+              <p class="hint">{{ t('check.projectHint') }}</p>
+              <Button
+                variant="secondary"
+                data-testid="plugin-check-dependencies"
+                :disabled="
+                  !projectId.trim() ||
+                  projectId.length > 120 ||
+                  host.boardDependencyCheck.value.status === 'checking'
+                "
+                @click="host.checkBoardDependencies(projectId)"
+                >{{ t('check.action') }}</Button
+              >
+              <p>{{ t(`check.${host.boardDependencyCheck.value.status}`) }}</p>
+              <p v-if="observationStale" class="hint" data-testid="plugin-check-stale">
+                {{ t('check.stale') }}
+              </p>
+              <p v-if="host.boardDependencyCheck.value.source" class="hint">
+                {{ t('check.source', { source: host.boardDependencyCheck.value.source }) }}
+              </p>
+              <p v-if="host.boardDependencyCheck.value.observedAt" class="hint">
+                {{ t('check.time', { time: host.boardDependencyCheck.value.observedAt }) }}
+              </p>
+              <p v-if="host.boardDependencyCheck.value.reason" class="hint">
+                {{ t('check.reason', { reason: host.boardDependencyCheck.value.reason }) }}
+              </p>
+              <Feedback
+                v-if="!host.installation.value.enabled.board"
+                tone="warning"
+                data-testid="plugin-board-disabled-boundary"
+                >{{ t('check.disabledBoundary') }}</Feedback
+              >
+              <div v-if="snapshot" data-testid="plugin-runtime-snapshot">
+                <p class="hint">
+                  {{
+                    t('check.savedObservation', {
+                      project: snapshot.projectId,
+                      time: snapshot.observedAt,
+                    })
+                  }}
+                </p>
+                <p>
+                  {{ t('check.totals', { tasks: snapshot.taskCount, runs: snapshot.runCount }) }}
+                </p>
+                <p>
+                  {{
+                    t('check.runs', {
+                      active: snapshot.activeRunCount,
+                      unknown: snapshot.unknownRunCount,
+                    })
+                  }}
+                </p>
+                <p>
+                  {{
+                    t('check.verifications', {
+                      active: snapshot.activeVerificationCount,
+                      unknown: snapshot.unknownVerificationCount,
+                    })
+                  }}
+                </p>
+                <p>
+                  {{
+                    t('check.writes', {
+                      active: snapshot.activeWriteCount,
+                      unknown: snapshot.unknownWriteCount,
+                    })
+                  }}
+                </p>
+                <Feedback
+                  v-if="!currentObservation"
+                  tone="warning"
+                  data-testid="plugin-snapshot-old"
+                  >{{ t('check.oldSnapshot') }}</Feedback
+                >
+                <Feedback v-else-if="openCount" tone="warning" data-testid="plugin-open-work">{{
+                  t('check.openWork')
+                }}</Feedback>
+                <p v-else data-testid="plugin-no-open-work">{{ t('check.noOpenWork') }}</p>
+                <Collapse v-if="snapshot.items.length" data-testid="plugin-open-items">
+                  <template #summary>{{ t('check.items') }}</template>
+                  <ul>
+                    <li v-for="item in snapshot.items" :key="item.kind + item.id">
+                      {{ t('check.' + item.kind) }} · {{ item.status }}
+                      <template v-if="item.storedStatus !== item.status"
+                        >({{ t('check.storedState') }} {{ item.storedStatus }})</template
+                      >
+                      · Task <code>{{ item.taskId }}</code> · <code>{{ item.id }}</code>
+                    </li>
+                  </ul>
+                </Collapse>
+                <p v-if="snapshot.truncated" class="hint">{{ t('check.truncated') }}</p>
+              </div>
+              <p class="hint">{{ t('check.scope') }}</p>
+            </section>
+            <p class="hint">
+              {{ t('plugin.grants') }}：{{
+                GRANTS.length ? GRANTS.join('、') : t('plugin.noGrant')
+              }}
+            </p>
+          </Dialog>
+          <Button
+            variant="secondary"
+            :data-testid="`plugin-toggle-${manifest.id}`"
+            @click="toggle(host, manifest.id)"
+          >
+            {{
+              host.installation.value.enabled[manifest.id]
+                ? t('plugin.disable')
+                : t('plugin.enable')
+            }}
+          </Button>
+        </li>
+      </ul>
+    </section>
     <Feedback v-if="installationError" tone="error" data-testid="plugin-installation-error">{{
       installationError
     }}</Feedback>
@@ -350,7 +393,12 @@ function toggle(host: PluginHost, id: PluginId) {
 </template>
 
 <style scoped>
+.global-plugins {
+  margin-block: 20px 12px;
+}
+
 .plugin-toolbar {
+  margin-top: 12px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

@@ -8,6 +8,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createPluginIsland, type IslandHost } from '@eap/plugin-runtime'
 import { runtimeApi } from '@eap/runtime-client'
+import { createPluginLocale } from '../../lib/i18n'
 
 const props = defineProps<{ refreshToken?: number }>()
 const status = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
@@ -19,7 +20,7 @@ async function syncFromServer() {
   status.value = 'loading'
   error.value = ''
   try {
-    if (!island) island = createPluginIsland()
+    if (!island) island = createPluginIsland(createPluginLocale)
     const contrib = await runtimeApi.plugins.contributions()
     await island.sync(contrib.uiClients)
     mountedNames.value = island.mounted()

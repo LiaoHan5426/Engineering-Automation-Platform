@@ -34,6 +34,7 @@ export interface PermissionRequest {
 
 export interface PluginManifest {
   id: PluginId
+  scope: 'global'
   version: string
   requests: readonly PermissionRequest[]
 }
@@ -51,11 +52,13 @@ export const GRANTS: readonly string[] = []
 export const MANIFESTS: readonly PluginManifest[] = [
   {
     id: 'chat',
+    scope: 'global',
     version: '0.1.0',
     requests: [{ id: 'workspace.read', optional: false }],
   },
   {
     id: 'builder',
+    scope: 'global',
     version: '0.1.0',
     requests: [
       { id: 'workspace.read', optional: false },
@@ -67,6 +70,7 @@ export const MANIFESTS: readonly PluginManifest[] = [
   },
   {
     id: 'board',
+    scope: 'global',
     version: '0.1.0',
     requests: [
       { id: 'workspace.read', optional: false },

@@ -47,7 +47,7 @@ export default defineConfig(({ command, mode }) => {
     server: {
       host: '127.0.0.1',
       proxy: {
-        '/api': { target, changeOrigin: true },
+        '/api': { target, changeOrigin: true, ws: true },
         // better-sidebar Client fetches same-origin /sidebar/* → py-backend Host bridge
         '/sidebar': { target, changeOrigin: true },
       },

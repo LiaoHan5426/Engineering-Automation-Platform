@@ -1,0 +1,83 @@
+/* ============================================================
+   Rule editor: the draft is visible state, not an invisible buffer
+   ============================================================ */
+.draft-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rule--draft {
+  border-color: var(--border-strong);
+}
+
+.rule-remove {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.rule-edit {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rule-edit label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.rule-edit .rule-cond {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.rule-edit .rule-cond .eap-input,
+.rule-edit .rule-cond .eap-select {
+  flex: 1 1 140px;
+  width: auto;
+  min-width: 140px;
+}
+
+.pack-form {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-top: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.pack-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.advanced {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.validation-block {
+  margin: 8px 0;
+}
+
+.validation-block .eap-feedback {
+  margin: 0;
+}
+
+/* ConfirmBox chrome lives in @eap/ui/styles.css */

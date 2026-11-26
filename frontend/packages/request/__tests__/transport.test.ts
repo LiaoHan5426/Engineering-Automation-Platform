@@ -62,6 +62,8 @@ it('shares dynamic headers with JSON and stream requests, retains HTTP problems 
   expect(calls.map((call) => call.headers['accept-language'])).toEqual(['zh-CN', 'en-US', 'en-US'])
   expect(calls.filter((call) => call.url === '/error')).toHaveLength(1)
   expect(pending).toEqual([1, 0])
+  await client.get('/json', { silent: true })
+  expect(pending).toEqual([1, 0])
 })
 it('cancels JSON and stream handshakes, times out headers, and returns pending requests to zero', async () => {
   const { url } = await endpoint()

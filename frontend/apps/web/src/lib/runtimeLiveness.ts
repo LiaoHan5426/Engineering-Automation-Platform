@@ -1,4 +1,5 @@
-import { runtimeApi } from '@eap/runtime-client'
+import { runtimeApi, type NotifyEvent } from '@eap/runtime-client'
+import { publishNotify } from './notifyBus'
 
 /**
  * One shell probe for backend reachability.
@@ -100,6 +101,21 @@ async function probe() {
     online: next,
     recovered: previous === false && next,
     lost: previous === true && !next,
+  }
+  if (event.lost || event.recovered) {
+    const probe: NotifyEvent = {
+      eventId: `probe-${event.lost ? 'lost' : 'recovered'}-${Date.now()}`,
+      sequence: 0,
+      occurredAt: new Date().toISOString(),
+      protocolVersion: '1',
+      kind: 'probe',
+      severity: event.lost ? 'warning' : 'info',
+      code: event.lost ? 'RUNTIME_OFFLINE' : 'RUNTIME_ONLINE',
+      title: event.lost ? '后端不可用' : '后端已恢复',
+      text: event.lost ? 'runtime health probe failed' : 'runtime health probe recovered',
+      surfaces: [],
+    }
+    publishNotify(probe)
   }
   for (const listener of [...listeners]) listener(event)
   schedule()

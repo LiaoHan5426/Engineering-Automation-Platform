@@ -1,0 +1,100 @@
+/* DSH client contributions inherit the active EAP theme at their mount roots. */
+[data-dsh-region],
+[data-dsh-better-sidebar] {
+  --dsw-alias-accent: var(--accent);
+  --dsw-alias-accent-ink: var(--on-accent);
+  --dsw-alias-accent-soft: var(--accent-soft);
+  --dsw-alias-bg-base: var(--bg);
+  --dsw-alias-bg-layer-1: var(--surface);
+  --dsw-alias-bg-layer-2: var(--surface-2);
+  --dsw-alias-bg-layer-3: var(--surface-3);
+  --dsw-alias-bg-mask-1: var(--overlay);
+  --dsw-alias-border-l1: var(--border);
+  --dsw-alias-border-l2: var(--border);
+  --dsw-alias-border-l2-darkmode-thin: var(--border);
+  --dsw-alias-border-l4: var(--border-strong);
+  --dsw-alias-brand-primary: var(--accent);
+  --dsw-alias-button-floating-fill: var(--surface-2);
+  --dsw-alias-button-floating-hover: var(--control-hover);
+  --dsw-alias-button-ghost-active-border: var(--border);
+  --dsw-alias-button-ghost-active-fill: var(--accent-soft);
+  --dsw-alias-button-ghost-active-hover: var(--control-hover);
+  --dsw-alias-button-info-fill: var(--info-bg);
+  --dsw-alias-button-info-label: var(--info);
+  --dsw-alias-button-primary-fill: var(--accent);
+  --dsw-alias-button-primary-hover: var(--accent-hover);
+  --dsw-alias-interactive-bg-active: var(--accent-soft);
+  --dsw-alias-interactive-bg-hover: var(--control-hover);
+  --dsw-alias-interactive-bg-hover-accent: var(--accent-soft);
+  --dsw-alias-interactive-bg-hover-danger: var(--danger-bg);
+  --dsw-alias-label-dimmed: var(--text-mute);
+  --dsw-alias-label-primary: var(--text);
+  --dsw-alias-label-secondary: var(--text-soft);
+  --dsw-alias-label-tertiary: var(--text-mute);
+  --dsw-alias-scrollbar-bg-l2: var(--surface-3);
+  --dsw-alias-scrollbar-hover-l2: var(--text-mute);
+  --dsw-alias-state-business-primary: var(--info);
+  --dsw-alias-state-business-tertiary: var(--info-bg);
+  --dsw-alias-state-error-primary: var(--danger);
+  --dsw-alias-state-success-primary: var(--ok);
+  --dsw-alias-state-warn-label: var(--warn-text);
+  --dsw-alias-state-warn-primary: var(--warn);
+  --dsw-alias-state-warn-tertiary: var(--warn-bg);
+  --dsw-font-family: var(--font-sans);
+  --dsw-font-mono: var(--font-mono);
+  --dsw-shadow-lv2: var(--shadow);
+  --dsw-shadow-lv3: var(--shadow);
+  --dsw-mask-blur: 4px;
+  --dsw-font-s-14: 14px/1.45 var(--font-sans);
+  --dsw-font-s-strong-14: 600 14px/1.45 var(--font-sans);
+  --dsw-font-xs-13: 13px/1.45 var(--font-sans);
+  --dsw-font-xs-strong-13: 600 13px/1.45 var(--font-sans);
+  --dsw-font-xxs-12: 12px/1.45 var(--font-sans);
+  --dsw-font-xxs-strong-12: 600 12px/1.45 var(--font-sans);
+  --dsw-font-xxxs-11: 11px/1.45 var(--font-sans);
+  --dsw-font-xxxs-strong-11: 600 11px/1.45 var(--font-sans);
+}
+
+[data-eap-ui='FileTypeIcon'][data-kind='folder'] {
+  color: var(--warn);
+}
+
+[data-eap-ui='FileTypeIcon']:is(
+  [data-kind='js'],
+  [data-kind='json'],
+  [data-kind='yaml'],
+  [data-kind='toml']
+) {
+  color: var(--warn-text);
+}
+
+[data-eap-ui='FileTypeIcon']:is(
+  [data-kind='ts'],
+  [data-kind='react'],
+  [data-kind='css'],
+  [data-kind='markdown'],
+  [data-kind='image']
+) {
+  color: var(--info);
+}
+
+[data-eap-ui='FileTypeIcon']:is([data-kind='vue'], [data-kind='go'], [data-kind='shell']) {
+  color: var(--ok);
+}
+
+.eap-dsh-guide-folder {
+  color: var(--warn);
+}
+
+[data-dsh-region] button[data-path$='.md' i] > span:first-child {
+  color: var(--info);
+}
+
+.eap-dsh-markdown-source {
+  margin: 0;
+  padding: 8px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

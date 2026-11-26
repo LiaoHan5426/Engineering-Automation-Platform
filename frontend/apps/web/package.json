@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@eap/expert-sdk": "workspace:*",
+    "@eap/i18n": "workspace:*",
+    "@eap/layout": "workspace:*",
+    "@eap/message": "workspace:*",
     "@eap/plugin-runtime": "workspace:*",
     "@eap/plugin-table": "workspace:*",
     "@eap/request": "workspace:*",

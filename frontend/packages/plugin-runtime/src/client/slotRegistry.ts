@@ -22,6 +22,7 @@ type RegOptions = {
   key?: string
   id?: string
   select?: (owner: unknown) => unknown
+  inject?: (sessionId?: string) => Record<string, unknown>
 }
 
 type Entry = {
@@ -29,7 +30,7 @@ type Entry = {
   component: Component
 }
 
-const KIND = new Map(LAYOUT_SLOTS.map((slot) => [slot.key, slot.kind]))
+const KIND = new Map<string, string>(LAYOUT_SLOTS.map((slot) => [slot.key, slot.kind]))
 
 function kindOf(name: string): string {
   if (name === 'root') return 'single'
@@ -151,7 +152,11 @@ export function createEapSlotRegistry(): EapSlotRegistry {
       return () => {
         void tick.value
         const picked = winners(props.name, props.entryKey, props.chain)
-        const body = picked.map((entry) => h(entry.component, { ...props.input, ...face() }))
+        const input = props.input as Record<string, unknown>
+        const sessionId = typeof input.sessionId === 'string' ? input.sessionId : undefined
+        const body = picked.map((entry) =>
+          h(entry.component, { ...entry.options.inject?.(sessionId), ...input, ...face() }),
+        )
         return h(
           'div',
           { 'data-slot': props.name, style: { display: 'contents' } },

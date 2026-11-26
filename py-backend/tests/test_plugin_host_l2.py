@@ -23,7 +23,7 @@ def _fixture_pkg() -> Path:
     pytest.skip("dsh-better-sidebar@0.31.1 fixture not found on disk")
 
 
-def test_install_enable_contributions_and_host_bridge(client, tmp_path: Path):
+def test_install_enable_contributions_and_host_bridge(client, tmp_path: Path, monkeypatch):
     source = _fixture_pkg()
     # Copy into temp so install does not mutate the on-disk fixture package.
     staged = tmp_path / "dsh-better-sidebar"
@@ -83,6 +83,14 @@ def test_install_enable_contributions_and_host_bridge(client, tmp_path: Path):
     assert envelope["controlPlane"] == "py-backend"
     assert envelope["value"]["externalDisable"] is False
 
+    bundle_url = "/sidebar/bundle/editor.js"
+    bundle = client.get(bundle_url)
+    assert bundle.status_code == 200
+    probe = client.head(bundle_url)
+    assert probe.status_code == 200
+    assert probe.headers["etag"] == bundle.headers["etag"]
+    assert probe.content == b""
+
     # Same-origin gateway used by Cordis island fetch('/sidebar/api/...').
     gateway = client.post("/sidebar/api/fs.tree", json={"path": "."})
     assert gateway.status_code == 200
@@ -90,6 +98,22 @@ def test_install_enable_contributions_and_host_bridge(client, tmp_path: Path):
     assert gw["ok"] is True
     assert gw["controlPlane"] == "py-backend"
     assert "entries" in gw["value"]
+
+    workspace = client.app.state.settings.workspace_root
+    note = workspace / "sidebar-note.txt"
+    note.write_text("before", encoding="utf-8")
+    file_info = client.post("/sidebar/api/fs.read", json={"path": note.name}).json()["value"]
+    params = {"path": note.name, "sessionId": "test", "expectedMtimeMs": file_info["mtimeMs"]}
+    headers = {"content-type": "text/plain; charset=utf-8", "sec-fetch-site": "same-origin"}
+    denied = client.post("/sidebar/write", params=params, content="after", headers=headers)
+    assert denied.json()["error"]["code"] == "permission-denied"
+    monkeypatch.setattr(client.app.state.plugins._bridge, "_write_enabled", True)
+    saved = client.post("/sidebar/write", params=params, content="after", headers=headers)
+    assert saved.json()["value"]["mtimeMs"] > file_info["mtimeMs"]
+    assert note.read_text(encoding="utf-8") == "after"
+    stale = client.post("/sidebar/write", params=params, content="stale", headers=headers)
+    assert stale.json()["error"]["code"] == "fs-conflict"
+    assert note.read_text(encoding="utf-8") == "after"
 
     # Disable removes contributions and Host activity.
     disabled = client.post("/api/plugins/dsh-better-sidebar/disable")
@@ -125,7 +149,7 @@ def test_sidebar_open_tool_stays_on_server(client, tmp_path: Path):
     client.post("/api/plugins/install", json={"sourcePath": str(staged)})
     client.post("/api/plugins/dsh-better-sidebar/enable")
     # Tool registry is exercised via host bridge helper (Chat path uses same registry).
-    bridge = client.app.state.plugin_host_bridge
+    bridge = client.app.state.plugins._bridge
     result = bridge.open_sidebar_tool()
     assert result["ok"] is True
     assert result["controlPlane"] == "py-backend"

@@ -12,6 +12,7 @@ import {
 import { workspaceDirty } from '../../src/features/shell/runtimeIdentity'
 import { runtimeApi } from '@eap/runtime-client'
 import { createApp, h, nextTick, ref, type App } from 'vue'
+import { createMessagePlugin } from '@eap/message'
 import { i18n } from '../../src/lib/i18n'
 import Shell from '../../src/App.vue'
 import DesktopNavigation from '../../src/features/DesktopNavigation.vue'
@@ -899,7 +900,7 @@ describe('source-surface return through the real App navigation', () => {
 
   async function mountSource(hash = 'work') {
     window.history.replaceState(null, '', `/#${hash}`)
-    shellApp = createApp(Shell).use(i18n)
+    shellApp = createApp(Shell).use(i18n).use(createMessagePlugin())
     shellApp.mount(shellRoot)
     await settle()
   }
@@ -947,6 +948,34 @@ describe('source-surface return through the real App navigation', () => {
     await settle()
     expect(window.location.hash).toBe(`#${target}`)
     expectSourceIntact(mode)
+  })
+
+  it.each([
+    ['desktop', false],
+    ['narrow', true],
+  ] as const)('keeps the %s sidebar toggle in the same toolbar when settings opens', async (_, narrow) => {
+    const matchMedia = window.matchMedia.bind(window)
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
+      const media = matchMedia(query)
+      if (query === '(max-width: 1024px)') Object.defineProperty(media, 'matches', { value: narrow })
+      return media
+    })
+    await mountSource()
+    const panel = shellRoot.querySelector('[data-testid="cordis-sidebar-right-column"]')!
+    panel.setAttribute('data-sidebar-right-seat', '')
+    panel.setAttribute('data-collapsed', '')
+    await vi.waitFor(() => expect(panel.hasAttribute('hidden')).toBe(false))
+
+    const topbarToggle = '.topbar [data-testid="toggle-layout-sidebar-right"]'
+    const toggle = shellRoot.querySelector(topbarToggle)
+    expect(Boolean(toggle)).toBe(narrow)
+    window.location.hash = 'plugins'
+    await vi.waitFor(() =>
+      expect(shellRoot.querySelector<HTMLDialogElement>('[data-testid="settings-dialog"]')?.open)
+        .toBe(true),
+    )
+    expect(shellRoot.querySelector(topbarToggle)).toBe(toggle)
+    expect(shellRoot.querySelector('[data-testid="cordis-sidebar-right-column"]')).toBe(panel)
   })
 
   it('opens expert management from a catalog hash without creating a session', async () => {
@@ -1098,7 +1127,7 @@ describe('prototype area deep links through the real App', () => {
 
   async function mountSource(hash = 'work') {
     window.history.replaceState(null, '', `/#${hash}`)
-    shellApp = createApp(Shell).use(i18n)
+    shellApp = createApp(Shell).use(i18n).use(createMessagePlugin())
     shellApp.mount(shellRoot)
     for (let i = 0; i < 8; i++) await nextTick()
   }
