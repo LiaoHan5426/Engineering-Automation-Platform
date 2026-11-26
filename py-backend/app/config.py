@@ -20,7 +20,9 @@ class Settings(BaseSettings):
 
     eap_data_root: Path = _default_data_root()
     eap_local_workspace_write_enabled: bool = False
+    eap_local_workspace_remote_git_enabled: bool = False
     eap_workspace_root: Path | None = None
+    eap_dsh_web_dist: Path | None = None
     eap_model_base_url: str = "https://api.deepseek.com/v1"
     eap_model_api_key: str = ""
     eap_model_default: str = "deepseek-chat"

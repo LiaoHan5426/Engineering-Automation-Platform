@@ -37,12 +37,23 @@ them through `GET /api/local-workspace/plugins` and calls registered methods via
 protocol and dispatches to the same registry. File and Git reads use the
 configured workspace root, including when no DSH sidebar is installed.
 
-To enable saving existing UTF-8 files and staging or unstaging repository
-paths, set `EAP_LOCAL_WORKSPACE_WRITE_ENABLED=true` in the local Host environment
+To enable saving existing UTF-8 files, creating and renaming files and
+directories, and staging or unstaging repository paths, set `EAP_LOCAL_WORKSPACE_WRITE_ENABLED=true` in the local Host environment
 and restart it. Enable this for a trusted local workspace. Saves require the
 `mtimeMs` returned by `fs.read` as `expectedMtimeMs` and return `fs-conflict`
 when the file changed. The DSH client's raw `POST /sidebar/write` uses the
 same save handler as `fs.write`.
+
+With the same write grant, DSH uses `POST /sidebar/upload` and Web uses
+`POST /api/local-workspace/fs.upload` for binary uploads (16 MiB per file).
+Uploads preserve the relative directory layout and reject an existing target.
+Web `fs.remove` requires `confirmed: true`. The DSH tree confirms removal in
+its client before calling its original `fs.remove` method.
+
+Push and pull additionally require `EAP_LOCAL_WORKSPACE_REMOTE_GIT_ENABLED=true`.
+They use the selected checkout's current branch and its configured remote
+upstream. Push does not force updates. Pull requires a fast-forward. Git uses
+the Host's existing credentials with terminal prompts disabled.
 
 ## Setup (Windows PowerShell)
 
@@ -106,3 +117,8 @@ Default data directory: `py-backend/.eap/` (gitignored via root `.eap/`). Overri
 - **Authority:** install/enable, Agent tools, Host `/sidebar/api/*` (fs / settings / session) stay on py-backend.
 - **Workspace:** `Settings.workspace_root` + Host `session.cwd` — aligned with dsh-personal working directory. **No EAP Cordis profile** directory or profile id.
 - **Frontend:** `@eap/plugin-runtime` assembles Cordis Client packages (ui-slots / ui-sidebar-right / dockkit) like dsh-personal; Vue shell only syncs contributions and mounts `#eap-cordis-sidebar-right`. Decision: `docs/decisions/py-backend-plugin-host-l2.md`.
+
+
+### DSH Web 构建产物
+
+在 `frontend` 下执行 `pnpm --filter @eap/dsh-boot-verify build`。启动 py-backend 时将 `EAP_DSH_WEB_DIST` 设为该应用的 `dist` 绝对路径。服务在同一地址提供页面、会话 API 和侧栏 WebSocket。插件启用状态由页面从当前 py-backend 读取，无需重新构建。

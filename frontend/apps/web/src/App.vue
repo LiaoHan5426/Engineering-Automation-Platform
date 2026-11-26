@@ -22,6 +22,7 @@ const SkillManager = defineAsyncComponent(() => import('./features/settings/Skil
 const AppearanceSettings = defineAsyncComponent(
   () => import('./features/settings/AppearanceSettings.vue'),
 )
+const WorkspaceOverview = defineAsyncComponent(() => import('./features/shell/WorkspaceOverview.vue'))
 const PluginCenter = defineAsyncComponent(() => import('./features/plugins/PluginCenter.vue'))
 const ScenarioWorkspace = defineAsyncComponent(() => import('./features/ScenarioWorkspace.vue'))
 const ProjectBoard = defineAsyncComponent(() => import('./features/shell/ProjectBoard.vue'))
@@ -38,7 +39,6 @@ import ChatWorkspace from './features/chat/ChatWorkspace.vue'
 import WorkDocumentWorkspace from './features/work/WorkDocumentWorkspace.vue'
 import SceneDesigner from './features/work/SceneDesigner.vue'
 import PluginSlot from './features/plugins/PluginSlot.vue'
-import CordisIslandHost from './features/plugins/CordisIslandHost.vue'
 import { createPluginHost } from './features/plugins/host'
 import { isKnownHash, resolveAreaView } from './features/plugins/model'
 import { INSPECTOR_PAGES, shellPages } from './features/shell/shellPages'
@@ -59,12 +59,6 @@ import { subscribeRuntimeLiveness } from './lib/runtimeLiveness'
 import { Button, Feedback, Input, NativeDialog } from '@eap/ui'
 
 const pluginHost = createPluginHost()
-const cordisIslandRefresh = ref(0)
-const cordisIsland = ref<{ syncFromServer: () => Promise<void> }>()
-function onDshPluginsChanged() {
-  cordisIslandRefresh.value += 1
-  void cordisIsland.value?.syncFromServer()
-}
 /** 落地页：打开就是能干活的地方。壳页面保持固定；插件入口由注册表按启停追加。 */
 const DEFAULT_VIEW = 'chat'
 const pages = computed(() => [
@@ -367,7 +361,6 @@ onUnmounted(() => {
   >
     <template #overlays>
       <NotifyHost />
-      <CordisIslandHost ref="cordisIsland" :refresh-token="cordisIslandRefresh" />
     </template>
     <template #topbar="{ rightNarrow }">
       <Button
@@ -497,6 +490,10 @@ onUnmounted(() => {
           <p>{{ i18n.global.t('plugin.hiddenBody') }}</p>
         </div>
       </section>
+      <WorkspaceOverview
+        v-else-if="workspaceView === 'overview'"
+        :board-enabled="pluginHost.boardContributionVisible.value"
+      />
       <AnalysisWorkbench v-else-if="workspaceView === 'sql'" :analysis="analysis" />
 
       <KeepAlive>
@@ -580,7 +577,6 @@ onUnmounted(() => {
             <PluginCenter
               v-else-if="activeView === 'plugins'"
               :host="pluginHost"
-              @dsh-changed="onDshPluginsChanged"
             />
             <KeepAlive>
               <SkillManager v-if="activeView === 'skills'" />

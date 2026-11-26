@@ -72,7 +72,7 @@ const draftProjectLabel = ref('')
 const renamingProjectId = ref<string | null>(null)
 const renameProjectLabel = ref('')
 const pendingDeleteProjectId = ref<string | null>(null)
-const codeIds = ['chat', 'sql', 'board']
+const codeIds = ['chat', 'overview', 'sql', 'board']
 const expertIds = ['experts']
 function isProjectExpanded(id: string) {
   if (expandedProjects.value[id] != null) return expandedProjects.value[id]!
@@ -190,7 +190,7 @@ watch(
         ? 'scenes'
         : id === 'scenes' || id === 'work'
           ? id
-          : id === 'board' || id === 'chat' || id === 'sql'
+          : codeIds.includes(id)
             ? workbench.workMode
             : id === 'experts'
               ? 'experts'
@@ -584,6 +584,16 @@ onUnmounted(() => {
           @click="startChat(sessionMode())"
           ><IconPlus />{{ t('desktop.newChat') }}</Button
         >
+        <Button
+          variant="navigation"
+          type="button"
+          class="nav"
+          :active="activeView === 'overview'"
+          :aria-current="activeView === 'overview' ? 'page' : undefined"
+          @click="open('overview')"
+        >{{ t('workspaceOverview.title') }}</Button>
+        <Button variant="navigation" type="button" class="nav" @click="open('plugins')"
+        >{{ t('plugin.center') }}</Button>
         <Input
           v-model="sidebarFilter"
           class="sidebar-filter"

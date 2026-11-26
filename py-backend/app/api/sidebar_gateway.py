@@ -11,10 +11,13 @@ from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
+from app.api.local_workspace import read_workspace_upload
 from app.api.problem import problem
 from app.api.plugins import plugin_service
+from app.api.sidebar_ws import router as sidebar_ws_router
 
 router = APIRouter(tags=["sidebar-host-gateway"])
+router.include_router(sidebar_ws_router)
 
 
 @router.post("/sidebar/api/{method}")
@@ -28,13 +31,31 @@ async def sidebar_api_method(method: str, request: Request):
     if not isinstance(body, dict):
         body = {}
     try:
-        return plugin_service(request).sidebar(None, method, body)
+        return await run_in_threadpool(plugin_service(request).sidebar, None, method, body)
+    except LookupError:
+        return problem(409, "HOST_NOT_ACTIVE", "no enabled sidebar plugin")
+
+
+@router.post("/sidebar/upload")
+async def sidebar_upload(request: Request, sessionId: str, dir: str, relativePath: str, cwd: str | None = None):
+    if request.headers.get("content-type", "").split(";")[0] != "application/octet-stream":
+        return problem(415, "UNSUPPORTED_MEDIA_TYPE", "Expected application/octet-stream")
+    if not request.app.state.settings.eap_local_workspace_write_enabled:
+        return problem(403, "permission-denied", "Local workspace writes are disabled")
+    try:
+        data = await read_workspace_upload(request)
+    except ValueError as exc:
+        return problem(413, "FILE_TOO_LARGE", str(exc))
+    try:
+        return await run_in_threadpool(plugin_service(request).sidebar, None, "fs.upload", {
+            "sessionId": sessionId, "dir": dir, "relativePath": relativePath, "cwd": cwd, "data": data,
+        })
     except LookupError:
         return problem(409, "HOST_NOT_ACTIVE", "no enabled sidebar plugin")
 
 
 @router.post("/sidebar/write")
-async def sidebar_write(request: Request, path: str, expectedMtimeMs: int):
+async def sidebar_write(request: Request, path: str, expectedMtimeMs: int, sessionId: str | None = None):
     # A cross-origin HTML form can send text/plain without a CORS preflight.
     if (request.headers.get("origin") or request.headers.get("sec-fetch-site")) and (
         request.headers.get("sec-fetch-site") != "same-origin"
@@ -53,7 +74,7 @@ async def sidebar_write(request: Request, path: str, expectedMtimeMs: int):
         return problem(400, "bad-request", "Expected UTF-8 text")
     try:
         return await run_in_threadpool(plugin_service(request).sidebar, None, "fs.write", {
-            "path": path, "expectedMtimeMs": expectedMtimeMs, "content": content,
+            "path": path, "expectedMtimeMs": expectedMtimeMs, "content": content, "sessionId": sessionId,
         })
     except LookupError:
         return problem(409, "HOST_NOT_ACTIVE", "no enabled sidebar plugin")

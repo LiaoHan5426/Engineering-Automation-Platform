@@ -214,6 +214,7 @@ export type McpServerRequest = {
  */
 export type TaskStatistics = {
   windowDays: number
+  chat?: { newConversations: number; sentMessages: number }
   tasksTotal: number
   tasksInWindow: number
   observationsInWindow: number

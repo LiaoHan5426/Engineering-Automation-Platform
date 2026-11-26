@@ -111,9 +111,64 @@ def test_install_enable_contributions_and_host_bridge(client, tmp_path: Path, mo
     saved = client.post("/sidebar/write", params=params, content="after", headers=headers)
     assert saved.json()["value"]["mtimeMs"] > file_info["mtimeMs"]
     assert note.read_text(encoding="utf-8") == "after"
+    changes = client.post("/sidebar/api/changes.ops", json={"sessionId": "test"}).json()["value"]
+    assert [event["type"] for event in changes["events"]] == ["tool/call", "tool/result"]
+    assert json.loads(changes["events"][0]["data"]["arguments"]) == {"path": note.name}
+    assert changes["lastSeq"] == changes["events"][-1]["seq"]
+
     stale = client.post("/sidebar/write", params=params, content="stale", headers=headers)
     assert stale.json()["error"]["code"] == "fs-conflict"
     assert note.read_text(encoding="utf-8") == "after"
+
+    created = client.post("/sidebar/api/fs.mkdir", json={"path": ".", "name": "scratch"})
+    assert created.json()["value"] == {"path": str(workspace / "scratch")}
+    created = client.post("/sidebar/api/fs.createFile", json={"path": "scratch", "name": "draft.txt"})
+    assert created.json()["value"] == {"path": str(workspace / "scratch" / "draft.txt")}
+    renamed = client.post("/sidebar/api/fs.rename", json={"path": "scratch/draft.txt", "name": "note.txt"})
+    assert renamed.json()["value"] == {"path": str(workspace / "scratch" / "note.txt")}
+
+    payload = b"\x00\xfftest"
+    upload_params = {"sessionId": "test", "dir": "scratch", "relativePath": "nested/data.bin"}
+    upload_headers = {"content-type": "application/octet-stream"}
+    inactive = client.post("/sidebar/upload", params=upload_params, headers=upload_headers, content=payload)
+    assert inactive.status_code == 403
+    monkeypatch.setattr(client.app.state.settings, "eap_local_workspace_write_enabled", True)
+    uploaded = client.post("/sidebar/upload", params=upload_params, headers=upload_headers, content=payload)
+    target = workspace / "scratch" / "nested" / "data.bin"
+    assert uploaded.json()["value"] == {"path": str(target), "size": len(payload)}
+    assert target.read_bytes() == payload
+    duplicate = client.post("/api/local-workspace/fs.upload", params=upload_params,
+                            headers=upload_headers, content=b"replacement")
+    assert duplicate.status_code == 409
+    assert target.read_bytes() == payload
+    assert list(target.parent.iterdir()) == [target]
+    escaped = client.post("/sidebar/upload", params={**upload_params, "relativePath": "../outside"},
+                          headers=upload_headers, content=payload)
+    assert escaped.json()["error"]["code"] == "bad-request"
+    no_confirmation = client.post("/api/local-workspace/fs.remove", json={"path": "scratch/nested"})
+    assert no_confirmation.status_code == 400
+    assert target.exists()
+    removed = client.post("/api/local-workspace/fs.remove", json={"path": "scratch/nested", "confirmed": True})
+    assert removed.json() == {"path": str(target.parent)}
+    assert not target.parent.exists()
+    assert client.post("/sidebar/api/fs.remove", json={"path": "."}).json()["ok"] is False
+    assert client.post("/sidebar/api/fs.remove", json={"path": "scratch"}).json()["ok"] is True
+    assert not (workspace / "scratch").exists()
+
+    # The reference client subscribes with the original DSH frame shape.
+    with client.websocket_connect("/sidebar/ws/fs-watch?sessionId=test") as socket:
+        socket.send_json({"op": "watch", "path": str(workspace.parent)})
+        socket.send_json({"op": "watch", "path": str(workspace)})
+        assert socket.receive_json() == {"ok": True, "dir": str(workspace)}
+        note.write_text("changed on disk", encoding="utf-8")
+        assert socket.receive_json() == {"dir": str(workspace)}
+        socket.send_json({"op": "unwatch", "path": str(workspace)})
+
+    bridge = client.app.state.plugins._bridge
+    with client.websocket_connect("/sidebar/ws/agent-opens?sessionId=test") as socket:
+        bridge.open_sidebar_tool(session_id="a-different-session")
+        bridge.open_sidebar_tool(session_id="test")
+        assert socket.receive_json() == {"kind": "folder", "target": str(workspace)}
 
     # Disable removes contributions and Host activity.
     disabled = client.post("/api/plugins/dsh-better-sidebar/disable")

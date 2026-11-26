@@ -12,6 +12,7 @@ def _bridge(workspace: Path) -> PluginHostBridge:
     bridge = object.__new__(PluginHostBridge)
     bridge._registry = None  # type: ignore[attr-defined]
     bridge._write_enabled = False
+    bridge._remote_git_enabled = False
     bridge._workspace = workspace
     bridge._active = {
         "demo": HostBridgeState(
@@ -176,8 +177,40 @@ def test_sidebar_git_reads_status_diff_and_history(tmp_path: Path):
     assert read("git.show", {"rev": "HEAD", "path": "note.txt"}) == {"content": "before"}
     assert read("git.show", {"rev": ":0", "path": "note.txt"}) == {"content": "before"}
     assert read("git.show", {"rev": "HEAD", "path": "missing.txt"}) == {"content": None}
-    assert read("changes.ops") == {"events": [], "lastSeq": 0}
+    for method in ("fs.search", "git.rebase"):
+        unsupported = bridge.handle_sidebar_api("demo", method, {"path": "note.txt"})
+        assert unsupported["ok"] is False
+        assert unsupported["error"]["code"] == "not-found"
     assert bridge.handle_sidebar_api("demo", "git.stage", {"path": "note.txt"})["error"]["code"] == "permission-denied"
+
+
+def test_changes_ops_records_wire_events_and_scopes_by_session(client, monkeypatch):
+    import json
+
+    settings = client.app.state.settings
+    monkeypatch.setattr(settings, "eap_local_workspace_write_enabled", True)
+    bridge = _bridge(settings.workspace_root)
+    bridge._write_enabled = True
+
+    def changes(**body):
+        return bridge.handle_sidebar_api("demo", "changes.ops", {"sessionId": "session-a", **body})
+
+    assert changes()["value"] == {"events": [], "lastSeq": -1}
+    response = client.post("/api/local-workspace/fs.createFile", json={
+        "path": ".", "name": "round.txt", "sessionId": "session-a",
+    })
+    assert response.status_code == 200
+    delta = changes()["value"]
+    call, result = delta["events"]
+    assert call["type"] == "tool/call" and call["data"]["name"] == "write"
+    assert json.loads(call["data"]["arguments"])["path"] == response.json()["path"]
+    assert result["type"] == "tool/result"
+    assert result["data"]["message"]["source"]["callId"] == call["data"]["callId"]
+    assert delta["lastSeq"] == result["seq"] == call["seq"] + 1
+    assert changes(afterSeq=call["seq"])["value"]["events"] == [result]
+    assert changes(afterSeq=result["seq"])["value"] == {"events": [], "lastSeq": result["seq"]}
+    assert changes(sessionId="session-b")["value"] == {"events": [], "lastSeq": -1}
+    assert changes(afterSeq=True)["error"]["code"] == "bad-request"
 
 
 def test_global_workspace_capabilities_work_without_installing_sidebar(client):
@@ -232,3 +265,143 @@ def test_global_workspace_writes_share_git_index_and_file_baseline(client, monke
     assert client.post("/api/local-workspace/git.status", json={}).json()["entries"] == [
         {"path": "note.txt", "xy": "??"},
     ]
+
+
+
+def test_file_tree_mutations_share_web_and_sidebar_state(client, monkeypatch):
+    settings = client.app.state.settings
+    root = settings.workspace_root
+    bridge = _bridge(root)
+
+    def web(method, **body):
+        return client.post(f"/api/local-workspace/{method}", json=body)
+
+    def sidebar(method, **body):
+        return bridge.handle_sidebar_api("demo", method, body)
+
+    assert web("fs.mkdir", path=".", name="folder").status_code == 403
+    assert sidebar("fs.createFile", path=".", name="note.txt")["error"]["code"] == "permission-denied"
+    monkeypatch.setattr(settings, "eap_local_workspace_write_enabled", True)
+    bridge._write_enabled = True
+
+    created = sidebar("fs.mkdir", path=".", name="folder")
+    assert created["value"] == {"path": str(root / "folder")}
+    assert web("fs.createFile", path=".", cwd="folder", name="note.txt").status_code == 200
+    old = root / "folder" / "note.txt"
+    assert old.read_bytes() == b""
+    old.write_text("keep", encoding="utf-8")
+    assert web("fs.createFile", path="folder", name="note.txt").status_code == 409
+    renamed = sidebar("fs.rename", path="note.txt", cwd="folder", name="renamed.txt")
+    assert renamed["value"] == {"path": str(old.with_name("renamed.txt"))}
+    assert not old.exists()
+    assert old.with_name("renamed.txt").read_text(encoding="utf-8") == "keep"
+    old.write_text("keep both", encoding="utf-8")
+    assert web("fs.rename", path="folder/note.txt", name="renamed.txt").status_code == 409
+    assert old.read_text(encoding="utf-8") == "keep both"
+    assert old.with_name("renamed.txt").read_text(encoding="utf-8") == "keep"
+    assert web("fs.mkdir", path=".", name=".git").status_code == 403
+    assert web("fs.rename", path=".", name="new-workspace").status_code == 400
+    assert web("fs.createFile", path="..", name="outside.txt").status_code == 400
+    assert web("fs.createFile", path=".", name="NUL.txt").status_code == 400
+
+
+
+def test_sidebar_git_commit_and_linked_worktree_scope(client, monkeypatch, tmp_path):
+    settings = client.app.state.settings
+    workspace = settings.workspace_root
+    repo = workspace / "main-checkout"
+    repo.mkdir()
+
+    def git(*args: str, cwd=repo) -> str:
+        return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Workspace Test")
+    git("config", "user.email", "workspace@example.invalid")
+    git("config", "commit.gpgsign", "false")
+    git("commit", "--allow-empty", "-m", "initial")
+    linked = workspace / "linked-checkout"
+    git("worktree", "add", "-b", "feature", str(linked))
+    outside = tmp_path / "outside"
+    git("worktree", "add", "-b", "outside", str(outside))
+    bridge = _bridge(workspace)
+
+    def sidebar(method, **body):
+        return bridge.handle_sidebar_api("demo", method, {"cwd": str(repo), **body})
+
+    def web(method, **body):
+        return client.post(f"/api/local-workspace/{method}", json={"cwd": str(repo), **body})
+
+    assert sidebar("git.commit", message="denied")["error"]["code"] == "permission-denied"
+    assert web("git.checkout", branch="feature").status_code == 403
+    assert [item["path"] for item in sidebar("git.worktrees")["value"]] == [str(repo), str(linked)]
+    assert sidebar("git.status", worktree=str(outside))["error"]["code"] == "permission-denied"
+    assert sidebar("git.branch", worktree=str(linked))["value"]["current"] == "feature"
+
+    monkeypatch.setattr(settings, "eap_local_workspace_write_enabled", True)
+    bridge._write_enabled = True
+    (linked / "file.txt").write_text("change", encoding="utf-8")
+    assert sidebar("git.stage", worktree=str(linked))["value"] == {"ok": True}
+    assert web("git.commit", worktree=str(linked), message="feature change").json() == {"ok": True}
+    assert git("log", "-1", "--format=%s", cwd=linked).strip() == "feature change"
+    assert git("log", "-1", "--format=%s").strip() == "initial"
+    assert web("git.checkout", branch="-f").status_code == 400
+    git("branch", "another")
+    assert sidebar("git.checkout", branch="another")["value"] == {"ok": True}
+    assert web("git.branch").json()["current"] == "another"
+
+
+
+def test_git_sync_requires_remote_grant_and_pulls_fast_forward_only(client, monkeypatch, tmp_path):
+    settings = client.app.state.settings
+    repo = settings.workspace_root
+    upstream = tmp_path / "origin.git"
+    peer = tmp_path / "peer"
+
+    def git(*args, cwd=repo):
+        return subprocess.check_output(["git", *args], cwd=cwd, text=True).strip()
+
+    def commit(message, cwd=repo):
+        return git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                   "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", message, cwd=cwd)
+
+    def web(method):
+        return client.post(f"/api/local-workspace/{method}", json={})
+
+    git("init", "--bare", "-b", "main", str(upstream))
+    git("init", "-b", "main")
+    commit("initial")
+    git("remote", "add", "origin", str(upstream))
+    git("push", "-u", "origin", "main")
+    git("clone", str(upstream), str(peer))
+    commit("local change")
+    original_remote = git("rev-parse", "HEAD", cwd=upstream)
+    monkeypatch.setattr(settings, "eap_local_workspace_write_enabled", True)
+    bridge = _bridge(repo)
+    bridge._write_enabled = True
+    assert web("git.push").status_code == 403
+    assert bridge.handle_sidebar_api("demo", "git.pull")["error"]["code"] == "permission-denied"
+    assert git("rev-parse", "HEAD", cwd=upstream) == original_remote
+    git_plugin = client.get("/api/local-workspace/plugins").json()["items"][1]
+    assert "git.push" not in git_plugin["methods"]
+
+    monkeypatch.setattr(settings, "eap_local_workspace_remote_git_enabled", True)
+    bridge._remote_git_enabled = True
+    pushed = bridge.handle_sidebar_api("demo", "git.push")
+    assert pushed["value"] == {"ok": True}, pushed
+    assert git("rev-parse", "HEAD", cwd=upstream) == git("rev-parse", "HEAD")
+    git("pull", "--ff-only", cwd=peer)
+    commit("remote change", cwd=peer)
+    git("push", cwd=peer)
+    pulled = web("git.pull")
+    assert pulled.json() == {"ok": True}, pulled.text
+    assert git("rev-parse", "HEAD") == git("rev-parse", "HEAD", cwd=peer)
+
+    commit("diverged local")
+    local_head = git("rev-parse", "HEAD")
+    commit("diverged remote", cwd=peer)
+    git("push", cwd=peer)
+    assert web("git.pull").status_code == 400
+    assert git("rev-parse", "HEAD") == local_head
+    assert web("git.push").status_code == 400
+    assert git("rev-parse", "HEAD", cwd=upstream) == git("rev-parse", "HEAD", cwd=peer)

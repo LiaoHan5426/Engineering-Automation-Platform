@@ -8,6 +8,7 @@ import { modelApi as runtimeApi } from '../chat/chatService'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
 import ModelCatalogEditor from './ModelCatalogEditor.vue'
 import ChatGptAccountCard from './ChatGptAccountCard.vue'
+defineProps<{ hideAccountLogin?: boolean }>()
 const accountLogin = ref<{ start: (id?: string) => Promise<void> } | null>(null)
 async function accountConnected(id: string) {
   try {
@@ -249,6 +250,7 @@ async function makeDefault(item: ModelConnection) {
       >
     </div>
     <ChatGptAccountCard
+      v-if="!hideAccountLogin"
       ref="accountLogin"
       @connected="accountConnected"
       @changed="refreshConnections"

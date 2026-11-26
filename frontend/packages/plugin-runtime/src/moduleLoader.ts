@@ -15,8 +15,11 @@ type LoaderRegistration = {
 declare global {
   interface Window {
     __ModuleLoader__?: {
+      mode?: string
+      pendingQueue?: LoaderRegistration[]
       load: (registration: { id: string; factory: ModuleFactory; chunk?: string }) => void
-      get: (id: string) => unknown
+      get?: (id: string) => unknown
+      create?: (options: unknown) => unknown
     }
     __EAP_PLUGIN_MODULES__?: Map<string, LoaderRegistration>
   }
@@ -51,6 +54,7 @@ export function ensureModuleLoader(): Map<string, LoaderRegistration> {
   }
   const registry = window.__EAP_PLUGIN_MODULES__
   window.__ModuleLoader__ = {
+    mode: 'eap-registry',
     load(registration) {
       registry.set(registration.id, {
         id: registration.id,

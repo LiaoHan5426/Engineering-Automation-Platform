@@ -1,0 +1,20 @@
+{
+  "name": "@eap/dsh-boot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./enablement": "./src/compose-enablement.ts",
+    "./vite": "./src/vite-plugin.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@eap/tsconfig": "workspace:*",
+    "typescript": "catalog:tooling",
+    "vite": "catalog:tooling",
+    "vite-plus": "catalog:tooling"
+  }
+}

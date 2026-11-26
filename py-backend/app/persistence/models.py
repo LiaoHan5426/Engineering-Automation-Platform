@@ -82,6 +82,29 @@ class PluginInstallRow(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class BoardTaskRow(SQLModel, table=True):
+    __tablename__ = "board_task"
+
+    id: str = Field(primary_key=True)
+    project_id: str = Field(index=True)
+    title: str
+    column: str
+    notes: str = Field(default="")
+    session_id: str = Field(default="")
+    revision: int = Field(default=1)
+    events_json: str = Field(default='["created"]')
+    priority: str = Field(default="none")
+    goal: str = Field(default="")
+    acceptance_criteria: str = Field(default="")
+    execution_active: bool = Field(default=False)
+    prototype_version_id: str | None = Field(default=None)
+    preparation_issues_json: str = Field(default="[]")
+    allowed_columns_json: str = Field(default="[]")
+    create_request_id: str | None = Field(default=None, index=True)
+    create_fingerprint: str = Field(default="")
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class GitExecutionRow(SQLModel, table=True):
     """One finished argv git observation. Not a second chat execution."""
 

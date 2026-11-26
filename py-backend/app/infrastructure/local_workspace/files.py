@@ -1,6 +1,10 @@
 """Local filesystem capability, scoped to the configured workspace."""
 
 import base64
+import ctypes
+import re
+import shutil
+import sys
 import os
 import stat
 from tempfile import NamedTemporaryFile
@@ -10,6 +14,7 @@ from typing import Any
 
 _FILE_PREVIEW_LIMIT = 1024 * 1024
 _FILE_SNIFF_LIMIT = 4096
+UPLOAD_LIMIT = 16 * 1024 * 1024
 
 
 class FsConflictError(ValueError):
@@ -39,6 +44,40 @@ def resolve_workspace_path(workspace: Path, raw_path: Any) -> Path:
     if resolved != root and root not in resolved.parents:
         raise ValueError("path escapes workspace")
     return resolved
+
+
+def _check_metadata(path: Path, workspace: Path) -> None:
+    if any(part.casefold() == ".git" for part in path.relative_to(workspace).parts):
+        raise PermissionError("Git metadata cannot be edited through the file plugin")
+
+
+def _entry_name(value: Any) -> str:
+    if (
+        not isinstance(value, str) or not value or value.endswith((".", " "))
+        or re.search(r'[<>:"/\\|?*\x00-\x1f]', value)
+        or re.fullmatch(r"CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³]", value.split(".")[0].rstrip(), re.I)
+    ):
+        raise ValueError("Expected a valid file or directory name")
+    return value
+
+
+def _rename_without_replace(source: Path, destination: Path) -> None:
+    if os.name == "nt":
+        source.rename(destination)
+        return
+    # POSIX rename normally replaces the destination. Select an atomic no-replace mode.
+    libc = ctypes.CDLL(None, use_errno=True)
+    if sys.platform.startswith("linux") and hasattr(libc, "renameat2"):
+        at_fdcwd, rename_noreplace = -100, 1
+        result = libc.renameat2(at_fdcwd, os.fsencode(source), at_fdcwd, os.fsencode(destination), rename_noreplace)
+    elif sys.platform == "darwin":
+        rename_excl = 4
+        result = libc.renamex_np(os.fsencode(source), os.fsencode(destination), rename_excl)
+    else:
+        raise OSError("Non-overwriting rename is unavailable on this platform")
+    if result != 0:
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code), str(destination))
 
 
 class WorkspaceFiles:
@@ -154,8 +193,7 @@ class WorkspaceFiles:
             raise ValueError("Only UTF-8 text up to 1 MiB can be saved")
         with _WRITE_LOCK:
             target = resolve_workspace_path(workspace, body.get("path"))
-            if any(part.lower() == ".git" for part in target.relative_to(workspace).parts):
-                raise PermissionError("Git metadata cannot be edited through the file plugin")
+            _check_metadata(target, workspace)
             try:
                 current_stat = target.stat()
             except FileNotFoundError as exc:
@@ -191,7 +229,85 @@ class WorkspaceFiles:
                     temporary.unlink(missing_ok=True)
             return {"mtimeMs": target.stat().st_mtime_ns // 1_000_000}
 
+    def _tree_entry(self, workspace: Path, cwd: Path, path: Path) -> Path:
+        if path == cwd or path.name in {"", ".", ".."}:
+            raise ValueError("Cannot modify the workspace root")
+        parent = resolve_workspace_path(cwd, str(path.parent))
+        entry = parent / _entry_name(path.name)
+        _check_metadata(entry, workspace)
+        return entry
+
+    def _edit_tree(self, workspace: Path, method: str, body: dict[str, Any]) -> dict[str, str]:
+        cwd = resolve_workspace_path(workspace, body.get("cwd"))
+        raw_path = body.get("path")
+        if not isinstance(raw_path, str) or not raw_path:
+            raise ValueError("path must be a non-empty string")
+        path = cwd / raw_path
+        with _WRITE_LOCK:
+            if method == "fs.remove":
+                entry = self._tree_entry(workspace, cwd, path)
+                mode = entry.lstat().st_mode
+                if stat.S_ISDIR(mode):
+                    shutil.rmtree(entry)
+                else:
+                    entry.unlink()
+                return {"path": str(entry)}
+
+            name = _entry_name(body.get("name"))
+            if method == "fs.rename":
+                source = self._tree_entry(workspace, cwd, path)
+                parent = source.parent
+            else:
+                parent = resolve_workspace_path(cwd, str(path))
+
+            destination = parent / name
+            _check_metadata(destination, workspace)
+            if method == "fs.rename":
+                if source.name != name:
+                    _rename_without_replace(source, destination)
+                else:
+                    source.lstat()
+            elif method == "fs.mkdir":
+                destination.mkdir()
+            else:
+                with destination.open("xb"):
+                    pass
+            return {"path": str(destination)}
+
+    def _upload(self, workspace: Path, body: dict[str, Any]) -> dict[str, Any]:
+        cwd = resolve_workspace_path(workspace, body.get("cwd"))
+        directory, relative_path, data = body.get("dir"), body.get("relativePath"), body.get("data")
+        if not isinstance(directory, str) or not directory or not isinstance(relative_path, str):
+            raise ValueError("Upload requires dir and relativePath")
+        if not isinstance(data, (bytes, bytearray)) or len(data) > UPLOAD_LIMIT:
+            raise ValueError("Upload requires a binary body up to 16 MiB")
+        segments = [_entry_name(segment) for segment in re.split(r"[/\\]", relative_path)]
+        with _WRITE_LOCK:
+            base = resolve_workspace_path(cwd, directory)
+            if not base.is_dir():
+                raise ValueError("Upload directory must exist")
+            destination = base.joinpath(*segments)
+            _check_metadata(destination, workspace)
+            parent = resolve_workspace_path(base, str(destination.parent))
+            _check_metadata(parent, workspace)
+            parent.mkdir(parents=True, exist_ok=True)
+            target = parent / segments[-1]
+            temporary = None
+            try:
+                with NamedTemporaryFile(dir=parent, delete=False) as handle:
+                    temporary = Path(handle.name)
+                    handle.write(data)
+                _rename_without_replace(temporary, target)
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+        return {"path": str(target), "size": len(data)}
+
     def call(self, workspace: Path, method: str, body: dict[str, Any]) -> Any:
+        if method == "fs.upload":
+            return self._upload(workspace, body)
+        if method in {"fs.mkdir", "fs.createFile", "fs.rename", "fs.remove"}:
+            return self._edit_tree(workspace, method, body)
         if method == "fs.write":
             return self._write_file(workspace, body)
         if method == "fs.read":

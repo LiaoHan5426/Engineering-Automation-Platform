@@ -2,12 +2,7 @@
  * Wrap React slot components so Vue RightbarSeat can host better-sidebar
  * NativeTabBody (React) without a hand-rolled guide seat.
  */
-import {
-  createElement,
-  useSyncExternalStore,
-  type ComponentType,
-  type ReactNode,
-} from 'react'
+import { createElement, useSyncExternalStore, type ComponentType, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import {
   defineComponent,
@@ -89,37 +84,59 @@ function adaptPropsForReact(raw: Record<string, unknown>): Record<string, unknow
   return next
 }
 
+type VueSlotRuntime = Pick<
+  typeof import('vue'),
+  'defineComponent' | 'h' | 'onBeforeUnmount' | 'onMounted' | 'ref' | 'watch'
+>
+const defaultVueRuntime: VueSlotRuntime = {
+  defineComponent,
+  h,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+}
+
 /** Vue host that createRoot-mounts a React component into a div. */
 export function createReactSlotWrapper(
   ReactComp: ComponentType<Record<string, unknown>>,
+  vue: VueSlotRuntime = defaultVueRuntime,
+  frameworkProps: readonly string[] = [],
 ): Component {
-  return defineComponent({
+  return vue.defineComponent({
     name: 'EapReactSlotHost',
     inheritAttrs: false,
-    setup(_props, { attrs }) {
-      const host = ref<HTMLElement | null>(null)
+    props: [...frameworkProps],
+    setup(props, { attrs }) {
+      const host = vue.ref<HTMLElement | null>(null)
       let root: Root | null = null
+      const useTabInfo: unknown = Reflect.get(props, 'useTabInfo')
+      const tabInfo = typeof useTabInfo === 'function' ? useTabInfo() : undefined
 
       const paint = () => {
         if (!host.value) return
         if (!root) root = createRoot(host.value)
-        const adapted = adaptPropsForReact({ ...(attrs as Record<string, unknown>) })
+        const adapted = adaptPropsForReact({
+          ...attrs,
+          ...props,
+          ...(tabInfo === undefined ? {} : { useTabInfo: () => tabInfo }),
+        })
         root.render(createElement(ReactComp, adapted) as ReactNode)
       }
 
-      onMounted(paint)
-      watch(
-        () => ({ ...attrs }),
+      vue.onMounted(paint)
+      vue.watch(
+        () => ({ ...attrs, ...props }),
         () => paint(),
         { deep: true },
       )
-      onBeforeUnmount(() => {
+      vue.onBeforeUnmount(() => {
         root?.unmount()
         root = null
       })
 
       return () =>
-        h('div', {
+        vue.h('div', {
           ref: host,
           'data-eap-react-slot-host': '',
           style: 'display:contents',

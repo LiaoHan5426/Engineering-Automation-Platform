@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 from typing import Any, Protocol
 
 from app.catalog.service import CatalogService
@@ -40,6 +41,9 @@ def _attached_files(context: object) -> list[dict[str, Any]]:
 
 class ChatConversations(Protocol):
     def open_conversation(self, connection_id: str | None, model: str | None) -> dict[str, Any]: ...
+    def session_history(self, conversation_id: str) -> tuple[int, list[dict[str, Any]]] | None: ...
+    def session_summaries(self, workspace_id: str) -> list[tuple[str, int, int, str | None, str | None]]: ...
+    def workspace_sessions(self, workspace_id: str) -> list[tuple[str, str]]: ...
     def get_conversation(self, conversation_id: str) -> dict[str, Any] | None: ...
     def put_working_memory(self, conversation_id: str, body: dict[str, Any]) -> dict[str, Any]: ...
     def graph(self, conversation_id: str, leaf_id: str | None = None) -> dict[str, Any] | None: ...
@@ -58,7 +62,8 @@ class ChatConversations(Protocol):
 
 class StreamCompletion(Protocol):
     def __call__(
-        self, connection: ConnectionRecord, messages: list[dict[str, str]], *, model: str | None = None
+        self, connection: ConnectionRecord, messages: list[dict[str, str]], *, model: str | None = None,
+        read_source: Callable[[str], str] | None = None,
     ) -> AsyncIterator[str]: ...
 
 
@@ -78,6 +83,7 @@ class ChatService:
         connections: ConnectionStore,
         tools: CapabilityRegistry,
         catalog: CatalogService,
+        record_file_read: Callable[[Path, str, str], None],
         notify_hub: NotifyHub | None = None,
         offline_reply: str | None = None,
     ) -> None:
@@ -89,6 +95,7 @@ class ChatService:
         self._connections = connections
         self._tools = tools
         self._catalog = catalog
+        self._record_file_read = record_file_read
         self._notify_hub = notify_hub
         self._offline_reply = offline_reply
 
@@ -179,6 +186,28 @@ class ChatService:
             model=target.default_model if target else None,
         )
 
+    def session_history(self, conversation_id: str) -> tuple[int, list[dict[str, Any]]] | None:
+        return self._conversations.session_history(conversation_id)
+
+    def session_summaries(self, workspace_id: str) -> list[dict[str, Any]]:
+        return [
+            {
+                "sessionId": session_id,
+                "updatedAt": updated_at,
+                "blank": count == 0,
+                "messageCount": count,
+                "connectionId": connection_id,
+                "model": model,
+                "running": self.has_active_turn(session_id),
+                "agentAvailable": True,
+                "cwd": str(self._settings.workspace_root),
+            }
+            for session_id, updated_at, count, connection_id, model in self._conversations.session_summaries(workspace_id)
+        ]
+
+    def workspace_sessions(self, workspace_id: str) -> list[tuple[str, str]]:
+        return self._conversations.workspace_sessions(workspace_id)
+
     def get_conversation(self, conversation_id: str) -> dict[str, Any] | None:
         return self._conversations.get_conversation(conversation_id)
 
@@ -257,7 +286,8 @@ class ChatService:
                 raise ValueError(ChatErrorCode.INVALID_TASK_CONTEXT)
 
     async def stream_send(
-        self, conversation_id: str, body: dict[str, Any]
+        self, conversation_id: str, body: dict[str, Any], *, request_id: str | None = None,
+        allow_source_tools: bool = False,
     ) -> AsyncIterator[dict[str, Any]]:
         self.validate_send(body)
         context = self._conversations.turn_context(conversation_id)
@@ -266,7 +296,9 @@ class ChatService:
         history_nodes, connection_id, model = context
 
         try:
-            state = self._journal.start(conversation_id)
+            state = self._journal.start(
+                conversation_id, request_id=request_id, message=str(body["message"]).strip(),
+            )
         except BusyError as exc:
             raise RuntimeError(ChatErrorCode.CONVERSATION_BUSY) from exc
 
@@ -282,11 +314,22 @@ class ChatService:
             )
 
             if tool_mode != "none":
-                observation = self._tools.run(tool_mode)
+                if tool_mode == "code_sources":
+                    observation = self._tools.run(
+                        tool_mode, session_id=conversation_id,
+                        target_path=_instruction_focus(body.get("context")),
+                    )
+                    if observation.get("ok"):
+                        self._record_file_read(
+                            self._settings.workspace_root, conversation_id, observation["path"],
+                        )
+                else:
+                    observation = self._tools.run(tool_mode, session_id=conversation_id)
                 tool_events.append(
                     {
                         "sequence": len(tool_events) + 1,
                         "code": str(observation.get("code") or tool_mode),
+                        **({"summary": observation["summary"]} if tool_mode == "code_sources" and observation.get("ok") else {}),
                     }
                 )
                 yield self._journal.append_event(
@@ -297,12 +340,15 @@ class ChatService:
                     code=str(observation.get("code") or ""),
                     payload={"sequence": tool_events[-1]["sequence"], **observation},
                 )
-                if observation.get("code") == ChatErrorCode.TOOL_MODE_UNSUPPORTED:
+                if not observation.get("ok") and (
+                    tool_mode == "code_sources" or observation.get("code") == ChatErrorCode.TOOL_MODE_UNSUPPORTED
+                ):
+                    error_code = observation["code"]
                     result = self._final_payload(
                         state,
                         answer="",
                         status="FAILED",
-                        error=ChatErrorCode.TOOL_MODE_UNSUPPORTED,
+                        error=error_code,
                         tool_events=tool_events,
                     )
                     yield self._journal.append_event(
@@ -310,9 +356,9 @@ class ChatService:
                         event_type="final",
                         status="FAILED",
                         text="",
-                        code=ChatErrorCode.TOOL_MODE_UNSUPPORTED,
+                        code=error_code,
                         payload=result,
-                        message="tool mode unsupported",
+                        message=str(observation.get("summary") or ""),
                     )
                     self._journal.complete(state, "FAILED")
                     await self._notify_session_terminal(state, "FAILED")
@@ -330,6 +376,7 @@ class ChatService:
                     history=history_nodes,
                     user_message=message,
                     tool_events=tool_events,
+                    allow_source_tools=allow_source_tools,
                     attachments=_attached_files(body.get("context")),
                     focus=_instruction_focus(body.get("context")),
                     connection_id=connection_id,
@@ -469,6 +516,7 @@ class ChatService:
         user_message: str,
         tool_events: list[dict[str, Any]],
         attachments: list[dict[str, Any]],
+        allow_source_tools: bool,
         focus: str | None,
         connection_id: str | None,
         model: str | None,
@@ -479,6 +527,9 @@ class ChatService:
             attachments,
             workspace_root=self._settings.workspace_root,
             focus=focus,
+            on_instruction_read=lambda path: self._record_file_read(
+                self._settings.workspace_root, conversation_id, path,
+            ),
         )
         if self._offline_reply is not None:
             async for chunk in self._offline_stream(self._offline_reply):
@@ -498,7 +549,15 @@ class ChatService:
             role = "user" if node["role"] == "USER" else "assistant"
             messages.append({"role": role, "content": node["text"]})
         messages.append({"role": "user", "content": user_message})
-        async for delta in self._stream_completion(connection, messages, model=model):
+        def read_source(path: str) -> str:
+            result = self._tools.run("code_sources", session_id=conversation_id, target_path=path)
+            if not result["ok"]:
+                return str(result["code"])
+            self._record_file_read(self._settings.workspace_root, conversation_id, result["path"])
+            return str(result["summary"])
+
+        options = {"read_source": read_source} if allow_source_tools and connection.wire_api == "chat-completions" else {}
+        async for delta in self._stream_completion(connection, messages, model=model, **options):
             yield delta
 
     async def _notify_session_terminal(self, state: ExecutionState, status: str) -> None:

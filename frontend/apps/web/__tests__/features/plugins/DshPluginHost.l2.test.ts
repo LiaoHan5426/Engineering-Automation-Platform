@@ -9,7 +9,7 @@ import { runtimeApi } from '@eap/runtime-client'
 import { createPluginIsland, islandControlSurface } from '@eap/plugin-runtime'
 import { i18n } from '../../../src/lib/i18n'
 import DshPluginManager from '../../../src/features/plugins/DshPluginManager.vue'
-import CordisIslandHost from '../../../src/features/plugins/CordisIslandHost.vue'
+import DshBootHost from '../../../src/features/plugins/DshBootHost.vue'
 
 let app: App | undefined
 let root: HTMLDivElement
@@ -122,7 +122,7 @@ describe('L2 DSH plugin host (control on server)', () => {
     })
   })
 
-  it('Cordis island syncs contributions then dispose clears sidebar UI', async () => {
+  it('DshBootHost syncs contributions then dispose clears sidebar UI', async () => {
     window.__EAP_PLUGIN_MODULES__ = new Map()
     window.__ModuleLoader__ = {
       load(reg) {
@@ -134,8 +134,11 @@ describe('L2 DSH plugin host (control on server)', () => {
     }
     window.__ModuleLoader__.load({
       id: 'dsh-better-sidebar',
-      factory: () => ({
-        apply(ctx: { effect: (fn: () => () => void) => void }) {
+      factory: (require) => {
+        expect(require('react')).toBeDefined()
+        expect(require('@deepseek-ai/dsh-client-ui-primitives')).toBeDefined()
+        return {
+          apply(ctx: { effect: (fn: () => () => void) => void }) {
           ctx.effect(() => {
             const host = document.createElement('div')
             host.setAttribute('data-dsh-better-sidebar', '')
@@ -144,48 +147,43 @@ describe('L2 DSH plugin host (control on server)', () => {
             document.body.appendChild(host)
             return () => host.remove()
           })
-        },
-      }),
+          },
+        }
+      },
     })
     vi.spyOn(document.head, 'appendChild').mockImplementation((node) => node)
-
-    const contributions = vi.spyOn(runtimeApi.plugins, 'contributions').mockResolvedValue({
-      uiClients: [
-        {
-          name: 'dsh-better-sidebar',
-          version: '0.31.1',
-          description: 'Better Sidebar',
-          clientEntry: 'lib/client.js',
-          clientUrl: '/api/plugins/dsh-better-sidebar/files/lib/client.js',
-          filesBaseUrl: '/api/plugins/dsh-better-sidebar/files',
-          inject: [],
-          hostApiBase: '/api/plugins/host/dsh-better-sidebar',
-          controlPlane: 'py-backend',
-        },
-      ],
-    })
+    const uiClients = [
+      {
+        name: 'dsh-better-sidebar',
+        version: '0.31.1',
+        description: 'Better Sidebar',
+        clientEntry: 'lib/client.js',
+        clientUrl: '/api/plugins/dsh-better-sidebar/files/lib/client.js',
+        filesBaseUrl: '/api/plugins/dsh-better-sidebar/files',
+        inject: [],
+        hostApiBase: '/api/plugins/host/dsh-better-sidebar',
+        controlPlane: 'py-backend' as const,
+        enabled: true,
+      },
+    ]
+    const contributions = vi.spyOn(runtimeApi.plugins, 'contributions').mockResolvedValue({ uiClients })
 
     root = document.createElement('div')
     document.body.append(root)
-    app = createApp(CordisIslandHost)
+    app = createApp(DshBootHost)
     app.use(i18n).mount(root)
     await nextTick()
-    for (let i = 0; i < 20; i++) await Promise.resolve()
+    for (let i = 0; i < 40; i++) await Promise.resolve()
     expect(contributions).toHaveBeenCalled()
     expect(document.querySelector('[data-testid="better-sidebar-ui"]')?.textContent).toContain(
       'Better Sidebar',
     )
-    expect(document.querySelector('[data-testid="cordis-island-host"]')?.getAttribute('data-mounted'))
+    expect(document.querySelector('[data-testid="dsh-boot-host"]')?.getAttribute('data-mounted'))
       .toContain('dsh-better-sidebar')
 
-    contributions.mockResolvedValue({ uiClients: [] })
-    const exposed = (app as unknown as { _instance?: { exposed?: { syncFromServer: () => Promise<void> } } })
-      ._instance?.exposed
-    // Unmount disposes island UI.
     app.unmount()
     app = undefined
     expect(document.querySelector('[data-dsh-better-sidebar]')).toBeNull()
-    void exposed
   })
 
   it('Host API client path stays on /api/plugins/host (never local Host)', async () => {
@@ -206,6 +204,7 @@ describe('L2 DSH plugin host (control on server)', () => {
 
 declare global {
   interface Window {
+    __DSH_BOOT_READY__?: PromiseWithResolvers<void>
     __ModuleLoader__?: {
       load: (registration: {
         id: string

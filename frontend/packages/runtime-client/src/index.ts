@@ -218,6 +218,14 @@ export interface LocalWorkspacePlugin {
 
 export const localWorkspaceApi = {
   listPlugins: () => get<{ items: LocalWorkspacePlugin[] }>('/local-workspace/plugins'),
+  upload: (body: Blob, params: { dir: string; relativePath: string; cwd?: string }, signal?: AbortSignal) =>
+    client
+      .post<{ path: string; size: number }>('/local-workspace/fs.upload', body, {
+        params,
+        signal,
+        headers: { 'Content-Type': 'application/octet-stream' },
+      })
+      .then(({ data }) => data),
   call: <T>(method: string, body: Record<string, unknown> = {}) =>
     client.post<T>('/local-workspace/' + encodeURIComponent(method), body).then(({ data }) => data),
 }

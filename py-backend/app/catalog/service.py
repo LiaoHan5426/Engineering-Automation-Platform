@@ -5,10 +5,12 @@ import json
 import re
 import shutil
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import func
 from sqlmodel import Session, or_, select
 
 from app.agent.turn import TurnBrief, TurnSource
@@ -24,6 +26,7 @@ from app.catalog.models import (
     SkillRow,
 )
 from app.persistence.db import session_scope
+from app.persistence.models import ChatMessageRow, ConversationRow
 
 _SECRET_KEYS = frozenset(
     {"password", "passwd", "secret", "token", "apikey", "api_key", "connectionstring"}
@@ -231,7 +234,18 @@ class CatalogService:
     def stats(self, window_days: int) -> dict[str, Any]:
         if window_days < 1 or window_days > 366:
             raise CatalogError("INVALID_WINDOW", "windowDays must be 1..366")
+        lower_bound = datetime.now(timezone.utc) - timedelta(days=window_days)
+        with session_scope(self._engine) as session:
+            new_conversations = session.exec(
+                select(func.count()).select_from(ConversationRow).where(ConversationRow.created_at >= lower_bound)
+            ).one()
+            sent_messages = session.exec(
+                select(func.count()).select_from(ChatMessageRow).where(
+                    ChatMessageRow.created_at >= lower_bound, ChatMessageRow.role == "USER"
+                )
+            ).one()
         return {
+            "chat": {"newConversations": new_conversations, "sentMessages": sent_messages},
             "windowDays": window_days,
             "tasksTotal": 0,
             "tasksInWindow": 0,
@@ -776,10 +790,11 @@ class CatalogService:
         attachments: list[dict[str, Any]] | None = None,
         workspace_root: Path | None = None,
         focus: str | None = None,
+        on_instruction_read: Callable[[str], None] | None = None,
     ) -> str:
         brief = TurnBrief()
         if workspace_root is not None:
-            instructions = load_project_instructions(workspace_root, focus=focus)
+            instructions = load_project_instructions(workspace_root, focus=focus, on_read=on_instruction_read)
             if instructions:
                 brief.instructions.append(
                     TurnSource("workspace", "project", "instruction", instructions)

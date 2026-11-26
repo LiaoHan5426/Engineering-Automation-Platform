@@ -300,6 +300,40 @@ importers:
         specifier: 45.0.0
         version: 45.0.0(supports-color@7.2.0)
 
+  apps/dsh-boot-verify:
+    dependencies:
+      '@eap/dsh-boot':
+        specifier: workspace:*
+        version: link:../../packages/dsh-boot
+      '@eap/plugin-runtime':
+        specifier: workspace:*
+        version: link:../../packages/plugin-runtime
+      '@eap/runtime-client':
+        specifier: workspace:*
+        version: link:../../packages/runtime-client
+      '@eap/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.44(typescript@6.0.3)
+    devDependencies:
+      '@eap/tsconfig':
+        specifier: workspace:*
+        version: link:../../internal/tsconfig
+      '@vitejs/plugin-vue':
+        specifier: catalog:tooling
+        version: 6.0.10(@voidzero-dev/vite-plus-core@8.3.8001(@types/node@24.19.2)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3)))(vue@3.5.44(typescript@6.0.3))
+      typescript:
+        specifier: catalog:tooling
+        version: 6.0.3
+      vite:
+        specifier: catalog:tooling
+        version: '@voidzero-dev/vite-plus-core@8.3.8001(@types/node@24.19.2)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3))'
+      vite-plus:
+        specifier: catalog:tooling
+        version: 1.8.0(@types/node@24.19.2)(@vitest/ui@5.1.1)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(happy-dom@21.0.4)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3))
+
   apps/web:
     dependencies:
       '@eap/expert-sdk':
@@ -404,6 +438,21 @@ importers:
         version: 38.0.0(stylelint@16.26.1(supports-color@7.2.0)(typescript@6.0.3))
 
   internal/tsconfig: {}
+
+  packages/dsh-boot:
+    devDependencies:
+      '@eap/tsconfig':
+        specifier: workspace:*
+        version: link:../../internal/tsconfig
+      typescript:
+        specifier: catalog:tooling
+        version: 6.0.3
+      vite:
+        specifier: catalog:tooling
+        version: '@voidzero-dev/vite-plus-core@8.3.8001(@types/node@24.19.2)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3))'
+      vite-plus:
+        specifier: catalog:tooling
+        version: 1.8.0(@types/node@24.19.2)(@vitest/ui@5.1.1)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(happy-dom@21.0.4)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3))
 
   packages/expert-sdk:
     devDependencies:

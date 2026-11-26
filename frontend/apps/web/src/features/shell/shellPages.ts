@@ -3,6 +3,13 @@ import { i18n } from '../../lib/i18n'
 /** Existing views remain available through the five-entry desktop shell. */
 export const shellPages = [
   {
+    id: 'overview',
+    name: i18n.global.t('workspaceOverview.title'),
+    icon: '▦',
+    group: '工作',
+    hint: i18n.global.t('workspaceOverview.usage'),
+  },
+  {
     id: 'skills',
     name: i18n.global.t('skill.title'),
     icon: '◇',

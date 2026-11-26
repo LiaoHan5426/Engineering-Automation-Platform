@@ -1,12 +1,15 @@
 """SQLModel adapter for conversation history and turn writes."""
 
+from datetime import timezone
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.engine import Engine
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.domain.errors import ChatErrorCode
 from app.persistence.message_store import MessageStore
+from app.persistence.models import ChatMessageRow, ConversationRow
 
 
 class SqlChatConversations:
@@ -18,6 +21,68 @@ class SqlChatConversations:
             item = MessageStore(session).create_conversation(connection_id=connection_id, model=model)
             session.commit()
             return item
+
+    def session_history(self, conversation_id: str) -> tuple[int, list[dict[str, Any]]] | None:
+        with Session(self._engine) as session:
+            conversation = session.get(ConversationRow, conversation_id)
+            if conversation is None:
+                return None
+            rows = session.exec(
+                select(ChatMessageRow)
+                .where(ChatMessageRow.conversation_id == conversation_id)
+                .order_by(ChatMessageRow.sequence)
+            )
+            created_at = int(conversation.created_at.replace(tzinfo=timezone.utc).timestamp() * 1000)
+            return created_at, [
+                {
+                    "id": row.id,
+                    "role": row.role,
+                    "text": row.content,
+                    "time": int(row.created_at.replace(tzinfo=timezone.utc).timestamp() * 1000),
+                    "provider": conversation.connection_id,
+                    "model": conversation.model,
+                }
+                for row in rows
+            ]
+
+    def workspace_sessions(self, workspace_id: str) -> list[tuple[str, str]]:
+        with Session(self._engine) as session:
+            rows = session.exec(
+                select(ConversationRow)
+                .where(ConversationRow.workspace_label == workspace_id)
+                .order_by(ConversationRow.created_at, ConversationRow.id)
+            )
+            return [(row.id, row.created_at.replace(tzinfo=timezone.utc).isoformat()) for row in rows]
+
+    def session_summaries(self, workspace_id: str) -> list[tuple[str, int, int, str | None, str | None]]:
+        last_message = (
+            select(func.max(ChatMessageRow.created_at))
+            .where(ChatMessageRow.conversation_id == ConversationRow.id)
+            .correlate(ConversationRow)
+            .scalar_subquery()
+        )
+        message_count = (
+            select(func.count(ChatMessageRow.id))
+            .where(ChatMessageRow.conversation_id == ConversationRow.id)
+            .correlate(ConversationRow)
+            .scalar_subquery()
+        )
+        with Session(self._engine) as session:
+            rows = session.exec(
+                select(ConversationRow, last_message, message_count)
+                .where(ConversationRow.workspace_label == workspace_id)
+                .order_by(ConversationRow.created_at.desc(), ConversationRow.id)
+            )
+            return [
+                (
+                    row.id,
+                    int((last or row.created_at).replace(tzinfo=timezone.utc).timestamp() * 1000),
+                    count,
+                    row.connection_id,
+                    row.model,
+                )
+                for row, last, count in rows
+            ]
 
     def get_conversation(self, conversation_id: str) -> dict[str, Any] | None:
         with Session(self._engine) as session:

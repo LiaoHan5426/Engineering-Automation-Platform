@@ -52,6 +52,10 @@ def test_open_send_graph_linear(client: TestClient) -> None:
     assert body["path"][1]["text"] == "offline-mvp-reply"
     assert body["path"] == body["all"]
 
+    stats = client.get("/api/stats?windowDays=7")
+    assert stats.status_code == 200
+    assert stats.json()["chat"] == {"newConversations": 1, "sentMessages": 1}
+
 
 def test_unknown_conversation(client: TestClient) -> None:
     response = client.get("/api/ai/conversations/missing/graph")

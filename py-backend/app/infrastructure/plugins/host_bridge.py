@@ -17,6 +17,7 @@ from typing import Any
 
 from app.infrastructure.local_workspace.files import FsConflictError, FsDirectoryError
 from app.infrastructure.local_workspace.registry import workspace_handler
+from app.infrastructure.local_workspace.sidebar_opens import SidebarOpens
 from app.infrastructure.plugins.registry import PluginRegistry
 
 # Default prefs document shape expected by dsh-better-sidebar client boot.
@@ -57,9 +58,14 @@ class HostBridgeState:
 
 
 class PluginHostBridge:
-    def __init__(self, registry: PluginRegistry, workspace: Path, *, write_enabled: bool = False) -> None:
+    def __init__(
+        self, registry: PluginRegistry, workspace: Path, *,
+        write_enabled: bool = False, remote_git_enabled: bool = False,
+    ) -> None:
         self._registry = registry
+        self.sidebar_opens = SidebarOpens()
         self._write_enabled = write_enabled
+        self._remote_git_enabled = remote_git_enabled
         self._workspace = workspace.resolve()
         self._active: dict[str, HostBridgeState] = {}
 
@@ -186,7 +192,7 @@ class PluginHostBridge:
             return alt
         raise FileNotFoundError(safe)
 
-    def open_sidebar_tool(self, name: str | None = None) -> dict[str, Any]:
+    def open_sidebar_tool(self, name: str | None = None, *, session_id: str | None = None) -> dict[str, Any]:
         """Agent-callable tool: ask Host bridge to mark sidebar open intent.
 
         Registered on py-backend Chat/tools — never executed in the Cordis island.
@@ -201,6 +207,8 @@ class PluginHostBridge:
             }
         state = self._active[target]
         state.calls.append({"method": "TOOL", "path": "sidebar_open", "bodyKeys": []})
+        if session_id:
+            self.sidebar_opens.publish(session_id, {"kind": "folder", "target": str(state.workspace)})
         return {
             "ok": True,
             "code": "sidebar_open",
@@ -253,21 +261,10 @@ class PluginHostBridge:
             # sessions). EAP hosts the plugin in the RIGHT column; do not force
             # blank=true or the client parks guide cards in the bottom dock.
             return {"blank": False, "sessionId": str(body.get("sessionId") or "eap")}
-        handler = workspace_handler(method, self._write_enabled)
+        handler = workspace_handler(method, self._write_enabled, self._remote_git_enabled)
         if handler is not None:
             return handler(state.workspace, method, body)
-        if method == "changes.ops":
-            # This Host does not run DSH Agent sessions, so there is no DSH operation stream.
-            return {"events": [], "lastSeq": 0}
-        if method.startswith("git."):
-            raise PermissionError("Git method is unavailable on this host")
-        # Honest stub for methods not yet wired through the in-process bridge.
-        return {
-            "implemented": False,
-            "method": method,
-            "echo": body,
-            "note": "skeleton Host bridge; Node sidecar may expand this method",
-        }
+        raise KeyError(f"Sidebar method is unavailable: {method}")
 
 
 def write_prefs_snapshot(path: Path, prefs: dict[str, Any]) -> None:

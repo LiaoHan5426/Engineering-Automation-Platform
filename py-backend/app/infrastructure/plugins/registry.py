@@ -145,13 +145,15 @@ class PluginRegistry:
         ui_clients = []
         for row in rows:
             info = read_dsh_package(Path(row.install_path))
+            artifact_revision = row.updated_at.strftime("%Y%m%d%H%M%S%f")
             ui_clients.append(
                 {
                     "name": info.name,
                     "version": info.version,
                     "description": info.description,
+                    "enabled": True,
                     "clientEntry": info.client_entry,
-                    "clientUrl": f"/api/plugins/{info.name}/files/{info.client_entry}",
+                    "clientUrl": f"/api/plugins/{info.name}/files/{info.client_entry}?rev={artifact_revision}",
                     "filesBaseUrl": f"/api/plugins/{info.name}/files",
                     "inject": list(info.inject),
                     "hostApiBase": f"/api/plugins/host/{info.name}",

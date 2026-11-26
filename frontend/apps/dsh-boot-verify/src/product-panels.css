@@ -1,0 +1,24 @@
+.eap-product-panel {
+  overflow: auto;
+  min-height: 0;
+  height: 100%;
+  padding: 1.5rem;
+}
+.eap-product-panel a {
+  text-decoration: underline;
+}
+.eap-product-panel .page-head {
+  margin-bottom: 1.25rem;
+}
+
+.eap-product-settings {
+  width: min(60rem, 92vw);
+  max-height: 85vh;
+  overflow: auto;
+  color: CanvasText;
+  background: Canvas;
+  padding: 1.25rem;
+}
+.eap-product-settings::backdrop {
+  background: rgb(0 0 0 / 45%);
+}

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-26",
+  "eapCheckpoint": "31f2ec05",
+  "dshPersonalIntroduceCommit": "0c55ad24",
+  "acceptedUpstreamCommit": "39163dd30f703a79079e2d2446545cff3c453738",
+  "pendingUpstreamCommit": "ca33fd6843b205e279c7ccb6cb73a472c78f5760",
+  "licenseNote": "dsh-personal packages retain upstream DeepSeek Harness licenses; EAP consumes built client artifacts and selected sources under the vendored tree.",
+  "consumer": {
+    "bootComposer": "frontend/packages/dsh-boot",
+    "verifyApp": "frontend/apps/dsh-boot-verify",
+    "productionApp": "frontend/apps/web",
+    "host": "py-backend"
+  },
+  "packages": [
+    {
+      "npm": "@deepseek-ai/dsh-client-web",
+      "path": "dsh-personal/packages/client/web",
+      "role": "AppWebEntry / seed ui-slots",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-client-modules",
+      "path": "dsh-personal/packages/client/modules",
+      "role": "WebBootGraph / bootInjections / ModuleLoader",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-client-ui-slots",
+      "path": "dsh-personal/packages/client/ui-slots",
+      "role": "static seed slots",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-client-ui-renderer",
+      "path": "dsh-personal/packages/client/ui-renderer",
+      "role": "Cordis ui-renderer",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-client-ui-layout",
+      "path": "dsh-personal/packages/client/ui-layout",
+      "role": "Cordis ui-layout",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-client-ui-sidebar-right",
+      "path": "dsh-personal/packages/client/ui-sidebar-right",
+      "role": "Cordis ui-sidebar-right",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-app-boot",
+      "path": "dsh-personal/packages/boot/app-boot",
+      "role": "patch compose for EAP overlay",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-web-app",
+      "path": "dsh-personal/packages/bundle/web-app",
+      "role": "Web client roster layer before EAP overlay",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-base",
+      "path": "dsh-personal/packages/bundle/base",
+      "role": "Base client roster layer before the Web bundle",
+      "license": "upstream package"
+    },
+    {
+      "npm": "@deepseek-ai/dsh-web-frontend",
+      "path": "dsh-personal/apps/web",
+      "role": "Reference browser build and entry used by verification",
+      "license": "upstream package"
+    }
+  ],
+  "excludedClientRows": [
+    "ui-settings-account",
+    "deepseek-account",
+    "llm-deepseek-account",
+    "ui-account-notifications"
+  ],
+  "relatedTests": [
+    "dsh-personal/apps/web/tests/built-boot.expected.e2e.ts",
+    "dsh-personal/apps/web/tests/assembled-boot.ts",
+    "frontend/packages/dsh-boot/__tests__",
+    "frontend/apps/dsh-boot-verify"
+  ]
+}

@@ -8,6 +8,7 @@ outside that chain stay unread. Symlinks are not followed.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
 MAX_CHAIN_BYTES = 65_536
@@ -22,6 +23,7 @@ def load_project_instructions(
     *,
     focus: str | None = None,
     max_bytes: int = MAX_CHAIN_BYTES,
+    on_read: Callable[[str], None] | None = None,
 ) -> str:
     root = workspace.resolve()
     if not root.is_dir():
@@ -47,6 +49,8 @@ def load_project_instructions(
             note += f" Truncated: {truncated}."
         lines.append(note.strip())
     for item in kept:
+        if on_read is not None:
+            on_read(str(item["display"]))
         lines.append(f"Instructions from: {item['display']}\n\n{item['text']}")
     lines.append("</system-reminder>")
     return "\n".join(lines)

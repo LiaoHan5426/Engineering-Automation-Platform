@@ -11,9 +11,9 @@ export default defineConfig({
     include: ['**/__tests__/**/*.{test,spec}.{ts,tsx,js,jsx,mts,cts}'],
   },
   defaultPackage: {
-    dev: './apps/web',
-    build: './apps/web',
-    preview: './apps/web',
+    dev: './apps/dsh-boot-verify',
+    build: './apps/dsh-boot-verify',
+    preview: './apps/dsh-boot-verify',
     pack: './packages/ui',
   },
   fmt: {

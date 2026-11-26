@@ -32,14 +32,24 @@ class ExecutionJournal:
         self._by_execution: dict[str, ExecutionState] = {}
         self._active_by_conversation: dict[str, str] = {}
 
-    def start(self, conversation_id: str) -> ExecutionState:
+        self._by_request: dict[tuple[str, str], tuple[str, str]] = {}
+
+    def start(
+        self, conversation_id: str, *, request_id: str | None = None, message: str = "",
+    ) -> ExecutionState:
         with self._lock:
+            key = (conversation_id, request_id) if request_id is not None else None
+            if key is not None and key in self._by_request:
+                execution_id, previous_message = self._by_request[key]
+                raise DuplicatePromptError(execution_id, previous_message == message)
             if conversation_id in self._active_by_conversation:
                 raise BusyError(conversation_id)
             execution_id = f"exec-{uuid.uuid4().hex[:12]}"
             state = ExecutionState(execution_id=execution_id, conversation_id=conversation_id)
             self._by_execution[execution_id] = state
             self._active_by_conversation[conversation_id] = execution_id
+            if key is not None:
+                self._by_request[key] = (execution_id, message)
             return state
 
     def get(self, execution_id: str) -> ExecutionState | None:
@@ -140,3 +150,10 @@ class BusyError(Exception):
     def __init__(self, conversation_id: str) -> None:
         super().__init__(conversation_id)
         self.conversation_id = conversation_id
+
+
+class DuplicatePromptError(Exception):
+    def __init__(self, execution_id: str, same_content: bool) -> None:
+        super().__init__(execution_id)
+        self.execution_id = execution_id
+        self.same_content = same_content

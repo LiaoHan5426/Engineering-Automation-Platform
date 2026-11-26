@@ -6,10 +6,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
+from app.api.board import router as board_router
 from app.api.catalog import router as catalog_router
 from app.api.connections import router as connections_router
 from app.api.conversations import router as conversations_router
+from app.api.dsh_session import router as dsh_session_router
+from app.api.dsh_workspace import router as dsh_workspace_router
 from app.api.git_executions import router as git_executions_router
 from app.api.local_workspace import router as local_workspace_router
 from app.api.notify import router as notify_router
@@ -23,8 +27,10 @@ from app.catalog.service import CatalogService
 from app.config import Settings, get_settings
 from app.domain.execution_journal import ExecutionJournal
 from app.infrastructure.chat_conversations import SqlChatConversations
+from app.infrastructure.board.store import SqlBoardTaskStore
 from app.infrastructure.git_execution_store import SqlGitExecutionStore
 from app.infrastructure.git_runner import LocalGitRunner
+from app.infrastructure.local_workspace.changes import CHANGES_LOG
 from app.infrastructure.llm_openai import fake_stream, stream_chat_completion
 from app.persistence.connections import ConnectionStore
 from app.persistence.db import init_db, make_engine
@@ -57,13 +63,16 @@ def create_app(
         tools = CapabilityRegistry(settings.workspace_root)
         plugin_registry = PluginRegistry(settings, engine)
         plugin_host_bridge = PluginHostBridge(
-            plugin_registry, settings.workspace_root, write_enabled=settings.eap_local_workspace_write_enabled
+            plugin_registry, settings.workspace_root,
+            write_enabled=settings.eap_local_workspace_write_enabled,
+            remote_git_enabled=settings.eap_local_workspace_remote_git_enabled,
         )
         tools.bind_host_bridge(plugin_host_bridge)
         app.state.settings = settings
         app.state.notify_hub = notify_hub
         app.state.connections = connections
         app.state.catalog = CatalogService(engine)
+        app.state.board_tasks = SqlBoardTaskStore(engine)
         app.state.git_executions = GitExecutionService(
             SqlGitExecutionStore(engine), LocalGitRunner(settings.workspace_root)
         )
@@ -80,6 +89,7 @@ def create_app(
             connections=connections,
             tools=tools,
             catalog=app.state.catalog,
+            record_file_read=CHANGES_LOG.record_read,
             notify_hub=notify_hub,
             offline_reply=offline_reply,
         )
@@ -115,14 +125,22 @@ def create_app(
             "db": str(settings.db_path),
         }
 
+    app.include_router(board_router, prefix="/api")
     app.include_router(catalog_router, prefix="/api")
     app.include_router(git_executions_router, prefix="/api")
     app.include_router(conversations_router, prefix="/api")
+    app.include_router(dsh_session_router, prefix="/api")
+    app.include_router(dsh_workspace_router, prefix="/api")
     app.include_router(connections_router, prefix="/api")
     app.include_router(notify_router, prefix="/api")
     app.include_router(local_workspace_router, prefix="/api")
     app.include_router(plugins_router, prefix="/api")
     app.include_router(sidebar_gateway_router)
+    if settings.eap_dsh_web_dist is not None:
+        dist = settings.eap_dsh_web_dist.resolve()
+        if not (dist / "index.html").is_file() or not (dist / "eap-dsh/core-graph.json").is_file():
+            raise ValueError("EAP_DSH_WEB_DIST must point to a built EAP DSH Web directory")
+        app.mount("/", StaticFiles(directory=dist, html=True), name="dsh-web")
     app.add_exception_handler(Exception, unhandled_error_handler)
     return app
 

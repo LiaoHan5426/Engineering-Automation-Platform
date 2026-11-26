@@ -1,0 +1,26 @@
+{
+  "name": "@eap/dsh-boot-verify",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev --mode eap-artifacts",
+    "dev:fixture": "vp dev --mode fixture",
+    "build": "vp build --mode eap-artifacts",
+    "preview": "vp preview --mode eap-artifacts"
+  },
+  "dependencies": {
+    "@eap/dsh-boot": "workspace:*",
+    "@eap/plugin-runtime": "workspace:*",
+    "@eap/runtime-client": "workspace:*",
+    "@eap/ui": "workspace:*",
+    "vue": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@eap/tsconfig": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:tooling",
+    "typescript": "catalog:tooling",
+    "vite": "catalog:tooling",
+    "vite-plus": "catalog:tooling"
+  }
+}

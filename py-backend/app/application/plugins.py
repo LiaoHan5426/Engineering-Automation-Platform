@@ -80,6 +80,12 @@ class PluginService:
     def sidebar(self, name: str | None, method: str, body: dict[str, Any]) -> dict[str, Any]:
         return self._bridge.handle_sidebar_api(self._sidebar_name(name), method, body)
 
+    def sidebar_opens(self, session_id: str):
+        return self._bridge.sidebar_opens.subscribe(session_id)
+
+    def sidebar_available(self) -> bool:
+        return self._bridge.primary_sidebar_plugin() is not None
+
     def resolve_sidebar_bundle(self, chunk: str) -> Path:
         return self._bridge.resolve_bundle(self._sidebar_name(None), chunk)
 

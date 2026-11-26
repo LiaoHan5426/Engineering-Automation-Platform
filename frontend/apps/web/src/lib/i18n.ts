@@ -36,6 +36,42 @@ export const { i18n, registerMessages, createPluginLocale } = createAppI18n({
   fallbackLocale: 'en-US',
 })
 
+registerMessages('workspaceOverview', {
+  'zh-CN': {
+    title: '工作台',
+    usage: '使用概况 · 最近七天',
+    records: '任务记录',
+    newConversations: '新建会话',
+    sentMessages: '已发送的用户消息',
+    modelRuns: '已记录的模型运行',
+    calls: '已记录的模型调用',
+    todos: '项目待办',
+    loading: '正在加载…',
+    statsError: '无法加载使用统计。',
+    tasksError: '无法加载以下项目的待办。',
+    noTasks: '当前项目没有未完成任务。',
+    noProjects: '尚未添加项目。',
+    boardDisabled: '任务板插件已停用。',
+    refresh: '刷新',
+  },
+  'en-US': {
+    title: 'Workbench',
+    usage: 'Usage · Last seven days',
+    records: 'Task records',
+    newConversations: 'New conversations',
+    sentMessages: 'Sent user messages',
+    modelRuns: 'Recorded model runs',
+    calls: 'Recorded model calls',
+    todos: 'Project to-dos',
+    loading: 'Loading…',
+    statsError: 'Usage statistics are unavailable.',
+    tasksError: 'To-dos could not be loaded for these projects.',
+    noTasks: 'There are no unfinished tasks in the current projects.',
+    noProjects: 'No projects have been added.',
+    boardDisabled: 'The board plugin is disabled.',
+    refresh: 'Refresh',
+  },
+})
 registerMessages('executionLog', executionLogMessages)
 registerMessages('product', productMessages)
 registerMessages('presentation', presentationMessages)
